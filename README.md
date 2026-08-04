@@ -20,3 +20,15 @@ Applicazione Cloudflare Worker nativa per Splendoria. Mantiene compatibilità co
 5. Collegare i domini personalizzati al nuovo Worker solo dopo i test.
 
 Non inserire token, password o file `.env` nel repository.
+
+La migrazione è esclusivamente additiva: crea nuove tabelle con `CREATE TABLE IF NOT EXISTS` e non elimina né rinomina le tabelle esistenti.
+
+### Comandi di controllo
+
+```bash
+npm test
+npm run db:migrate:local
+npm run check
+```
+
+Il comando `db:migrate:remote` deve essere eseguito soltanto dopo aver verificato il backup e l'ID del database di produzione.
