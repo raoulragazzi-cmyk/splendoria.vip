@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "splendoria-db",
-      "database_id": "REPLACE_WITH_EXISTING_D1_DATABASE_ID"
+      "database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"
     }
   ],
   "send_email": [
