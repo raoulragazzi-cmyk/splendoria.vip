@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "wrangler deploy --dry-run --outdir dist"
+    "check": "wrangler deploy --dry-run --outdir dist",
+    "db:migrate:local": "wrangler d1 execute splendoria-db --local --file=schema.sql",
+    "db:migrate:remote": "wrangler d1 execute splendoria-db --remote --file=schema.sql",
+    "test": "node test/smoke.mjs"
   },
   "dependencies": {},
   "devDependencies": {
