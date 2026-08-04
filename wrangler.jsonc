@@ -10,8 +10,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "splendoria-db",
-      "database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"
+      "database_name": "splendoria-v2-test",
+      "database_id": "8bf872f6-3f9e-471f-95bc-a99a94f0d97c"
     }
   ],
   "send_email": [
@@ -20,7 +20,7 @@
     }
   ],
   "vars": {
-    "APP_URL": "https://www.splendoria.vip",
+    "APP_URL": "https://splendoria-v2.raoulragazzi.workers.dev",
     "ADMIN_EMAIL": "raoulragazzi@gmail.com",
     "EMAIL_FROM": "contatti@splendoria.vip"
   }
