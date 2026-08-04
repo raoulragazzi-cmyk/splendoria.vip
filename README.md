@@ -13,7 +13,7 @@ Applicazione Cloudflare Worker nativa per Splendoria. Mantiene compatibilità co
 
 ## Prima pubblicazione
 
-1. Sostituire in `wrangler.jsonc` `REPLACE_WITH_EXISTING_D1_DATABASE_ID` con l'ID di `splendoria-db`.
+1. Il binding `DB` è configurato sul database D1 esistente `splendoria-db` (`1a46b8b0-2e6f-44cf-a22f-4950259f9434`).
 2. Applicare `schema.sql` al database D1 esistente.
 3. Verificare il binding Email Routing `CONTACT_EMAIL` e il mittente `contatti@splendoria.vip`.
 4. Eseguire `npm install`, `npm run check` e soltanto dopo `npm run deploy`.
