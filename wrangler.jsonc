@@ -2,6 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "splendoria-v2",
   "main": "src/worker.js",
+  "assets": {
+    "directory": "./public"
+  },
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   "ai": {
