@@ -19,12 +19,22 @@ CREATE TABLE IF NOT EXISTS "PasswordReset" (
   "tokenHash" TEXT NOT NULL UNIQUE,
   "expiresAt" TEXT NOT NULL,
   "usedAt" TEXT,
+  "deliveryStatus" TEXT NOT NULL DEFAULT 'pending',
+  "deliveryError" TEXT NOT NULL DEFAULT '',
+  "deliveredAt" TEXT,
+  "messageId" TEXT,
   "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS "PasswordReset_userId_idx" ON "PasswordReset"("userId");
 CREATE INDEX IF NOT EXISTS "PasswordReset_expiresAt_idx" ON "PasswordReset"("expiresAt");
+
+-- Per database creati con una versione precedente, applicare una sola volta:
+-- ALTER TABLE "PasswordReset" ADD COLUMN "deliveryStatus" TEXT NOT NULL DEFAULT 'pending';
+-- ALTER TABLE "PasswordReset" ADD COLUMN "deliveryError" TEXT NOT NULL DEFAULT '';
+-- ALTER TABLE "PasswordReset" ADD COLUMN "deliveredAt" TEXT;
+-- ALTER TABLE "PasswordReset" ADD COLUMN "messageId" TEXT;
 
 CREATE TABLE IF NOT EXISTS "AuthThrottle" (
   "key" TEXT NOT NULL PRIMARY KEY,
