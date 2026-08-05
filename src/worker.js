@@ -46,6 +46,17 @@ async function route(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/$/, "") || "/";
   const method = request.method.toUpperCase();
+
+  // Temporary runtime-only probe used on the Cloudflare preview deployment.
+  // It performs no database write and is removed before production merge.
+  if (method === "GET" && path === "/_diagnostica-auth-100k-8f3c5a") {
+    const digest = await hashPassword("VerificaTecnicaSplendoria2026!");
+    return new Response(digest.startsWith(`pbkdf2$${PASSWORD_PBKDF2_ITERATIONS}$`) ? "Runtime password OK" : "Runtime password ERROR", {
+      status: digest.startsWith(`pbkdf2$${PASSWORD_PBKDF2_ITERATIONS}$`) ? 200 : 500,
+      headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
+    });
+  }
+
   const user = await currentUser(request, env);
 
   if (method === "GET" && path === "/assets/studio.js") return studioScript();
