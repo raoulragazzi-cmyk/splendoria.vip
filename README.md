@@ -32,3 +32,5 @@ npm run check
 ```
 
 Il comando `db:migrate:remote` deve essere eseguito soltanto dopo aver verificato il backup e l'ID del database di produzione.
+
+<!-- cloudflare-build: 2026-08-05 -->
