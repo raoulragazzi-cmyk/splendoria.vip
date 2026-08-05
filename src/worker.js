@@ -5,11 +5,11 @@ const RESET_MINUTES = 30;
 const FREE_AI_LIMIT = 3;
 const AUTH_WINDOW_MINUTES = 15;
 const AUTH_MAX_ATTEMPTS = 8;
-const PLAN_LABELS = { free: "Primo capitolo gratuito", digital: "Hybrid", complete: "Premium Short Book", assisted: "Personal Branding & Corporate" };
+const PLAN_LABELS = { free: "Primo capitolo gratuito", digital: "Splendoria Digital", complete: "Splendoria Premium", assisted: "Splendoria Signature" };
 const PLANS = {
-  digital: { label: "Hybrid", price: 1000, description: "80 pagine · 50.000 battute · interviste, scrittura professionale, copertina e prime 5 copie." },
-  complete: { label: "Premium Short Book", price: 1900, description: "100 pagine · 72.000 battute · approfondimento psicologico e quattro incontri di scrittura." },
-  assisted: { label: "Personal Branding & Corporate", price: 2500, description: "200 pagine · 150–180.000 battute · progetto sartoriale per aziende e professionisti." }
+  digital: { label: "Splendoria Digital", price: 1000, description: "Fino a 100 pagine · percorso interamente digitale guidato dalle Muse, con supervisione umana." },
+  complete: { label: "Splendoria Premium", price: 1500, description: "Fino a 250 pagine · percorso digitale più ampio e approfondito, con supervisione umana." },
+  assisted: { label: "Splendoria Signature", price: 2500, description: "Da 250 pagine in su · progetto biografico digitale su misura, con 10 copie cartacee comprese." }
 };
 
 export default {
@@ -31,7 +31,7 @@ async function route(request, env) {
   const user = await currentUser(request, env);
 
   if (method === "GET" && path === "/assets/studio.js") return studioScript();
-  if (method === "GET" && path === "/") return home(user);
+  if (method === "GET" && path === "/") return home(user, url);
   if (method === "GET" && path === "/registrati") return authPage("register", user);
   if (method === "POST" && path === "/registrati") return register(request, env);
   if (method === "GET" && path === "/accedi") return authPage("login", user, url.searchParams.get("e"));
@@ -62,18 +62,126 @@ async function route(request, env) {
   return page("Pagina non trovata", `<div class="formbox center"><h1>Pagina non trovata</h1><p class="muted">La pagina richiesta non esiste.</p><a class="button" href="/">Torna alla home</a></div>`, user, 404);
 }
 
-function home(user) {
+function home(user, url) {
   const entry = user ? (user.isAdmin ? "/admin" : "/studio") : "/registrati";
+  const requestedPlan = url?.searchParams?.get("formula") || "";
+  const selectedPlan = Object.hasOwn(PLANS, requestedPlan) ? requestedPlan : "";
+  const planOptions = Object.entries(PLANS).map(([key, plan]) => `<option value="${key}"${selectedPlan === key ? " selected" : ""}>${esc(plan.label)}</option>`).join("");
   return page("La tua vita in un romanzo", `
     <header class="showcase-hero"><div class="showcase-narrow"><p class="showcase-label light">Ogni vita merita un romanzo</p><h1>Splendoria</h1><p class="showcase-subtitle">La tua vita in un romanzo.</p><p class="showcase-intro">Il servizio di ghostwriting che trasforma la tua storia — o quella di chi ami — in un libro vero, scritto da professionisti.</p><div class="showcase-actions"><a class="button" href="${entry}">Scrivi il primo capitolo gratis</a><a class="showcase-link" href="#come-funziona">Scopri come funziona ›</a></div></div></header>
     <section class="showcase-section showcase-paper" id="storia"><div class="showcase-reading"><p class="showcase-label">La storia</p><h2>Storie che è un peccato dimenticare.</h2><p>In un angolo di un bar, in un incontro destinato a cambiare il corso delle cose, tre menti creative — ognuna con il proprio stile e mestiere — condividevano storie e ispirazioni. Alzarono i bicchieri per brindare a una nuova alleanza: spiriti affini, uniti da un amore comune per la scrittura. Da quel brindisi è nata Splendoria.</p><p>Hai mai pensato che la tua storia potrebbe essere raccontata in un libro, o diventare la trama di un film? Con Splendoria è possibile: sia in forma pubblica che anonima, la tua biografia — o una parte romanzata di essa — diventa un libro vero, da consegnare ad amici, figli e nipoti. <b>Per rimanere, a futura memoria, vivi per sempre.</b></p></div></section>
     <section class="showcase-section" id="come-funziona"><div class="wrap"><p class="showcase-label">Come funziona</p><h2 class="showcase-title">Quattro passi. Un libro vero.</h2><div class="showcase-grid four"><article class="showcase-card"><span>1</span><h3>Registrati</h3><p>Crea il tuo account gratuito: ricevi subito le tue credenziali e uno Studio di scrittura tutto tuo.</p></article><article class="showcase-card"><span>2</span><h3>Scrivi il primo capitolo</h3><p>Racconta l'inizio della tua storia: il primo capitolo, fino a sei pagine, è in omaggio. Senza impegno.</p></article><article class="showcase-card"><span>3</span><h3>Scegli la formula</h3><p>Quando sei pronto, scegli la formula più adatta: un ghostwriter professionista completa il tuo libro.</p></article><article class="showcase-card"><span>4</span><h3>Ricevi il tuo libro</h3><p>Stampa con le prime 5 copie incluse, consegna entro 10 giorni e deposito dell'opera a tutela dei diritti d'autore.</p></article></div><p class="showcase-note"><b>Scegli il genere.</b> Autobiografia, memoriale, ritratto, giallo, thriller o romanzo.</p></div></section>
-    <section class="showcase-section showcase-paper" id="formule"><div class="wrap"><p class="showcase-label">Listino</p><h2 class="showcase-title">Scegli la tua formula.</h2><div class="showcase-grid three"><article class="showcase-price"><h3>Hybrid</h3><p class="muted">Interviste online e in presenza, a un prezzo fisso</p><p class="showcase-amount">1.000 €</p><p class="muted">80 pagine · 50.000 battute</p><ul><li>Due interviste da 30 minuti, online o in presenza</li><li>Possibilità di videointervista e invio di foto e documenti</li><li>Scrittura ed editing professionale</li><li>Impaginazione e copertina incluse</li><li>Stampa in formato A5, prime 5 copie comprese</li><li>Consegna entro 10 giorni e deposito dell'opera</li></ul><a class="button" href="${entry}">Scegli Hybrid</a></article><article class="showcase-price featured"><h3>Premium Short Book</h3><p>Formula ibrida con approfondimento psicologico</p><p class="showcase-amount">1.900 €</p><p>100 pagine · 72.000 battute</p><ul><li>Call di 60 minuti dedicata a temi, aneddoti e messaggio</li><li>4 incontri di scrittura da un'ora, online o in presenza</li><li>Copertina personalizzata e formato di stampa su richiesta</li><li>Prime 5 copie comprese, consegna in 10 giorni</li><li>Marcatura e deposito dell'opera</li></ul><a class="button" href="${entry}">Scegli Premium</a></article><article class="showcase-price"><h3>Personal Branding &amp; Corporate</h3><p class="muted">Per aziende, professionisti e partite IVA</p><p class="showcase-amount">2.500 €</p><p class="muted">200 pagine · 150–180.000 battute</p><ul><li>Proposta sartoriale per raccontare la tua impresa</li><li>4 incontri di scrittura da un'ora</li><li>Il racconto scritto dagli scrittori della Scuola Holden</li><li>Un libro che infonde stima e credibilità</li><li>Prime 5 copie comprese, deposito dell'opera</li></ul><a class="button" href="${entry}">Scegli Personal</a></article></div><p class="showcase-note">Ogni progetto è seguito da un tutor dedicato, dalla prima intervista alla consegna. Marcatura e deposito dell'opera inclusi in tutte le formule.</p></div></section>
+    <section class="showcase-section showcase-paper showcase-pricing" id="formule" aria-labelledby="pricing-title">
+      <div class="wrap">
+        <p class="showcase-label">Listino</p>
+        <h2 class="showcase-title" id="pricing-title">Scegli il percorso per raccontare la tua storia</h2>
+        <p class="pricing-kicker">La tecnologia incontra la sensibilità umana</p>
+        <p class="pricing-intro">Ogni libro Splendoria nasce attraverso un percorso interamente digitale, guidato dalle nostre Muse e supervisionato da un professore di una scuola di scrittura. Un metodo innovativo che unisce ascolto, intelligenza artificiale e competenza narrativa.</p>
+
+        <div class="showcase-grid three pricing-grid">
+          <article class="showcase-price" aria-labelledby="digital-title">
+            <span class="price-icon" aria-hidden="true">✦</span>
+            <h3 id="digital-title">Splendoria Digital</h3>
+            <p class="price-tagline muted">Il modo più semplice per trasformare i tuoi ricordi in un libro</p>
+            <p class="showcase-amount">1.000 €</p>
+            <p class="price-pages muted">Fino a 100 pagine</p>
+            <ul>
+              <li>Opera e percorso interamente digitali</li>
+              <li>Percorso guidato dalle Muse di Splendoria</li>
+              <li>Intervista iniziale online</li>
+              <li>Raccolta guidata di ricordi, fotografie e documenti</li>
+              <li>Scrittura e organizzazione narrativa realizzate con il supporto delle nostre Muse</li>
+              <li>Supervisione umana affidata a un professore di una scuola di scrittura</li>
+              <li>Revisione grammaticale e stilistica</li>
+              <li>Impaginazione digitale</li>
+              <li>Copertina personalizzata</li>
+              <li>Consegna del libro in formato PDF</li>
+              <li>Marcatura temporale e deposito digitale dell’opera</li>
+              <li>Revisione professionale prima della consegna definitiva</li>
+              <li>Possibilità di acquistare separatamente copie stampate</li>
+            </ul>
+            <a class="button" data-plan-choice="digital" href="/?formula=digital#contatti">Inizia il tuo libro</a>
+          </article>
+
+          <article class="showcase-price featured" aria-labelledby="premium-title">
+            <span class="price-badge">Più scelta</span>
+            <span class="price-icon" aria-hidden="true">◆</span>
+            <h3 id="premium-title">Splendoria Premium</h3>
+            <p class="price-tagline">Un racconto più ampio, profondo e ricco di dettagli</p>
+            <p class="showcase-amount">1.500 €</p>
+            <p class="price-pages">Fino a 250 pagine</p>
+            <ul>
+              <li>Opera e percorso interamente digitali</li>
+              <li>Percorso guidato dalle Muse di Splendoria</li>
+              <li>Intervista iniziale online di approfondimento</li>
+              <li>Più sessioni online dedicate alle diverse fasi della vita</li>
+              <li>Raccolta e organizzazione di fotografie, lettere e documenti</li>
+              <li>Scrittura e costruzione narrativa realizzate con il supporto delle nostre Muse</li>
+              <li>Supervisione umana affidata a un professore di una scuola di scrittura</li>
+              <li>Revisione approfondita dei contenuti</li>
+              <li>Revisione grammaticale, narrativa e stilistica</li>
+              <li>Impaginazione editoriale</li>
+              <li>Copertina personalizzata</li>
+              <li>Consegna del libro in formato PDF pronto per la stampa</li>
+              <li>Marcatura temporale e deposito digitale dell’opera</li>
+              <li>Revisione professionale prima della consegna definitiva</li>
+              <li>Possibilità di acquistare separatamente copie stampate</li>
+            </ul>
+            <a class="button" data-plan-choice="complete" href="/?formula=complete#contatti">Scegli Premium</a>
+          </article>
+
+          <article class="showcase-price signature" aria-labelledby="signature-title">
+            <span class="price-icon" aria-hidden="true">✧</span>
+            <h3 id="signature-title">Splendoria Signature</h3>
+            <p class="price-tagline muted">Un’opera biografica completa, costruita su misura</p>
+            <p class="showcase-amount">2.500 €</p>
+            <p class="price-pages muted">Da 250 pagine in su, secondo il progetto</p>
+            <p class="signature-included"><strong>10 copie cartacee comprese nel prezzo</strong></p>
+            <ul>
+              <li>Opera e percorso interamente digitali</li>
+              <li>Percorso personalizzato guidato dalle Muse di Splendoria</li>
+              <li>Interviste online di approfondimento, senza una struttura rigida</li>
+              <li>Progetto narrativo dedicato a persone, famiglie, professionisti e imprese</li>
+              <li>Ricerca, selezione e organizzazione di fotografie, lettere, documenti e materiali d’archivio</li>
+              <li>Scrittura e costruzione narrativa realizzate con il supporto delle nostre Muse</li>
+              <li>Supervisione umana affidata a un professore di una scuola di scrittura</li>
+              <li>Possibilità di un accompagnamento editoriale più approfondito da parte della <strong>Scuola Holden</strong></li>
+              <li>Revisione narrativa, grammaticale e stilistica completa</li>
+              <li>Impaginazione editoriale realizzata su misura</li>
+              <li>Copertina personalizzata</li>
+              <li>Inserimento di fotografie, documenti, lettere e materiali d’archivio</li>
+              <li>Consegna della versione digitale completa</li>
+              <li><strong>10 copie cartacee comprese nel prezzo</strong></li>
+              <li>Marcatura temporale e deposito digitale dell’opera</li>
+              <li>Assistenza personale fino all’approvazione definitiva</li>
+              <li>Revisione professionale prima della consegna dell’opera</li>
+            </ul>
+            <a class="button" data-plan-choice="assisted" href="/?formula=assisted#contatti">Richiedi il progetto Signature</a>
+          </article>
+        </div>
+
+        <div class="pricing-method">
+          <span class="method-mark" aria-hidden="true">✦</span>
+          <div>
+            <h3>Le Muse ti accompagnano. La competenza umana garantisce il risultato.</h3>
+            <p>Le Muse di Splendoria accompagnano ogni persona nella raccolta dei ricordi, nelle interviste e nella costruzione del racconto. La tecnologia facilita il percorso, organizza i materiali e aiuta a trasformare la memoria in una narrazione coerente.</p>
+            <p>Ogni libro viene successivamente sottoposto alla supervisione umana di un professore di una scuola di scrittura e a una revisione professionale prima della consegna definitiva.</p>
+            <p><strong>La tecnologia non sostituisce la sensibilità umana: la rende accessibile, continua e presente durante tutto il percorso.</strong></p>
+          </div>
+        </div>
+
+        <div class="pricing-notes" aria-label="Precisazioni sul listino">
+          <p>Il numero di pagine è indicativo e può variare in base all’impaginazione, alla quantità di fotografie e alla struttura narrativa dell’opera.</p>
+          <p>Eventuali servizi aggiuntivi, ulteriori copie stampate, traduzioni, lavorazioni grafiche o richieste speciali saranno quotati separatamente.</p>
+          <p>L’eventuale coinvolgimento della Scuola Holden è previsto esclusivamente nella formula Splendoria Signature e deve essere concordato in base alle caratteristiche del progetto.</p>
+        </div>
+      </div>
+    </section>
     <section class="showcase-section" id="servizi"><div class="wrap"><p class="showcase-label">Sempre incluso</p><h2 class="showcase-title">Tutto quello che serve. Di serie.</h2><div class="showcase-grid three"><article class="showcase-card"><h3>Tutor dedicato</h3><p>In ogni fase del progetto avrai al tuo fianco un tutor esperto, pronto a guidarti lungo il cammino della scrittura.</p></article><article class="showcase-card"><h3>Colloqui individuali</h3><p>Conversazioni riservate per raccogliere informazioni e materiali, così che la tua storia si distingua da tutte le altre.</p></article><article class="showcase-card"><h3>Copywriting</h3><p>Il nostro team lavora con te per far emergere i punti chiave del tuo messaggio e coinvolgere emotivamente chi legge.</p></article><article class="showcase-card"><h3>Grafica professionale</h3><p>Designer esperti curano impaginazione e copertina, con un design coerente con la tua personalità o la tua azienda.</p></article><article class="showcase-card"><h3>Versione digitale</h3><p>Insieme al libro stampato ricevi una versione digitale e sfogliabile, da condividere con amici, familiari e lettori.</p></article><article class="showcase-card"><h3>Stampa e spedizione</h3><p>Tempi rapidi e puntuali: le prime 5 copie sono comprese, con consegna entro 10 giorni dall'approvazione della bozza.</p></article></div></div></section>
     <aside class="showcase-holden"><p>Alcuni romanzi sono scritti dagli scrittori della Scuola Holden, la scuola di storytelling fondata a Torino da Alessandro Baricco insieme a Carlo Feltrinelli, Oscar Farinetti e Andrea Guerra.</p><span>Le storie più avvincenti, raccontate da chi le sa scrivere.</span></aside>
     <section class="showcase-section" id="voci"><div class="wrap"><p class="showcase-label">Dicono di noi</p><h2 class="showcase-title">Vite diventate libri.</h2><div class="showcase-grid three"><article class="showcase-quote"><blockquote>“Ho sempre desiderato scrivere un libro, ma mi intimoriva il foglio bianco. Le indicazioni online sono intuitive, i tempi sono stati rispettati e la qualità del libro è eccellente.”</blockquote><p><b>Tatiana</b> · Insegnante</p></article><article class="showcase-quote"><blockquote>“Eccellente il percorso di accompagnamento che mi ha portato a realizzare il mio sogno. Raccontare la mia vita a dei professionisti della scrittura è un'esperienza che consiglio vivamente.”</blockquote><p><b>Ettore</b> · Commerciante</p></article><article class="showcase-quote"><blockquote>“Ho trovato un team di persone serie e motivate, con la mia stessa passione. Il libro che mi hanno consegnato è stato addirittura migliore di quanto mi aspettassi.”</blockquote><p><b>Giorgia</b> · Manager d'azienda</p></article></div></div></section>
     <section class="showcase-section showcase-paper showcase-cta"><h2>La tua storia comincia qui.</h2><p>Crea il tuo account gratuito, scrivi il primo capitolo della tua vita e scopri com'è vederla diventare un libro. Al resto pensiamo noi.</p><a class="button" href="${entry}">Inizia gratis</a></section>
-    <section id="contatti" class="showcase-section showcase-contact"><div class="wrap showcase-contact-grid"><div><p class="showcase-label left">Splendoria</p><h2>Contattaci</h2><p class="muted">Raccontaci brevemente come possiamo aiutarti.</p><p><b>Indirizzo</b><br><span class="muted">Via J. W. von Goethe 42<br>39012 Merano (BZ), Italia</span></p></div><form method="post" action="/contatti"><p class="small muted">Tutti i campi sono obbligatori.</p><div class="grid three"><label class="field">Nome e cognome<input name="fullName" required maxlength="100"></label><label class="field">Telefono<input name="phone" required maxlength="40"></label><label class="field">Email<input name="email" type="email" required maxlength="160"></label></div><label class="field">Oggetto<input name="subject" required maxlength="160"></label><label class="field">Messaggio<textarea name="message" required maxlength="3000"></textarea></label><input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px"><button class="button">Invia richiesta</button></form></div></section>`, user);
+    <section id="contatti" class="showcase-section showcase-contact"><div class="wrap showcase-contact-grid"><div><p class="showcase-label left">Splendoria</p><h2>Contattaci</h2><p class="muted">Raccontaci brevemente come possiamo aiutarti.</p><p><b>Indirizzo</b><br><span class="muted">Via J. W. von Goethe 42<br>39012 Merano (BZ), Italia</span></p></div><form method="post" action="/contatti"><p class="small muted">Tutti i campi sono obbligatori.</p><label class="field">Formula di interesse<select name="plan" data-plan-select required><option value=""${selectedPlan ? "" : " selected"} disabled>Seleziona una formula</option>${planOptions}</select></label><div class="grid three"><label class="field">Nome e cognome<input name="fullName" required maxlength="100"></label><label class="field">Telefono<input name="phone" required maxlength="40"></label><label class="field">Email<input name="email" type="email" required maxlength="160"></label></div><label class="field">Oggetto<input name="subject" required maxlength="160"></label><label class="field">Messaggio<textarea name="message" required maxlength="3000"></textarea></label><input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px"><button class="button">Invia richiesta</button></form></div></section>`, user);
 }
 
 function page(title, body, user, status = 200, extra = "") {
@@ -127,6 +235,21 @@ function studioScript() {
       const update = () => { if (output) output.textContent = (area.value.trim().match(/\\S+/g) || []).length + ' parole'; };
       area.addEventListener('input', update); update();
     });
+    const planSelect = document.querySelector('[data-plan-select]');
+    if (planSelect) {
+      document.querySelectorAll('[data-plan-choice]').forEach(link => {
+        link.addEventListener('click', event => {
+          const choice = link.dataset.planChoice;
+          if (!choice || !planSelect.querySelector('option[value="' + choice + '"]')) return;
+          event.preventDefault();
+          planSelect.value = choice;
+          planSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          history.replaceState(null, '', '/?formula=' + encodeURIComponent(choice) + '#contatti');
+          document.getElementById('contatti')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          window.setTimeout(() => planSelect.focus({ preventScroll: true }), 450);
+        });
+      });
+    }
   })();`;
   return new Response(source, { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=300", "x-content-type-options": "nosniff" } });
 }
@@ -306,7 +429,7 @@ async function updateAdminProject(request,id,user,env){if(!user?.isAdmin)return 
 
 async function exportCsv(user,env){if(!user?.isAdmin)return redirect("/accedi");const rows=await env.DB.prepare(`SELECT u.nome,u.email,p.title,p.genre,p.status,p.plan,p.createdAt,p.updatedAt FROM "BookProject" p JOIN "User" u ON u.id=p.userId ORDER BY p.updatedAt DESC`).all();const csv=["Nome,Email,Titolo,Genere,Stato,Piano,Creato,Aggiornato",...rows.results.map(r=>[r.nome,r.email,r.title,r.genre,r.status,r.plan,r.createdAt,r.updatedAt].map(csvCell).join(","))].join("\r\n");return new Response("\ufeff"+csv,{headers:{"content-type":"text/csv; charset=utf-8","content-disposition":"attachment; filename=splendoria-progetti.csv"}});}
 
-async function contact(request,env){const f=await form(request);if(f.website)return redirect("/");const id=crypto.randomUUID(),now=new Date().toISOString();await env.DB.prepare('INSERT INTO "ContactMessage" (id,fullName,phone,email,subject,message,lang,ipHash,deliveryStatus,deliveryError,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(id,clean(f.fullName,100),clean(f.phone,40),normalizeEmail(f.email),clean(f.subject,160),clean(f.message,3000),"it",await sha256(request.headers.get("cf-connecting-ip")||"unknown"),"pending","",now).run();return redirect("/?contatto=inviato#contatti");}
+async function contact(request,env){const f=await form(request);if(f.website)return redirect("/");const plan=PLANS[clean(f.plan,30)]?.label||"",rawSubject=clean(f.subject,160),rawMessage=clean(f.message,3000),subject=(plan?`[${plan}] ${rawSubject}`:rawSubject).slice(0,160),message=(plan?`Formula scelta: ${plan}\n\n${rawMessage}`:rawMessage).slice(0,3000),id=crypto.randomUUID(),now=new Date().toISOString();await env.DB.prepare('INSERT INTO "ContactMessage" (id,fullName,phone,email,subject,message,lang,ipHash,deliveryStatus,deliveryError,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(id,clean(f.fullName,100),clean(f.phone,40),normalizeEmail(f.email),subject,message,"it",await sha256(request.headers.get("cf-connecting-ip")||"unknown"),"pending","",now).run();return redirect("/?contatto=inviato#contatti");}
 
 async function currentUser(request,env){const token=cookie(request,"spl_session");if(!token)return null;const row=await env.DB.prepare(`SELECT u.* FROM "Session" s JOIN "User" u ON u.id=s.userId WHERE s.tokenHash=? AND s.expiresAt>?`).bind(await sha256(token),new Date().toISOString()).first();if(!row)return null;return{...row,isAdmin:normalizeEmail(row.email)===normalizeEmail(env.ADMIN_EMAIL)}}
 async function createSessionResponse(userId,env,path){const token=randomToken(),hash=await sha256(token),expires=new Date(Date.now()+SESSION_DAYS*86400000);await env.DB.prepare('INSERT INTO "Session" (id,userId,tokenHash,expiresAt,createdAt) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),userId,hash,expires.toISOString(),new Date().toISOString()).run();return redirect(path,`spl_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_DAYS*86400}`)}
