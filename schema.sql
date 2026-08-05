@@ -26,6 +26,14 @@ CREATE TABLE IF NOT EXISTS "PasswordReset" (
 CREATE INDEX IF NOT EXISTS "PasswordReset_userId_idx" ON "PasswordReset"("userId");
 CREATE INDEX IF NOT EXISTS "PasswordReset_expiresAt_idx" ON "PasswordReset"("expiresAt");
 
+CREATE TABLE IF NOT EXISTS "AuthThrottle" (
+  "key" TEXT NOT NULL PRIMARY KEY,
+  "attempts" INTEGER NOT NULL DEFAULT 0,
+  "windowStart" TEXT NOT NULL,
+  "blockedUntil" TEXT,
+  "updatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS "ProjectAdmin" (
   "userId" TEXT NOT NULL PRIMARY KEY,
   "statoEditoriale" TEXT NOT NULL DEFAULT 'iniziato',
