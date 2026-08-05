@@ -20,6 +20,11 @@ const PLANS = {
 
 export default {
   async fetch(request, env) {
+    const requestedUrl = new URL(request.url);
+    if (requestedUrl.hostname === "splendoria.vip") {
+      requestedUrl.hostname = "www.splendoria.vip";
+      return new Response(null, { status: 308, headers: { location: requestedUrl.toString() } });
+    }
     try {
       await ensureSchema(env.DB);
       return await route(request, env);
@@ -405,7 +410,7 @@ function accessChoice(user, message = "") {
   return page("Accesso", `<section class="access-shell"><div class="access-heading"><p class="eyebrow center">Accesso riservato</p><h1>Scegli la tua area</h1><p>Clienti e amministrazione hanno percorsi separati, così ogni persona entra direttamente negli strumenti che le competono.</p>${message ? `<p class="success">${esc(message)}</p>` : ""}</div><div class="access-grid"><article class="access-card client-access"><span class="access-icon" aria-hidden="true">✦</span><p class="eyebrow">Area clienti</p><h2>La tua storia, il tuo Studio</h2><p>Accedi ai tuoi libri, alle interviste con la Musa, ai capitoli, alle revisioni e alle anteprime.</p><a class="button" href="/area-clienti">Entra nell’Area clienti</a></article><article class="access-card admin-access"><span class="access-icon" aria-hidden="true">◆</span><p class="eyebrow">Area amministratore</p><h2>Gestione e pagamenti</h2><p>Accesso riservato alla gestione di clienti, progetti, stati editoriali, ordini e sblocco dei pagamenti.</p><a class="button secondary" href="/area-amministratore">Entra nell’Area amministratore</a></article></div></section>`, null);
 }
 
-function authPage(mode, user, message) {
+function authPage(mode, user, message = "", emailValue = "") {
   if (user) return redirect(user.isAdmin ? "/admin" : "/studio");
   const register = mode === "register";
   const admin = mode === "admin";
@@ -415,7 +420,7 @@ function authPage(mode, user, message) {
   const intro = register ? "Inizia gratuitamente e trasforma la tua storia in un libro." : admin ? "Gestisci clienti, progetti, ordini e sblocco dei pagamenti." : "Continua a creare, rivedere e custodire il tuo libro.";
   const messageClass = message && /aggiornata|riuscit|creat/i.test(message) ? "success" : "error";
   const secondary = register ? `<p class="center">Hai già un account? <a href="/area-clienti">Area clienti</a></p>` : admin ? `<p class="center"><a href="/password-dimenticata">Password amministratore dimenticata?</a></p><p class="center"><a href="/accedi">← Scegli un’altra area</a></p>` : `<p class="center"><a href="/password-dimenticata">Password dimenticata?</a></p><p class="center">Non hai un account? <a href="/registrati">Registrati gratis</a></p><p class="center"><a href="/accedi">← Scegli un’altra area</a></p>`;
-  return page(title, `<div class="formbox auth-${admin ? "admin" : register ? "register" : "client"}"><p class="eyebrow center">${admin ? "Amministrazione Splendoria" : "Splendoria"}</p><h1 class="center">${heading}</h1><p class="muted center">${intro}</p>${message ? `<p class="${messageClass}">${esc(message)}</p>` : ""}<form method="post" action="${action}"><label class="field">Email<input name="email" type="email" required autocomplete="email"></label>${register ? `<label class="field">Nome<input name="nome" required autocomplete="name"></label>` : ""}<label class="field">Password<input name="password" type="password" minlength="10" required autocomplete="${register ? "new-password" : "current-password"}"></label>${register ? `<label class="legal-check"><input type="checkbox" name="privacyRead" value="yes" required><span>Ho letto la <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> e comprendo il trattamento dei dati necessario a creare e utilizzare lo Studio.</span></label>` : ""}<button class="button${admin ? " secondary" : ""}" style="width:100%">${register ? "Registrati gratis" : admin ? "Entra nell’amministrazione" : "Entra nel tuo Studio"}</button></form>${secondary}</div>`, null);
+  return page(title, `<div class="formbox auth-${admin ? "admin" : register ? "register" : "client"}"><p class="eyebrow center">${admin ? "Amministrazione Splendoria" : "Splendoria"}</p><h1 class="center">${heading}</h1><p class="muted center">${intro}</p>${message ? `<p class="${messageClass}" role="alert">${esc(message)}</p>` : ""}<form method="post" action="${action}"><label class="field">Email<input name="email" type="email" value="${esc(emailValue)}" required autocomplete="email" autocapitalize="none" spellcheck="false"></label>${register ? `<label class="field">Nome<input name="nome" required autocomplete="name"></label>` : ""}<label class="field">Password<input name="password" type="password" ${register ? `minlength="10" ` : ""}required autocomplete="${register ? "new-password" : "current-password"}"></label>${register ? `<label class="legal-check"><input type="checkbox" name="privacyRead" value="yes" required><span>Ho letto la <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> e comprendo il trattamento dei dati necessario a creare e utilizzare lo Studio.</span></label>` : ""}<button class="button${admin ? " secondary" : ""}" style="width:100%">${register ? "Registrati gratis" : admin ? "Entra nell’amministrazione" : "Entra nel tuo Studio"}</button></form>${secondary}</div>`, null);
 }
 
 function forgotPage(sent = false) {
@@ -428,11 +433,11 @@ function resetPage(token, message = "") {
 
 async function register(request, env) {
   const f = await form(request), email = normalizeEmail(f.email), nome = clean(f.nome, 100), password = String(f.password || "");
-  if (!validEmail(email) || nome.length < 2 || password.length < 10) return authPage("register", null, "Controlla i dati: la password deve avere almeno 10 caratteri.");
-  if (f.privacyRead !== "yes") return authPage("register", null, "Per creare lo Studio devi prendere visione della Privacy Policy.");
+  if (!validEmail(email) || nome.length < 2 || password.length < 10) return authPage("register", null, "Controlla i dati: la password deve avere almeno 10 caratteri.", email);
+  if (f.privacyRead !== "yes") return authPage("register", null, "Per creare lo Studio devi prendere visione della Privacy Policy.", email);
   const rateKey = await authRateKey(request, "register", email);
-  if (await authRateLimited(rateKey, env)) return authPage("register", null, "Troppi tentativi. Attendi 15 minuti e riprova.");
-  if (await env.DB.prepare('SELECT id FROM "User" WHERE email=?').bind(email).first()) { await recordAuthFailure(rateKey, env); return authPage("register", null, "Esiste già un account con questa email."); }
+  if (await authRateLimited(rateKey, env)) return authPage("register", null, "Troppi tentativi. Attendi 15 minuti e riprova.", email);
+  if (await env.DB.prepare('SELECT id FROM "User" WHERE lower(trim(email))=? LIMIT 1').bind(email).first()) { await recordAuthFailure(rateKey, env); return authPage("register", null, "Esiste già un account con questa email.", email); }
   const id = crypto.randomUUID(), hash = await hashPassword(password), now = new Date().toISOString();
   await env.DB.prepare('INSERT INTO "User" (id,email,passwordHash,nome,privacyAcceptedAt,createdAt) VALUES (?,?,?,?,?,?)').bind(id, email, hash, nome, now, now).run();
   await clearAuthFailures(rateKey, env);
@@ -442,18 +447,19 @@ async function register(request, env) {
 async function login(request, env, expectedRole = "client") {
   const f = await form(request), email = normalizeEmail(f.email), password = String(f.password || "");
   const rateKey = await authRateKey(request, "login", email);
-  if (await authRateLimited(rateKey, env)) return authPage(expectedRole, null, "Troppi tentativi. Attendi 15 minuti e riprova.");
-  const user = await env.DB.prepare('SELECT * FROM "User" WHERE email=?').bind(email).first();
-  if (!user) { await recordAuthFailure(rateKey, env); return authPage(expectedRole, null, "Email o password non corretti."); }
+  if (await authRateLimited(rateKey, env)) return authPage(expectedRole, null, "Troppi tentativi. Attendi 15 minuti e riprova.", email);
+  const user = await env.DB.prepare('SELECT * FROM "User" WHERE lower(trim(email))=? ORDER BY createdAt LIMIT 1').bind(email).first();
+  if (!user) { await recordAuthFailure(rateKey, env); return authPage(expectedRole, null, "Email o password non corretti.", email); }
   const storedHash = String(user.passwordHash || ""), legacyBcrypt = storedHash.startsWith("$2");
   let passwordValid = false;
-  try { passwordValid = legacyBcrypt ? await bcrypt.compare(password, storedHash) : await verifyPassword(password, storedHash); } catch { passwordValid = false; }
-  if (!passwordValid) { await recordAuthFailure(rateKey, env); return authPage(expectedRole, null, "Email o password non corretti."); }
+  const compatibleBcryptHash = storedHash.startsWith("$2y$") ? `$2b$${storedHash.slice(4)}` : storedHash;
+  try { passwordValid = legacyBcrypt ? await bcrypt.compare(password, compatibleBcryptHash) : await verifyPassword(password, storedHash); } catch { passwordValid = false; }
+  if (!passwordValid) { await recordAuthFailure(rateKey, env); return authPage(expectedRole, null, "Email o password non corretti.", email); }
   const isAdmin = normalizeEmail(user.email) === normalizeEmail(env.ADMIN_EMAIL);
   if (legacyBcrypt) await env.DB.prepare('UPDATE "User" SET passwordHash=? WHERE id=?').bind(await hashPassword(password), user.id).run();
   await clearAuthFailures(rateKey, env);
-  if (expectedRole === "admin" && !isAdmin) return authPage("admin", null, "Questo account non è autorizzato ad accedere all’area amministratore.");
-  if (expectedRole === "client" && isAdmin) return authPage("client", null, "Questo è un account amministratore. Utilizza l’Area amministratore.");
+  if (expectedRole === "admin" && !isAdmin) return authPage("admin", null, "Questo account non è autorizzato ad accedere all’area amministratore.", email);
+  if (expectedRole === "client" && isAdmin) return authPage("client", null, "Questo è un account amministratore. Utilizza l’Area amministratore.", email);
   return createSessionResponse(user.id, env, isAdmin ? "/admin" : "/studio");
 }
 
@@ -464,7 +470,7 @@ async function logout(request, env) {
 }
 
 async function forgot(request, env) {
-  const f = await form(request), email = normalizeEmail(f.email), user = await env.DB.prepare('SELECT id,email,nome FROM "User" WHERE email=?').bind(email).first();
+  const f = await form(request), email = normalizeEmail(f.email), user = await env.DB.prepare('SELECT id,email,nome FROM "User" WHERE lower(trim(email))=? ORDER BY createdAt LIMIT 1').bind(email).first();
   if (user) {
     const token = randomToken(), tokenHash = await sha256(token), resetId = crypto.randomUUID(), now = new Date().toISOString(), expires = new Date(Date.now() + RESET_MINUTES * 60000).toISOString();
     await env.DB.prepare('DELETE FROM "PasswordReset" WHERE userId=? OR expiresAt<?').bind(user.id, new Date().toISOString()).run();
@@ -617,7 +623,7 @@ async function exportCsv(user,env){if(!user?.isAdmin)return redirect("/area-ammi
 async function contact(request,env){const f=await form(request);if(f.website)return redirect("/");const plan=PLANS[clean(f.plan,30)]?.label||"",rawSubject=clean(f.subject,160),rawMessage=clean(f.message,3000),subject=(plan?`[${plan}] ${rawSubject}`:rawSubject).slice(0,160),message=(plan?`Formula scelta: ${plan}\n\n${rawMessage}`:rawMessage).slice(0,3000),id=crypto.randomUUID(),now=new Date().toISOString();await env.DB.prepare('INSERT INTO "ContactMessage" (id,fullName,phone,email,subject,message,lang,ipHash,deliveryStatus,deliveryError,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(id,clean(f.fullName,100),clean(f.phone,40),normalizeEmail(f.email),subject,message,"it",await sha256(request.headers.get("cf-connecting-ip")||"unknown"),"pending","",now).run();return redirect("/?contatto=inviato#contatti");}
 
 async function currentUser(request,env){const token=cookie(request,"spl_session");if(!token)return null;const row=await env.DB.prepare(`SELECT u.* FROM "Session" s JOIN "User" u ON u.id=s.userId WHERE s.tokenHash=? AND s.expiresAt>?`).bind(await sha256(token),new Date().toISOString()).first();if(!row)return null;return{...row,isAdmin:normalizeEmail(row.email)===normalizeEmail(env.ADMIN_EMAIL)}}
-async function createSessionResponse(userId,env,path){const token=randomToken(),hash=await sha256(token),expires=new Date(Date.now()+SESSION_DAYS*86400000);await env.DB.prepare('INSERT INTO "Session" (id,userId,tokenHash,expiresAt,createdAt) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),userId,hash,expires.toISOString(),new Date().toISOString()).run();return redirect(path,`spl_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_DAYS*86400}`)}
+async function createSessionResponse(userId,env,path){const token=randomToken(),hash=await sha256(token),now=new Date(),expires=new Date(now.getTime()+SESSION_DAYS*86400000);await env.DB.prepare('DELETE FROM "Session" WHERE userId=? AND expiresAt<=?').bind(userId,now.toISOString()).run();await env.DB.prepare('INSERT INTO "Session" (id,userId,tokenHash,expiresAt,createdAt) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),userId,hash,expires.toISOString(),now.toISOString()).run();return redirect(path,`spl_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_DAYS*86400}`)}
 async function ownedProject(id,user,env){if(!user||user.isAdmin)return null;return env.DB.prepare('SELECT * FROM "BookProject" WHERE id=? AND userId=?').bind(id,user.id).first()}
 async function ownProject(id,user,env){if(!user||user.isAdmin)return null;return env.DB.prepare(`SELECT p.* FROM "BookProject" p LEFT JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE p.id=? AND p.userId=? AND (p.plan='free' OR a.statoCommerciale='pagato')`).bind(id,user.id).first()}
 async function todayUsage(userId,env){const r=await env.DB.prepare('SELECT requests FROM "AiUsage" WHERE userId=? AND date=?').bind(userId,new Date().toISOString().slice(0,10)).first();return Number(r?.requests||0)}
@@ -670,7 +676,7 @@ function csvCell(v){return `"${String(v??"").replaceAll('"','""')}"`}
 function wordCount(v){return String(v||"").trim()?String(v).trim().split(/\s+/).length:0}
 function instructionsAction(v){return ["grammar","clarity","emotional","vivid","elegant","short"].includes(v)?v:"grammar"}
 function validRevision(source,candidate,action){if(!candidate||candidate.length>60000)return false;const before=wordCount(source),after=wordCount(candidate);if(!before||!after)return false;const limits=action==="grammar"?[0.72,1.28]:action==="short"?[0.45,0.95]:[0.55,1.8];return after>=Math.floor(before*limits[0])&&after<=Math.ceil(before*limits[1])}
-async function hashPassword(password){const iterations=60000,salt=randomToken().slice(0,32),key=await pbkdf2(password,salt,iterations);return `pbkdf2$${iterations}$${salt}$${key}`}
+async function hashPassword(password){const iterations=210000,salt=randomToken().slice(0,32),key=await pbkdf2(password,salt,iterations);return `pbkdf2$${iterations}$${salt}$${key}`}
 async function verifyPassword(password,stored){const [kind,it,salt,expected]=String(stored||"").split("$");if(kind!=="pbkdf2"||!it||!salt||!expected)return false;const actual=await pbkdf2(password,salt,Number(it));return timingSafe(actual,expected)}
 async function pbkdf2(password,salt,iterations){const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);const bits=await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:new TextEncoder().encode(salt),iterations},material,256);return Array.from(new Uint8Array(bits),x=>x.toString(16).padStart(2,"0")).join("")}
 function timingSafe(a,b){if(a.length!==b.length)return false;let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);return diff===0}
