@@ -27,6 +27,11 @@ for (const path of ["/", "/accedi", "/registrati", "/password-dimenticata", "/st
   console.log(`${path}: ${response.status}`);
 }
 
+const studioJs = await worker.fetch(new Request("https://www.splendoria.vip/assets/studio.js"), env);
+const studioJsBody = await studioJs.text();
+if (studioJs.status !== 200 || !studioJs.headers.get("content-type")?.includes("javascript") || !studioJsBody.includes("SpeechRecognition")) throw new Error("Dettatura vocale: asset non valido");
+console.log("/assets/studio.js: dettatura vocale disponibile");
+
 function authDb(user) {
   return {
     prepare(sql) {
