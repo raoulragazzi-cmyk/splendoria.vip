@@ -55,6 +55,15 @@ if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerCon
 if (wranglerConfig.includes('"database_name": "splendoria-v2-test"') || wranglerConfig.includes("splendoria-v2.raoulragazzi.workers.dev")) throw new Error("Cloudflare: riferimenti all’ambiente di test ancora attivi");
 console.log("/configurazione: database e URL di produzione attivi");
 
+const workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");
+for (const table of ["User", "BookProject", "BookChapter", "BookInterview", "Session"]) {
+  if (!workerSource.includes(`INSERT INTO "${table}"`)) throw new Error(`Cloudflare D1: scrittura persistente ${table} non trovata`);
+}
+const localStorageKeys = [...workerSource.matchAll(/localStorage\.(?:getItem|setItem)\(['"]([^'"]+)/g)].map(match => match[1]);
+const unexpectedLocalStorage = localStorageKeys.filter(key => !["splendoria-cookie-notice-v1", "splendoria-voice-language"].includes(key));
+if (unexpectedLocalStorage.length || !workerSource.includes("HttpOnly; Secure; SameSite=Lax")) throw new Error("Persistenza: dati utente o libro esposti nel dispositivo locale");
+console.log("/persistenza: utenti, libri, capitoli, interviste e sessioni su Cloudflare D1; in locale solo preferenze tecniche");
+
 const pricingResponse = await worker.fetch(new Request("https://www.splendoria.vip/?formula=complete"), env);
 const pricingHtml = await pricingResponse.text();
 if (!pricingHtml.includes("Splendoria Digital") || !pricingHtml.includes("Splendoria Premium") || !pricingHtml.includes("Splendoria Signature")) throw new Error("Listino: formule mancanti");
@@ -215,8 +224,50 @@ const dashboardDb = {
 };
 const dashboardResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin", { headers: { cookie: "spl_session=test" } }), { ...env, DB: dashboardDb });
 const dashboardHtml = await dashboardResponse.text();
-if (dashboardResponse.status !== 200 || !dashboardHtml.includes("Maria") || !dashboardHtml.includes("50% · 2/4 capitoli") || !dashboardHtml.includes("50% · 7/14") || !dashboardHtml.includes('/admin/progetto/libro-dashboard/anteprima') || !dashboardHtml.includes('/admin/cliente/cliente-storico/anteprima-storica') || (dashboardHtml.match(/Vedi PDF/g) || []).length < 4) throw new Error("Admin: utenti, avanzamento o pulsanti PDF non visibili");
-console.log("/admin: utenti, avanzamento e controllo PDF visibili");
+if (dashboardResponse.status !== 200 || !dashboardHtml.includes("Maria") || !dashboardHtml.includes("50% · 2/4 capitoli") || !dashboardHtml.includes("50% · 7/14") || !dashboardHtml.includes('/admin/progetto/libro-dashboard/anteprima') || !dashboardHtml.includes('/admin/cliente/cliente-storico/anteprima-storica') || !dashboardHtml.includes('/admin/cliente/cliente-storico') || (dashboardHtml.match(/Vedi PDF/g) || []).length < 4 || (dashboardHtml.match(/Gestisci e sblocca/g) || []).length < 4) throw new Error("Admin: utenti, avanzamento, PDF o controlli di sblocco non visibili");
+console.log("/admin: utenti, avanzamento, PDF e controlli di sblocco visibili");
+
+const legacyManagementState = { projectAdmin: null, orderStatus: null };
+const legacyManagementDb = {
+  prepare(sql) {
+    return {
+      sql,
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() { return { success: true }; },
+      async all() {
+        if (sql.startsWith("PRAGMA table_info")) return { results: ["projectId", "termsAcceptedAt", "privacyAcceptedAt", "specialDataConsentAt", "usedAt", "deliveryStatus", "deliveryError", "deliveredAt", "messageId"].map(name => ({ name })) };
+        if (sql.includes('SELECT titolo,genere,length(testo)')) return { results: [
+          { titolo: "Capitolo 1: Le radici", genere: "Autobiografia", chars: 1200, updatedAt: "2026-08-01" },
+          { titolo: "Capitolo 2: La svolta", genere: "Autobiografia", chars: 1800, updatedAt: "2026-08-02" }
+        ] };
+        if (sql.includes('SELECT * FROM "Ordine" WHERE userId=')) return { results: [{ formula: "digital", prezzo: 1000, stato: legacyManagementState.orderStatus || "da_pagare" }] };
+        return { results: [] };
+      },
+      async first() {
+        if (sql.includes('FROM "Session" s JOIN "User" u')) return previewUser;
+        if (sql.includes('SELECT u.id,u.nome,u.email,a.statoEditoriale')) return { id: "cliente-storico", nome: "Ulli", email: "ulli@example.com", statoEditoriale: "in_lavorazione", statoCommerciale: legacyManagementState.projectAdmin?.[2] || "gratuito", tutor: "", note: "" };
+        if (sql.includes('SELECT id FROM "User" WHERE id=')) return { id: "cliente-storico" };
+        if (sql.includes('SELECT id FROM "Capitolo" WHERE userId=')) return { id: "capitolo-storico" };
+        return null;
+      }
+    };
+  },
+  async batch(statements) {
+    for (const statement of statements) {
+      if (statement.sql.startsWith('INSERT INTO "ProjectAdmin"')) legacyManagementState.projectAdmin = statement.values;
+      if (statement.sql.startsWith('UPDATE "Ordine" SET stato=')) legacyManagementState.orderStatus = statement.values[0];
+    }
+    return statements.map(() => ({ success: true }));
+  }
+};
+const legacyManagementResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin/cliente/cliente-storico", { headers: { cookie: "spl_session=test" } }), { ...env, DB: legacyManagementDb });
+const legacyManagementHtml = await legacyManagementResponse.text();
+if (legacyManagementResponse.status !== 200 || !legacyManagementHtml.includes("Gestione interna e sblocco") || !legacyManagementHtml.includes('value="pagato"') || !legacyManagementHtml.includes('value="rimborsato"')) throw new Error("Admin: gestione commerciale del libro storico non disponibile");
+const legacyManagementPost = await worker.fetch(new Request("https://www.splendoria.vip/admin/cliente/cliente-storico", { method: "POST", headers: { cookie: "spl_session=test" }, body: new URLSearchParams({ statoEditoriale: "approvato", statoCommerciale: "pagato", tutor: "Tutor", note: "Pagamento verificato" }) }), { ...env, DB: legacyManagementDb });
+const legacyManagementPostHtml = await legacyManagementPost.text();
+if (legacyManagementPost.status !== 200 || !legacyManagementPostHtml.includes("Stato del libro storico aggiornato") || legacyManagementState.projectAdmin?.[1] !== "approvato" || legacyManagementState.projectAdmin?.[2] !== "pagato" || legacyManagementState.orderStatus !== "pagato") throw new Error("Admin: salvataggio o sblocco del libro storico non riuscito");
+console.log("/admin/cliente: stati gratuito, da pagare, pagato e rimborsato ripristinati");
 
 let contactValues = null;
 const contactDb = {
@@ -319,7 +370,7 @@ if (wrongAreaLogin.status !== 200 || !wrongAreaHtml.includes("non è autorizzato
 console.log("/login: account storici migrati e ruoli separati");
 
 function registrationDb() {
-  const state = { usersByEmail: new Map(), usersById: new Map(), sessions: new Map(), insertedUsers: 0 };
+  const state = { usersByEmail: new Map(), usersById: new Map(), sessions: new Map(), insertedUsers: 0, registrationBatchSize: 0, passwordHash: "" };
   const db = {
     prepare(sql) {
       return {
@@ -332,6 +383,7 @@ function registrationDb() {
             state.usersByEmail.set(email, user);
             state.usersById.set(id, user);
             state.insertedUsers += 1;
+            state.passwordHash = passwordHash;
           }
           if (sql.startsWith('INSERT INTO "Session"')) {
             const [id, userId, tokenHash, expiresAt, createdAt] = this.values;
@@ -356,7 +408,12 @@ function registrationDb() {
         }
       };
     },
-    async batch(statements) { return statements.map(() => ({ success: true })); }
+    async batch(statements) {
+      state.registrationBatchSize = statements.length;
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    }
   };
   return { db, state };
 }
@@ -369,7 +426,8 @@ if (mismatchResponse.status !== 200 || !mismatchHtml.includes("Le due password n
 
 const registerResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", body: new URLSearchParams({ email: newEmail, nome: "Nuova Cliente", password: newPassword, passwordConfirm: newPassword, privacyRead: "yes" }) }), { ...env, DB: registration.db });
 const firstCookie = registerResponse.headers.get("set-cookie")?.match(/^spl_session=([^;]+)/)?.[1];
-if (registerResponse.status !== 303 || registerResponse.headers.get("location") !== "/studio" || !firstCookie || registration.state.insertedUsers !== 1) throw new Error("Registrazione: creazione account o sessione iniziale non riuscita");
+if (registerResponse.status !== 303 || registerResponse.headers.get("location") !== "/studio" || !firstCookie || registration.state.insertedUsers !== 1 || registration.state.registrationBatchSize !== 2) throw new Error("Registrazione: creazione atomica di account e sessione non riuscita");
+if (!registration.state.passwordHash.startsWith("pbkdf2$100000$")) throw new Error("Registrazione: hash password non compatibile con Cloudflare Workers");
 
 const studioAfterRegistration = await worker.fetch(new Request("https://www.splendoria.vip/studio", { headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
 const studioAfterRegistrationHtml = await studioAfterRegistration.text();
