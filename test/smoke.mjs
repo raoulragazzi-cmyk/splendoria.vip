@@ -27,10 +27,35 @@ for (const path of ["/", "/accedi", "/registrati", "/password-dimenticata", "/st
   console.log(`${path}: ${response.status}`);
 }
 
+const pricingResponse = await worker.fetch(new Request("https://www.splendoria.vip/?formula=complete"), env);
+const pricingHtml = await pricingResponse.text();
+if (!pricingHtml.includes("Splendoria Digital") || !pricingHtml.includes("Splendoria Premium") || !pricingHtml.includes("Splendoria Signature")) throw new Error("Listino: formule mancanti");
+if (!pricingHtml.includes("1.500 €") || !pricingHtml.includes("10 copie cartacee comprese nel prezzo")) throw new Error("Listino: prezzi o contenuti principali non validi");
+if (!pricingHtml.includes('<option value="complete" selected>Splendoria Premium</option>')) throw new Error("Listino: formula Premium non riportata nel form");
+if (pricingHtml.includes("Hybrid") || pricingHtml.includes("Premium Short Book") || pricingHtml.includes("Personal Branding &amp; Corporate")) throw new Error("Listino: denominazioni precedenti ancora presenti");
+console.log("/formule: nuovo listino e selezione automatica disponibili");
+
 const studioJs = await worker.fetch(new Request("https://www.splendoria.vip/assets/studio.js"), env);
 const studioJsBody = await studioJs.text();
-if (studioJs.status !== 200 || !studioJs.headers.get("content-type")?.includes("javascript") || !studioJsBody.includes("SpeechRecognition")) throw new Error("Dettatura vocale: asset non valido");
-console.log("/assets/studio.js: dettatura vocale disponibile");
+if (studioJs.status !== 200 || !studioJs.headers.get("content-type")?.includes("javascript") || !studioJsBody.includes("SpeechRecognition") || !studioJsBody.includes("data-plan-choice")) throw new Error("Asset JavaScript: funzionalità non valide");
+console.log("/assets/studio.js: dettatura vocale e scelta formula disponibili");
+
+let contactValues = null;
+const contactDb = {
+  prepare(sql) {
+    return {
+      bind(...values) { if (sql.includes('INSERT INTO "ContactMessage"')) contactValues = values; return this; },
+      async run() { return { success: true }; },
+      async first() { return null; },
+      async all() { return { results: [] }; }
+    };
+  },
+  async batch(statements) { return statements.map(() => ({ success: true })); }
+};
+const contactBody = new URLSearchParams({ fullName: "Mario Rossi", phone: "+39 000 000000", email: "mario@example.com", plan: "assisted", subject: "Vorrei informazioni", message: "Contattatemi, grazie." });
+const contactResponse = await worker.fetch(new Request("https://www.splendoria.vip/contatti", { method: "POST", body: contactBody }), { ...env, DB: contactDb });
+if (contactResponse.status !== 303 || !contactValues?.[4]?.includes("Splendoria Signature") || !contactValues?.[5]?.startsWith("Formula scelta: Splendoria Signature")) throw new Error("Contatti: formula selezionata non registrata");
+console.log("/contatti: formula selezionata registrata correttamente");
 
 function authDb(user) {
   return {
