@@ -66,6 +66,8 @@ if (!pricingHtml.includes("Le copie stampate seguono la formula scelta") || !pri
 if (!pricingHtml.includes("Partita IVA 02950290219") || !pricingHtml.includes('href="/privacy-policy"') || !pricingHtml.includes('href="/cookie-policy"')) throw new Error("Informazioni legali: P.IVA o collegamenti del footer mancanti");
 if (pricingHtml.includes("Merano") || pricingHtml.includes("Via J. W. von Goethe")) throw new Error("Informazioni legali: vecchio indirizzo ancora presente");
 if (!pricingHtml.includes("Via Settala 22–24, Milano (MI)")) throw new Error("Informazioni legali: indirizzo di Milano mancante");
+if (!pricingHtml.includes("Raccontami brevemente come possiamo aiutarti.") || !pricingHtml.includes("<b>Parla con me</b>")) throw new Error("Contatti: testo personale richiesto non applicato");
+if (pricingHtml.includes("Raccontaci brevemente come possiamo aiutarti.") || pricingHtml.includes("<b>Titolare del servizio</b>")) throw new Error("Contatti: testo precedente ancora presente");
 if (!pricingHtml.includes('name="privacyRead"') || !pricingHtml.includes("Ho letto la")) throw new Error("Contatti: presa visione della Privacy Policy mancante");
 if (!pricingHtml.includes('data-cookie-banner') || !pricingHtml.includes("Ho capito e continuo") || !pricingHtml.includes("Non utilizziamo cookie pubblicitari o di profilazione")) throw new Error("Privacy: banner informativo cookie mancante");
 console.log("/formule: nuovo listino e selezione automatica disponibili");
@@ -425,3 +427,35 @@ const failedReset = resetDb();
 const failedResetResponse = await worker.fetch(new Request("https://www.splendoria.vip/password-dimenticata", { method: "POST", body: new URLSearchParams({ email: "ulli@apple.bz" }) }), { ...env, DB: failedReset.db, CONTACT_EMAIL: { async send() { const error = new Error("Mittente non verificato"); error.code = "E_SENDER_NOT_VERIFIED"; throw error; } } });
 if (failedResetResponse.status !== 200 || failedReset.state.delivery?.[0] !== "failed" || !failedReset.state.delivery?.[1]?.includes("E_SENDER_NOT_VERIFIED")) throw new Error("Recupero password: errore di consegna non registrato");
 console.log("/password-dimenticata: invio e diagnostica verificati");
+
+const legacyResetSchemaState = { usedAtAdded: false, batchSize: 0 };
+const legacyResetSchemaDb = {
+  prepare(sql) {
+    return {
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() {
+        if (sql === 'ALTER TABLE "PasswordReset" ADD COLUMN "usedAt" TEXT') legacyResetSchemaState.usedAtAdded = true;
+        return { success: true };
+      },
+      async all() {
+        const common = ["projectId", "termsAcceptedAt", "privacyAcceptedAt", "specialDataConsentAt", "deliveryStatus", "deliveryError", "deliveredAt", "messageId"];
+        if (sql === 'PRAGMA table_info("PasswordReset")') return { results: [...common, ...(legacyResetSchemaState.usedAtAdded ? ["usedAt"] : [])].map(name => ({ name })) };
+        if (sql.startsWith("PRAGMA table_info")) return { results: common.map(name => ({ name })) };
+        return { results: [] };
+      },
+      async first() {
+        if (sql.includes('SELECT pr.*,u.email FROM "PasswordReset"')) {
+          if (!legacyResetSchemaState.usedAtAdded) throw new Error("no such column: pr.usedAt");
+          return { id: "reset-storico", userId: "cliente-storico", email: "cliente@example.com", usedAt: null, expiresAt: new Date(Date.now() + 60000).toISOString() };
+        }
+        return null;
+      }
+    };
+  },
+  async batch(statements) { legacyResetSchemaState.batchSize = statements.length; return statements.map(() => ({ success: true })); }
+};
+const legacyResetToken = "a".repeat(64), legacyResetPassword = "NuovaPassword2026!";
+const legacyResetResponse = await worker.fetch(new Request("https://www.splendoria.vip/reimposta-password", { method: "POST", body: new URLSearchParams({ token: legacyResetToken, password: legacyResetPassword, passwordConfirm: legacyResetPassword }) }), { ...env, DB: legacyResetSchemaDb });
+if (legacyResetResponse.status !== 303 || !legacyResetResponse.headers.get("location")?.startsWith("/area-clienti?e=") || !legacyResetSchemaState.usedAtAdded || legacyResetSchemaState.batchSize !== 3) throw new Error("Recupero password: migrazione dello schema storico o salvataggio non riusciti");
+console.log("/reimposta-password: schema storico aggiornato e nuova password salvata");
