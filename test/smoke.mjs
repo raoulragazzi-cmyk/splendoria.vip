@@ -198,7 +198,7 @@ const dashboardDb = {
         if (sql.includes('SELECT u.id userId,u.nome,u.email,COUNT(c.id)')) return { results: [{ userId: "cliente-storico", nome: "Ulli", email: "ulli@example.com", chapters: 14, completed: 14, updatedAt: "2026-08-04", genre: "Autobiografia", statoEditoriale: "bozza", statoCommerciale: "gratuito" }] };
         if (sql.includes('SELECT u.id,u.nome,u.email,u.createdAt')) return { results: [
           { id: "cliente-dashboard", nome: "Maria", email: "maria@example.com", createdAt: "2026-08-01", books: 1, orders: 0, legacyChapters: 0, latestProjectId: "libro-dashboard", latestStatus: "bozza", chapters: 4, completedChapters: 2 },
-          { id: "cliente-storico", nome: "Ulli", email: "ulli@example.com", createdAt: "2026-07-01", books: 0, orders: 1, legacyChapters: 14, latestProjectId: null, latestStatus: null, chapters: 0, completedChapters: 0 }
+          { id: "cliente-storico", nome: "Ulli", email: "ulli@example.com", createdAt: "2026-07-01", books: 0, orders: 1, legacyChapters: 14, legacyCompletedChapters: 7, latestProjectId: null, latestStatus: null, chapters: 0, completedChapters: 0 }
         ] };
         return { results: [] };
       },
@@ -213,7 +213,7 @@ const dashboardDb = {
 };
 const dashboardResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin", { headers: { cookie: "spl_session=test" } }), { ...env, DB: dashboardDb });
 const dashboardHtml = await dashboardResponse.text();
-if (dashboardResponse.status !== 200 || !dashboardHtml.includes("Maria") || !dashboardHtml.includes("50% · 2/4 capitoli") || !dashboardHtml.includes('/admin/progetto/libro-dashboard/anteprima') || !dashboardHtml.includes('/admin/cliente/cliente-storico/anteprima-storica') || (dashboardHtml.match(/Vedi PDF/g) || []).length < 4) throw new Error("Admin: utenti, avanzamento o pulsanti PDF non visibili");
+if (dashboardResponse.status !== 200 || !dashboardHtml.includes("Maria") || !dashboardHtml.includes("50% · 2/4 capitoli") || !dashboardHtml.includes("50% · 7/14") || !dashboardHtml.includes('/admin/progetto/libro-dashboard/anteprima') || !dashboardHtml.includes('/admin/cliente/cliente-storico/anteprima-storica') || (dashboardHtml.match(/Vedi PDF/g) || []).length < 4) throw new Error("Admin: utenti, avanzamento o pulsanti PDF non visibili");
 console.log("/admin: utenti, avanzamento e controllo PDF visibili");
 
 let contactValues = null;
