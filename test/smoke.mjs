@@ -29,16 +29,20 @@ for (const path of ["/", "/privacy-policy", "/cookie-policy", "/termini-condizio
   console.log(`${path}: ${response.status}`);
 }
 
+const canonicalResponse = await worker.fetch(new Request("https://splendoria.vip/area-clienti?da=apice"), env);
+if (canonicalResponse.status !== 308 || canonicalResponse.headers.get("location") !== "https://www.splendoria.vip/area-clienti?da=apice") throw new Error("Dominio: reindirizzamento canonico verso www non valido");
+console.log("/dominio: host canonico www applicato");
+
 const accessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env)).text();
 if (!accessHtml.includes('href="/area-clienti"') || !accessHtml.includes('href="/area-amministratore"') || !accessHtml.includes("Scegli la tua area")) throw new Error("Accesso: scelta tra area clienti e amministratore incompleta");
 const clientAccessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/area-clienti"), env)).text();
-if (!clientAccessHtml.includes('action="/area-clienti"') || !clientAccessHtml.includes("Accedi al tuo Studio")) throw new Error("Accesso clienti: schermata non valida");
+if (!clientAccessHtml.includes('action="/area-clienti"') || !clientAccessHtml.includes("Accedi al tuo Studio") || /name="password"[^>]*minlength/.test(clientAccessHtml)) throw new Error("Accesso clienti: schermata o compatibilità password storiche non valida");
 const adminAccessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore"), env)).text();
 if (!adminAccessHtml.includes('action="/area-amministratore"') || !adminAccessHtml.includes("sblocco dei pagamenti")) throw new Error("Accesso amministratore: schermata non valida");
 console.log("/accesso: schermate cliente e amministratore separate");
 
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
-if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('font-family:"Gentium Book Plus"') || !showcaseTypography.includes("--showcase-title-size") || !showcaseTypography.includes("--showcase-text-size")) throw new Error("Vetrina: sistema tipografico Gentium Book Plus non applicato");
+if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('body,button,input,textarea,select{font-family:"Gentium Book Plus"') || !showcaseTypography.includes("--showcase-title-size") || !showcaseTypography.includes("--showcase-text-size") || !showcaseTypography.includes("font-size:clamp(64px,11vw,122px)!important")) throw new Error("Vetrina: sistema tipografico Gentium Book Plus o titolo hero non applicato");
 for (const weight of [400, 700]) {
   const fontResponse = await worker.fetch(new Request(`https://www.splendoria.vip/assets/gentium-book-plus-${weight}.woff2`), env);
   if (fontResponse.status !== 200 || fontResponse.headers.get("content-type") !== "font/woff2" || (await fontResponse.arrayBuffer()).byteLength < 20000) throw new Error(`Vetrina: font locale ${weight} non valido`);
@@ -219,7 +223,7 @@ function credentialDb(user) {
           return { results: [] };
         },
         async first() {
-          if (sql.includes('SELECT * FROM "User" WHERE email=')) return user;
+          if (sql.includes('SELECT * FROM "User" WHERE lower(trim(email))=')) return user;
           return null;
         }
       };
@@ -234,6 +238,12 @@ const clientCredentials = credentialDb({ id: "legacy-client", email: "ulli@apple
 const clientLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-clienti", { method: "POST", body: new URLSearchParams({ email: "ulli@apple.bz", password: legacyPassword }) }), { ...env, DB: clientCredentials.db });
 if (clientLogin.status !== 303 || clientLogin.headers.get("location") !== "/studio" || !clientLogin.headers.get("set-cookie")?.includes("spl_session=")) throw new Error("Login: account cliente storico non accettato");
 if (!clientCredentials.state.migratedHash.startsWith("pbkdf2$")) throw new Error("Login: hash storico non migrato");
+
+const shortLegacyPassword = "Breve7!";
+const portableBcryptHash = (await bcrypt.hash(shortLegacyPassword, 4)).replace(/^\$2[ab]\$/, "$2y$");
+const portableCredentials = credentialDb({ id: "portable-client", email: " ULLI@APPLE.BZ ", nome: "Ulli", passwordHash: portableBcryptHash });
+const portableLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-clienti", { method: "POST", body: new URLSearchParams({ email: "ulli@apple.bz", password: shortLegacyPassword }) }), { ...env, DB: portableCredentials.db });
+if (portableLogin.status !== 303 || portableLogin.headers.get("location") !== "/studio") throw new Error("Login: email storica o variante bcrypt non accettata");
 
 const adminCredentials = credentialDb({ id: "legacy-admin", email: env.ADMIN_EMAIL, nome: "Raoul", passwordHash: await bcrypt.hash(legacyPassword, 4) });
 const adminLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore", { method: "POST", body: new URLSearchParams({ email: env.ADMIN_EMAIL, password: legacyPassword }) }), { ...env, DB: adminCredentials.db });
@@ -264,7 +274,7 @@ function resetDb() {
             return { results: [] };
           },
           async first() {
-            if (sql.includes('SELECT id,email,nome FROM "User" WHERE email=')) return { id: "ulli-id", email: "ulli@apple.bz", nome: "Ulli" };
+            if (sql.includes('SELECT id,email,nome FROM "User" WHERE lower(trim(email))=')) return { id: "ulli-id", email: "ulli@apple.bz", nome: "Ulli" };
             return null;
           }
         };
