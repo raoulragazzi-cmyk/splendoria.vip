@@ -77,10 +77,16 @@ CREATE TABLE IF NOT EXISTS "BookProject" (
   "message" TEXT NOT NULL DEFAULT '',
   "status" TEXT NOT NULL DEFAULT 'bozza',
   "plan" TEXT NOT NULL DEFAULT 'free',
+  "specialDataConsentAt" TEXT,
   "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
 );
+
+-- Colonne additive gestite automaticamente anche dal Worker sui database esistenti:
+-- ALTER TABLE "User" ADD COLUMN "privacyAcceptedAt" TEXT;
+-- ALTER TABLE "Ordine" ADD COLUMN "termsAcceptedAt" TEXT;
+-- ALTER TABLE "BookProject" ADD COLUMN "specialDataConsentAt" TEXT;
 
 CREATE INDEX IF NOT EXISTS "BookProject_userId_idx" ON "BookProject"("userId");
 CREATE INDEX IF NOT EXISTS "BookProject_status_idx" ON "BookProject"("status");
