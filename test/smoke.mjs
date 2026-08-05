@@ -1,4 +1,6 @@
 import worker from "../src/worker.js";
+import bcrypt from "bcryptjs";
+import { readFileSync } from "node:fs";
 
 const DB = {
   prepare() {
@@ -20,12 +22,33 @@ const env = {
   AI: { async run() { return { response: "Le radici\nLa svolta\nIl futuro\nEpilogo" }; } }
 };
 
-for (const path of ["/", "/privacy-policy", "/cookie-policy", "/termini-condizioni", "/note-legali", "/trasparenza-ai", "/accedi", "/registrati", "/password-dimenticata", "/studio", "/admin", "/pagina-che-non-esiste"]) {
+for (const path of ["/", "/privacy-policy", "/cookie-policy", "/termini-condizioni", "/note-legali", "/trasparenza-ai", "/accedi", "/area-clienti", "/area-amministratore", "/registrati", "/password-dimenticata", "/studio", "/admin", "/pagina-che-non-esiste"]) {
   const response = await worker.fetch(new Request(`https://www.splendoria.vip${path}`), env);
   if (![200, 303, 404].includes(response.status)) throw new Error(`${path}: stato ${response.status}`);
   if (response.status === 200 && !(await response.text()).includes("Splendoria")) throw new Error(`${path}: HTML non valido`);
   console.log(`${path}: ${response.status}`);
 }
+
+const accessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env)).text();
+if (!accessHtml.includes('href="/area-clienti"') || !accessHtml.includes('href="/area-amministratore"') || !accessHtml.includes("Scegli la tua area")) throw new Error("Accesso: scelta tra area clienti e amministratore incompleta");
+const clientAccessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/area-clienti"), env)).text();
+if (!clientAccessHtml.includes('action="/area-clienti"') || !clientAccessHtml.includes("Accedi al tuo Studio")) throw new Error("Accesso clienti: schermata non valida");
+const adminAccessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore"), env)).text();
+if (!adminAccessHtml.includes('action="/area-amministratore"') || !adminAccessHtml.includes("sblocco dei pagamenti")) throw new Error("Accesso amministratore: schermata non valida");
+console.log("/accesso: schermate cliente e amministratore separate");
+
+const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
+if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('font-family:"Gentium Book Plus"') || !showcaseTypography.includes("--showcase-title-size") || !showcaseTypography.includes("--showcase-text-size")) throw new Error("Vetrina: sistema tipografico Gentium Book Plus non applicato");
+for (const weight of [400, 700]) {
+  const fontResponse = await worker.fetch(new Request(`https://www.splendoria.vip/assets/gentium-book-plus-${weight}.woff2`), env);
+  if (fontResponse.status !== 200 || fontResponse.headers.get("content-type") !== "font/woff2" || (await fontResponse.arrayBuffer()).byteLength < 20000) throw new Error(`Vetrina: font locale ${weight} non valido`);
+}
+console.log("/vetrina: Gentium Book Plus locale e due scale responsive disponibili");
+
+const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"')) throw new Error("Cloudflare: configurazione di produzione non valida");
+if (wranglerConfig.includes('"database_name": "splendoria-v2-test"') || wranglerConfig.includes("splendoria-v2.raoulragazzi.workers.dev")) throw new Error("Cloudflare: riferimenti all’ambiente di test ancora attivi");
+console.log("/configurazione: database e URL di produzione attivi");
 
 const pricingResponse = await worker.fetch(new Request("https://www.splendoria.vip/?formula=complete"), env);
 const pricingHtml = await pricingResponse.text();
@@ -37,14 +60,15 @@ if (pricingHtml.includes("prime 5 copie") || pricingHtml.includes("consegna entr
 if (!pricingHtml.includes("Le copie stampate seguono la formula scelta") || !pricingHtml.includes("riservato ai progetti Signature")) throw new Error("Listino: servizi inclusi o nota Signature non allineati");
 if (!pricingHtml.includes("Partita IVA 02950290219") || !pricingHtml.includes('href="/privacy-policy"') || !pricingHtml.includes('href="/cookie-policy"')) throw new Error("Informazioni legali: P.IVA o collegamenti del footer mancanti");
 if (pricingHtml.includes("Merano") || pricingHtml.includes("Via J. W. von Goethe")) throw new Error("Informazioni legali: vecchio indirizzo ancora presente");
+if (!pricingHtml.includes("Via Settala 22–24, Milano (MI)")) throw new Error("Informazioni legali: indirizzo di Milano mancante");
 if (!pricingHtml.includes('name="privacyRead"') || !pricingHtml.includes("Ho letto la")) throw new Error("Contatti: presa visione della Privacy Policy mancante");
 console.log("/formule: nuovo listino e selezione automatica disponibili");
 
 const legalChecks = [
-  ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Cloudflare Workers AI", "Diritti dell’interessato"]],
-  ["/cookie-policy", ["spl_session", "splendoria-voice-language", "non installa cookie pubblicitari"]],
+  ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)", "Cloudflare Workers AI", "Diritti dell’interessato"]],
+  ["/cookie-policy", ["Via Settala 22–24, Milano (MI)", "spl_session", "splendoria-voice-language", "non installa cookie pubblicitari"]],
   ["/termini-condizioni", ["Diritto di recesso", "Termini e condizioni", "conferma scritta di Splendoria"]],
-  ["/note-legali", ["Note legali", "Raoul Ragazzi", "02950290219"]],
+  ["/note-legali", ["Note legali", "Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)"]],
   ["/trasparenza-ai", ["Stai interagendo con un sistema di intelligenza artificiale", "supervisione umana"]]
 ];
 for (const [path, expected] of legalChecks) {
@@ -174,7 +198,89 @@ async function expectRedirect(path, user, expected) {
   console.log(`${path}: accesso separato correttamente`);
 }
 
-await expectRedirect("/admin", { id: "cliente-1", email: "cliente@example.com", nome: "Cliente" }, "/accedi");
+await expectRedirect("/admin", { id: "cliente-1", email: "cliente@example.com", nome: "Cliente" }, "/area-amministratore");
 await expectRedirect("/libro/progetto-di-un-altro", { id: "cliente-1", email: "cliente@example.com", nome: "Cliente" }, "/studio");
-await expectRedirect("/admin/progetto/progetto-1/anteprima", { id: "cliente-1", email: "cliente@example.com", nome: "Cliente" }, "/accedi");
+await expectRedirect("/admin/progetto/progetto-1/anteprima", { id: "cliente-1", email: "cliente@example.com", nome: "Cliente" }, "/area-amministratore");
 await expectRedirect("/studio", { id: "admin-1", email: "raoulragazzi@gmail.com", nome: "Admin" }, "/admin");
+
+function credentialDb(user) {
+  const state = { migratedHash: "" };
+  const db = {
+    prepare(sql) {
+      return {
+        values: [],
+        bind(...values) { this.values = values; return this; },
+        async run() {
+          if (sql.startsWith('UPDATE "User" SET passwordHash=')) state.migratedHash = this.values[0];
+          return { success: true };
+        },
+        async all() {
+          if (sql.startsWith("PRAGMA table_info")) return { results: [{ name: "projectId" }, { name: "termsAcceptedAt" }, { name: "privacyAcceptedAt" }, { name: "specialDataConsentAt" }, { name: "deliveryStatus" }, { name: "deliveryError" }, { name: "deliveredAt" }, { name: "messageId" }] };
+          return { results: [] };
+        },
+        async first() {
+          if (sql.includes('SELECT * FROM "User" WHERE email=')) return user;
+          return null;
+        }
+      };
+    },
+    async batch(statements) { return statements.map(() => ({ success: true })); }
+  };
+  return { db, state };
+}
+
+const legacyPassword = "PasswordCorretta1!";
+const clientCredentials = credentialDb({ id: "legacy-client", email: "ulli@apple.bz", nome: "Ulli", passwordHash: await bcrypt.hash(legacyPassword, 4) });
+const clientLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-clienti", { method: "POST", body: new URLSearchParams({ email: "ulli@apple.bz", password: legacyPassword }) }), { ...env, DB: clientCredentials.db });
+if (clientLogin.status !== 303 || clientLogin.headers.get("location") !== "/studio" || !clientLogin.headers.get("set-cookie")?.includes("spl_session=")) throw new Error("Login: account cliente storico non accettato");
+if (!clientCredentials.state.migratedHash.startsWith("pbkdf2$")) throw new Error("Login: hash storico non migrato");
+
+const adminCredentials = credentialDb({ id: "legacy-admin", email: env.ADMIN_EMAIL, nome: "Raoul", passwordHash: await bcrypt.hash(legacyPassword, 4) });
+const adminLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore", { method: "POST", body: new URLSearchParams({ email: env.ADMIN_EMAIL, password: legacyPassword }) }), { ...env, DB: adminCredentials.db });
+if (adminLogin.status !== 303 || adminLogin.headers.get("location") !== "/admin") throw new Error("Login: account amministratore storico non accettato");
+
+const wrongAreaCredentials = credentialDb({ id: "client-role", email: "cliente@example.com", nome: "Cliente", passwordHash: await bcrypt.hash(legacyPassword, 4) });
+const wrongAreaLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore", { method: "POST", body: new URLSearchParams({ email: "cliente@example.com", password: legacyPassword }) }), { ...env, DB: wrongAreaCredentials.db });
+const wrongAreaHtml = await wrongAreaLogin.text();
+if (wrongAreaLogin.status !== 200 || !wrongAreaHtml.includes("non è autorizzato")) throw new Error("Login: separazione dei ruoli non applicata");
+console.log("/login: account storici migrati e ruoli separati");
+
+function resetDb() {
+  const state = { inserted: null, delivery: null };
+  return {
+    state,
+    db: {
+      prepare(sql) {
+        return {
+          values: [],
+          bind(...values) { this.values = values; return this; },
+          async run() {
+            if (sql.startsWith('INSERT INTO "PasswordReset"')) state.inserted = this.values;
+            if (sql.startsWith('UPDATE "PasswordReset" SET deliveryStatus=')) state.delivery = this.values;
+            return { success: true };
+          },
+          async all() {
+            if (sql.startsWith("PRAGMA table_info")) return { results: [{ name: "projectId" }, { name: "termsAcceptedAt" }, { name: "privacyAcceptedAt" }, { name: "specialDataConsentAt" }, { name: "deliveryStatus" }, { name: "deliveryError" }, { name: "deliveredAt" }, { name: "messageId" }] };
+            return { results: [] };
+          },
+          async first() {
+            if (sql.includes('SELECT id,email,nome FROM "User" WHERE email=')) return { id: "ulli-id", email: "ulli@apple.bz", nome: "Ulli" };
+            return null;
+          }
+        };
+      },
+      async batch(statements) { return statements.map(() => ({ success: true })); }
+    }
+  };
+}
+
+let sentEmail = null;
+const successfulReset = resetDb();
+const resetResponse = await worker.fetch(new Request("https://www.splendoria.vip/password-dimenticata", { method: "POST", body: new URLSearchParams({ email: "ulli@apple.bz" }) }), { ...env, DB: successfulReset.db, CONTACT_EMAIL: { async send(message) { sentEmail = message; return { messageId: "test-message-id" }; } } });
+if (resetResponse.status !== 200 || sentEmail?.to !== "ulli@apple.bz" || !sentEmail?.text?.includes("https://www.splendoria.vip/reimposta-password?token=")) throw new Error("Recupero password: email strutturata non generata");
+if (successfulReset.state.delivery?.[0] !== "sent" || successfulReset.state.delivery?.[3] !== "test-message-id") throw new Error("Recupero password: esito positivo non registrato");
+
+const failedReset = resetDb();
+const failedResetResponse = await worker.fetch(new Request("https://www.splendoria.vip/password-dimenticata", { method: "POST", body: new URLSearchParams({ email: "ulli@apple.bz" }) }), { ...env, DB: failedReset.db, CONTACT_EMAIL: { async send() { const error = new Error("Mittente non verificato"); error.code = "E_SENDER_NOT_VERIFIED"; throw error; } } });
+if (failedResetResponse.status !== 200 || failedReset.state.delivery?.[0] !== "failed" || !failedReset.state.delivery?.[1]?.includes("E_SENDER_NOT_VERIFIED")) throw new Error("Recupero password: errore di consegna non registrato");
+console.log("/password-dimenticata: invio e diagnostica verificati");
