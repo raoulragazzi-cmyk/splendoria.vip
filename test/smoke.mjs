@@ -33,12 +33,46 @@ if (!pricingHtml.includes("Splendoria Digital") || !pricingHtml.includes("Splend
 if (!pricingHtml.includes("1.500 €") || !pricingHtml.includes("10 copie cartacee comprese nel prezzo")) throw new Error("Listino: prezzi o contenuti principali non validi");
 if (!pricingHtml.includes('<option value="complete" selected>Splendoria Premium</option>')) throw new Error("Listino: formula Premium non riportata nel form");
 if (pricingHtml.includes("Hybrid") || pricingHtml.includes("Premium Short Book") || pricingHtml.includes("Personal Branding &amp; Corporate")) throw new Error("Listino: denominazioni precedenti ancora presenti");
+if (pricingHtml.includes("prime 5 copie") || pricingHtml.includes("consegna entro 10 giorni")) throw new Error("Listino: promesse della precedente offerta ancora presenti");
+if (!pricingHtml.includes("Le copie stampate seguono la formula scelta") || !pricingHtml.includes("riservato ai progetti Signature")) throw new Error("Listino: servizi inclusi o nota Signature non allineati");
 console.log("/formule: nuovo listino e selezione automatica disponibili");
 
 const studioJs = await worker.fetch(new Request("https://www.splendoria.vip/assets/studio.js"), env);
 const studioJsBody = await studioJs.text();
 if (studioJs.status !== 200 || !studioJs.headers.get("content-type")?.includes("javascript") || !studioJsBody.includes("SpeechRecognition") || !studioJsBody.includes("data-plan-choice")) throw new Error("Asset JavaScript: funzionalità non valide");
-console.log("/assets/studio.js: dettatura vocale e scelta formula disponibili");
+if (!studioJsBody.includes("it-IT") || !studioJsBody.includes("de-DE") || !studioJsBody.includes("en-GB") || !studioJsBody.includes("splendoria-voice-language")) throw new Error("Asset JavaScript: lingue della dettatura non valide");
+console.log("/assets/studio.js: dettatura trilingue e scelta formula disponibili");
+
+const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente Muse" };
+const museProject = {
+  id: "libro-muse", userId: museUser.id, title: "La mia storia", genre: "Autobiografia",
+  tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: 100,
+  story: "Un ricordo", people: "", events: "", message: "", status: "bozza", plan: "free"
+};
+const museDb = {
+  prepare(sql) {
+    return {
+      bind() { return this; },
+      async run() { return { success: true }; },
+      async all() {
+        if (sql.startsWith("PRAGMA table_info")) return { results: [{ name: "projectId" }] };
+        return { results: [] };
+      },
+      async first() {
+        if (sql.includes('FROM "Session" s JOIN "User" u')) return museUser;
+        if (sql.includes('SELECT p.* FROM "BookProject" p LEFT JOIN "BookProjectAdmin"')) return museProject;
+        return null;
+      }
+    };
+  },
+  async batch(statements) { return statements.map(() => ({ success: true })); }
+};
+const museResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse", { headers: { cookie: "spl_session=test" } }), { ...env, DB: museDb });
+const museHtml = await museResponse.text();
+if (museResponse.status !== 200 || !museHtml.includes("Racconta con la tua voce") || !museHtml.includes("data-voice-language")) throw new Error("Muse: nuova sezione non disponibile");
+if (!museHtml.includes('<option value="it-IT">Italiano</option>') || !museHtml.includes('<option value="de-DE">Deutsch</option>') || !museHtml.includes('<option value="en-GB">English</option>')) throw new Error("Muse: selettore trilingue non valido");
+if (!museHtml.includes('aria-live="polite"')) throw new Error("Muse: stato della dettatura non accessibile");
+console.log("/libro/libro-muse: sezione Muse e selettore trilingue disponibili");
 
 let contactValues = null;
 const contactDb = {
