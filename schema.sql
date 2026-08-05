@@ -31,6 +31,7 @@ CREATE INDEX IF NOT EXISTS "PasswordReset_userId_idx" ON "PasswordReset"("userId
 CREATE INDEX IF NOT EXISTS "PasswordReset_expiresAt_idx" ON "PasswordReset"("expiresAt");
 
 -- Per database creati con una versione precedente, applicare una sola volta:
+-- ALTER TABLE "PasswordReset" ADD COLUMN "usedAt" TEXT;
 -- ALTER TABLE "PasswordReset" ADD COLUMN "deliveryStatus" TEXT NOT NULL DEFAULT 'pending';
 -- ALTER TABLE "PasswordReset" ADD COLUMN "deliveryError" TEXT NOT NULL DEFAULT '';
 -- ALTER TABLE "PasswordReset" ADD COLUMN "deliveredAt" TEXT;
