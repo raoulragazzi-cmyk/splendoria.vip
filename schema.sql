@@ -44,6 +44,25 @@ CREATE TABLE IF NOT EXISTS "ProjectAdmin" (
   FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
 );
 
+-- Gestione per singolo libro. La tabella storica ProjectAdmin resta intatta
+-- per compatibilità, ma i nuovi permessi commerciali sono legati al progetto.
+CREATE TABLE IF NOT EXISTS "BookProjectAdmin" (
+  "projectId" TEXT NOT NULL PRIMARY KEY,
+  "userId" TEXT NOT NULL,
+  "statoEditoriale" TEXT NOT NULL DEFAULT 'iniziato',
+  "statoCommerciale" TEXT NOT NULL DEFAULT 'gratuito',
+  "tutor" TEXT NOT NULL DEFAULT '',
+  "note" TEXT NOT NULL DEFAULT '',
+  "updatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY ("projectId") REFERENCES "BookProject"("id") ON DELETE CASCADE,
+  FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "BookProjectAdmin_userId_idx" ON "BookProjectAdmin"("userId");
+
+-- Eseguire una sola volta sui database già esistenti:
+-- ALTER TABLE "Ordine" ADD COLUMN "projectId" TEXT;
+
 CREATE TABLE IF NOT EXISTS "BookProject" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "userId" TEXT NOT NULL,
