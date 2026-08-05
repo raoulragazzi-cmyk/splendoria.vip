@@ -43,6 +43,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('body,button,input,textarea,select{font-family:"Gentium Book Plus"') || !showcaseTypography.includes("--showcase-title-size") || !showcaseTypography.includes("--showcase-text-size") || !showcaseTypography.includes("font-size:clamp(64px,11vw,122px)!important")) throw new Error("Vetrina: sistema tipografico Gentium Book Plus o titolo hero non applicato");
+if (!showcaseTypography.includes("font-size:clamp(44px,4.6vw,56px)!important") || !showcaseTypography.includes("font-size:clamp(32px,3.3vw,40px)!important")) throw new Error("Vetrina: sezione Signature non raddoppiata");
 for (const weight of [400, 700]) {
   const fontResponse = await worker.fetch(new Request(`https://www.splendoria.vip/assets/gentium-book-plus-${weight}.woff2`), env);
   if (fontResponse.status !== 200 || fontResponse.headers.get("content-type") !== "font/woff2" || (await fontResponse.arrayBuffer()).byteLength < 20000) throw new Error(`Vetrina: font locale ${weight} non valido`);
@@ -66,11 +67,12 @@ if (!pricingHtml.includes("Partita IVA 02950290219") || !pricingHtml.includes('h
 if (pricingHtml.includes("Merano") || pricingHtml.includes("Via J. W. von Goethe")) throw new Error("Informazioni legali: vecchio indirizzo ancora presente");
 if (!pricingHtml.includes("Via Settala 22–24, Milano (MI)")) throw new Error("Informazioni legali: indirizzo di Milano mancante");
 if (!pricingHtml.includes('name="privacyRead"') || !pricingHtml.includes("Ho letto la")) throw new Error("Contatti: presa visione della Privacy Policy mancante");
+if (!pricingHtml.includes('data-cookie-banner') || !pricingHtml.includes("Ho capito e continuo") || !pricingHtml.includes("Non utilizziamo cookie pubblicitari o di profilazione")) throw new Error("Privacy: banner informativo cookie mancante");
 console.log("/formule: nuovo listino e selezione automatica disponibili");
 
 const legalChecks = [
   ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)", "Cloudflare Workers AI", "Diritti dell’interessato"]],
-  ["/cookie-policy", ["Via Settala 22–24, Milano (MI)", "spl_session", "splendoria-voice-language", "non installa cookie pubblicitari"]],
+  ["/cookie-policy", ["Via Settala 22–24, Milano (MI)", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v1", "non installa cookie pubblicitari"]],
   ["/termini-condizioni", ["Diritto di recesso", "Termini e condizioni", "conferma scritta di Splendoria"]],
   ["/note-legali", ["Note legali", "Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)"]],
   ["/trasparenza-ai", ["Stai interagendo con un sistema di intelligenza artificiale", "supervisione umana"]]
@@ -82,13 +84,14 @@ for (const [path, expected] of legalChecks) {
 }
 const registrationResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati"), env);
 const registrationHtml = await registrationResponse.text();
-if (!registrationHtml.includes('name="privacyRead"') || !registrationHtml.includes('href="/privacy-policy"')) throw new Error("Registrazione: presa visione della Privacy Policy mancante");
+if (!registrationHtml.includes('name="privacyRead"') || !registrationHtml.includes('href="/privacy-policy"') || !registrationHtml.includes('name="passwordConfirm"') || !registrationHtml.includes('data-password-visibility') || !registrationHtml.includes("almeno 10 caratteri")) throw new Error("Registrazione: conferma, visibilità password o presa visione Privacy mancanti");
 console.log("/informative: pagine, footer e prese visione legali disponibili");
 
 const studioJs = await worker.fetch(new Request("https://www.splendoria.vip/assets/studio.js"), env);
 const studioJsBody = await studioJs.text();
 if (studioJs.status !== 200 || !studioJs.headers.get("content-type")?.includes("javascript") || !studioJsBody.includes("SpeechRecognition") || !studioJsBody.includes("data-plan-choice") || !studioJsBody.includes("data-print-book") || !studioJsBody.includes("window.print()")) throw new Error("Asset JavaScript: funzionalità non valide");
 if (!studioJsBody.includes("it-IT") || !studioJsBody.includes("de-DE") || !studioJsBody.includes("en-GB") || !studioJsBody.includes("splendoria-voice-language")) throw new Error("Asset JavaScript: lingue della dettatura non valide");
+if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1")) throw new Error("Asset JavaScript: password visibile, conferma o banner cookie non funzionanti");
 console.log("/assets/studio.js: dettatura trilingue e scelta formula disponibili");
 
 const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente Muse" };
@@ -153,7 +156,65 @@ const previewHtml = await previewResponse.text();
 const printRequirements = ["data-print-book", "size:110mm 180mm", "margin-top:15mm", "margin-bottom:20mm", "margin-left:20mm", "margin-right:15mm", "bleed:3mm", "font-size:11pt", "line-height:13.2pt", "text-align:justify", "text-indent:5mm", "La mia infanzia"];
 if (previewResponse.status !== 200 || printRequirements.some(text => !previewHtml.includes(text))) throw new Error("PDF: impaginazione tascabile incompleta");
 if (previewHtml.includes('onclick="window.print()"')) throw new Error("PDF: gestore inline incompatibile con la CSP ancora presente");
+if (!previewHtml.includes("Controllo umano dei contenuti") || !previewHtml.includes("diritti d’autore") || !previewHtml.includes("non sostituisce una valutazione legale")) throw new Error("Admin: checklist riservata di controllo contenuti mancante");
 console.log("/anteprima: stampa PDF tascabile 110 × 180 mm disponibile");
+
+const legacyPreviewDb = {
+  prepare(sql) {
+    return {
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() { return { success: true }; },
+      async all() {
+        if (sql.startsWith("PRAGMA table_info")) return { results: [] };
+        if (sql.includes('FROM "Capitolo" WHERE userId=')) return { results: [
+          { titolo: "Capitolo 1: La mia infanzia", testo: "Il contenuto storico del primo capitolo.", genere: "Autobiografia", createdAt: "2026-01-01", updatedAt: "2026-01-02" },
+          { titolo: "Capitolo 2 - La famiglia", testo: "Il contenuto storico del secondo capitolo.", genere: "Autobiografia", createdAt: "2026-01-03", updatedAt: "2026-01-04" }
+        ] };
+        return { results: [] };
+      },
+      async first() {
+        if (sql.includes('FROM "Session" s JOIN "User" u')) return previewUser;
+        if (sql.includes('SELECT id,nome,email FROM "User"')) return { id: "cliente-storico", nome: "Ulli", email: "ulli@example.com" };
+        return null;
+      }
+    };
+  },
+  async batch(statements) { return statements.map(() => ({ success: true })); }
+};
+const legacyPreviewResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin/cliente/cliente-storico/anteprima-storica", { headers: { cookie: "spl_session=test" } }), { ...env, DB: legacyPreviewDb });
+const legacyPreviewHtml = await legacyPreviewResponse.text();
+if (legacyPreviewResponse.status !== 200 || !legacyPreviewHtml.includes("La mia Vita") || !legacyPreviewHtml.includes("La mia infanzia") || !legacyPreviewHtml.includes("Il contenuto storico del secondo capitolo") || legacyPreviewHtml.includes("Capitolo 1: La mia infanzia</h2>")) throw new Error("Admin: anteprima PDF dei capitoli storici non valida");
+console.log("/admin/cliente: anteprima PDF dei contenuti storici disponibile");
+
+const dashboardDb = {
+  prepare(sql) {
+    return {
+      bind() { return this; },
+      async run() { return { success: true }; },
+      async all() {
+        if (sql.startsWith("PRAGMA table_info")) return { results: [] };
+        if (sql.includes('SELECT p.id,p.title,p.genre')) return { results: [{ id: "libro-dashboard", title: "Una storia", genre: "Memoriale", status: "bozza", plan: "free", updatedAt: "2026-08-05", nome: "Maria", email: "maria@example.com", chapters: 4, completed: 2, statoEditoriale: "in_lavorazione", statoCommerciale: "gratuito" }] };
+        if (sql.includes('SELECT u.id userId,u.nome,u.email,COUNT(c.id)')) return { results: [{ userId: "cliente-storico", nome: "Ulli", email: "ulli@example.com", chapters: 14, completed: 14, updatedAt: "2026-08-04", genre: "Autobiografia", statoEditoriale: "bozza", statoCommerciale: "gratuito" }] };
+        if (sql.includes('SELECT u.id,u.nome,u.email,u.createdAt')) return { results: [
+          { id: "cliente-dashboard", nome: "Maria", email: "maria@example.com", createdAt: "2026-08-01", books: 1, orders: 0, legacyChapters: 0, latestProjectId: "libro-dashboard", latestStatus: "bozza", chapters: 4, completedChapters: 2 },
+          { id: "cliente-storico", nome: "Ulli", email: "ulli@example.com", createdAt: "2026-07-01", books: 0, orders: 1, legacyChapters: 14, latestProjectId: null, latestStatus: null, chapters: 0, completedChapters: 0 }
+        ] };
+        return { results: [] };
+      },
+      async first() {
+        if (sql.includes('FROM "Session" s JOIN "User" u')) return previewUser;
+        if (sql.includes('SELECT (SELECT COUNT(*) FROM "User"')) return { users: 2, books: 2, completed: 0, orders: 1 };
+        return null;
+      }
+    };
+  },
+  async batch(statements) { return statements.map(() => ({ success: true })); }
+};
+const dashboardResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin", { headers: { cookie: "spl_session=test" } }), { ...env, DB: dashboardDb });
+const dashboardHtml = await dashboardResponse.text();
+if (dashboardResponse.status !== 200 || !dashboardHtml.includes("Maria") || !dashboardHtml.includes("50% · 2/4 capitoli") || !dashboardHtml.includes('/admin/progetto/libro-dashboard/anteprima') || !dashboardHtml.includes('/admin/cliente/cliente-storico/anteprima-storica') || (dashboardHtml.match(/Vedi PDF/g) || []).length < 4) throw new Error("Admin: utenti, avanzamento o pulsanti PDF non visibili");
+console.log("/admin: utenti, avanzamento e controllo PDF visibili");
 
 let contactValues = null;
 const contactDb = {
@@ -254,6 +315,76 @@ const wrongAreaLogin = await worker.fetch(new Request("https://www.splendoria.vi
 const wrongAreaHtml = await wrongAreaLogin.text();
 if (wrongAreaLogin.status !== 200 || !wrongAreaHtml.includes("non è autorizzato")) throw new Error("Login: separazione dei ruoli non applicata");
 console.log("/login: account storici migrati e ruoli separati");
+
+function registrationDb() {
+  const state = { usersByEmail: new Map(), usersById: new Map(), sessions: new Map(), insertedUsers: 0 };
+  const db = {
+    prepare(sql) {
+      return {
+        values: [],
+        bind(...values) { this.values = values; return this; },
+        async run() {
+          if (sql.startsWith('INSERT INTO "User"')) {
+            const [id, email, passwordHash, nome, privacyAcceptedAt, createdAt] = this.values;
+            const user = { id, email, passwordHash, nome, privacyAcceptedAt, createdAt };
+            state.usersByEmail.set(email, user);
+            state.usersById.set(id, user);
+            state.insertedUsers += 1;
+          }
+          if (sql.startsWith('INSERT INTO "Session"')) {
+            const [id, userId, tokenHash, expiresAt, createdAt] = this.values;
+            state.sessions.set(tokenHash, { id, userId, tokenHash, expiresAt, createdAt });
+          }
+          if (sql.startsWith('DELETE FROM "Session" WHERE tokenHash=')) state.sessions.delete(this.values[0]);
+          return { success: true };
+        },
+        async all() {
+          if (sql.startsWith("PRAGMA table_info")) return { results: [] };
+          if (sql.includes('FROM "BookProject" p LEFT JOIN "BookChapter"')) return { results: [] };
+          return { results: [] };
+        },
+        async first() {
+          if (sql.includes('FROM "Session" s JOIN "User" u')) {
+            const session = state.sessions.get(this.values[0]);
+            return session ? state.usersById.get(session.userId) : null;
+          }
+          if (sql.includes('SELECT id FROM "User" WHERE lower(trim(email))=')) return state.usersByEmail.get(this.values[0]) || null;
+          if (sql.includes('SELECT * FROM "User" WHERE lower(trim(email))=')) return state.usersByEmail.get(this.values[0]) || null;
+          return null;
+        }
+      };
+    },
+    async batch(statements) { return statements.map(() => ({ success: true })); }
+  };
+  return { db, state };
+}
+
+const registration = registrationDb();
+const newEmail = "nuova.cliente@example.com", newPassword = "PasswordNuova2026!";
+const mismatchResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", body: new URLSearchParams({ email: "errore@example.com", nome: "Errore", password: newPassword, passwordConfirm: "PasswordDiversa2026!", privacyRead: "yes" }) }), { ...env, DB: registration.db });
+const mismatchHtml = await mismatchResponse.text();
+if (mismatchResponse.status !== 200 || !mismatchHtml.includes("Le due password non coincidono") || !mismatchHtml.includes('value="errore@example.com"') || registration.state.insertedUsers !== 0) throw new Error("Registrazione: password discordanti non gestite correttamente");
+
+const registerResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", body: new URLSearchParams({ email: newEmail, nome: "Nuova Cliente", password: newPassword, passwordConfirm: newPassword, privacyRead: "yes" }) }), { ...env, DB: registration.db });
+const firstCookie = registerResponse.headers.get("set-cookie")?.match(/^spl_session=([^;]+)/)?.[1];
+if (registerResponse.status !== 303 || registerResponse.headers.get("location") !== "/studio" || !firstCookie || registration.state.insertedUsers !== 1) throw new Error("Registrazione: creazione account o sessione iniziale non riuscita");
+
+const studioAfterRegistration = await worker.fetch(new Request("https://www.splendoria.vip/studio", { headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
+const studioAfterRegistrationHtml = await studioAfterRegistration.text();
+if (studioAfterRegistration.status !== 200 || !studioAfterRegistrationHtml.includes("Ciao, Nuova Cliente")) throw new Error("Registrazione: accesso immediato allo Studio non riuscito");
+
+const logoutAfterRegistration = await worker.fetch(new Request("https://www.splendoria.vip/esci", { method: "POST", headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
+if (logoutAfterRegistration.status !== 303 || !logoutAfterRegistration.headers.get("location")?.startsWith("/area-clienti?e=") || !logoutAfterRegistration.headers.get("set-cookie")?.includes("Max-Age=0")) throw new Error("Registrazione: uscita o cancellazione della sessione non riuscita");
+
+const studioAfterLogout = await worker.fetch(new Request("https://www.splendoria.vip/studio", { headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
+if (studioAfterLogout.status !== 303 || studioAfterLogout.headers.get("location") !== "/area-clienti") throw new Error("Registrazione: sessione precedente ancora attiva dopo l’uscita");
+
+const loginAfterRegistration = await worker.fetch(new Request("https://www.splendoria.vip/area-clienti", { method: "POST", body: new URLSearchParams({ email: newEmail, password: newPassword }) }), { ...env, DB: registration.db });
+const secondCookie = loginAfterRegistration.headers.get("set-cookie")?.match(/^spl_session=([^;]+)/)?.[1];
+if (loginAfterRegistration.status !== 303 || loginAfterRegistration.headers.get("location") !== "/studio" || !secondCookie || secondCookie === firstCookie) throw new Error("Registrazione: nuovo accesso con le credenziali create non riuscito");
+const studioAfterLogin = await worker.fetch(new Request("https://www.splendoria.vip/studio", { headers: { cookie: `spl_session=${secondCookie}` } }), { ...env, DB: registration.db });
+if (studioAfterLogin.status !== 200 || !(await studioAfterLogin.text()).includes("Ciao, Nuova Cliente")) throw new Error("Registrazione: rientro nello Studio non riuscito");
+console.log("/registrazione: conferma password, accesso, uscita e nuovo accesso verificati");
 
 function resetDb() {
   const state = { inserted: null, delivery: null };
