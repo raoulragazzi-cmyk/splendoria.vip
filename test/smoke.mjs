@@ -42,16 +42,21 @@ if (!adminAccessHtml.includes('action="/area-amministratore"') || !adminAccessHt
 console.log("/accesso: schermate cliente e amministratore separate");
 
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
-if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('body,button,input,textarea,select{font-family:"Gentium Book Plus"') || !showcaseTypography.includes("--showcase-title-size") || !showcaseTypography.includes("--showcase-text-size") || !showcaseTypography.includes("font-size:clamp(64px,11vw,122px)!important")) throw new Error("Vetrina: sistema tipografico Gentium Book Plus o titolo hero non applicato");
-if (!showcaseTypography.includes("font-size:clamp(44px,4.6vw,56px)!important") || !showcaseTypography.includes("font-size:clamp(32px,3.3vw,40px)!important")) throw new Error("Vetrina: sezione Signature non raddoppiata");
+if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("font-family:var(--font-ui)") || !showcaseTypography.includes("font-family:var(--font-editorial)")) throw new Error("Vetrina: sistema tipografico editoriale serif/sans-serif non applicato");
+if (!showcaseTypography.includes("showcase-hero-layout") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("Primo capitolo gratuito") || !showcaseTypography.includes("Supervisione umana")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
+const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
+if (!publicNavigation.includes("Area clienti") || !publicNavigation.includes("Inizia gratis") || publicNavigation.includes("Area amministratore") || publicNavigation.includes("nav-admin-link")) throw new Error("Navigazione: collegamento amministratore ancora esposto nel menu pubblico");
 for (const weight of [400, 700]) {
   const fontResponse = await worker.fetch(new Request(`https://www.splendoria.vip/assets/gentium-book-plus-${weight}.woff2`), env);
   if (fontResponse.status !== 200 || fontResponse.headers.get("content-type") !== "font/woff2" || (await fontResponse.arrayBuffer()).byteLength < 20000) throw new Error(`Vetrina: font locale ${weight} non valido`);
 }
-console.log("/vetrina: Gentium Book Plus locale e due scale responsive disponibili");
+const heroImage = readFileSync(new URL("../public/assets/splendoria-book-hero.webp", import.meta.url));
+if (heroImage.byteLength < 40000 || heroImage.subarray(0, 4).toString() !== "RIFF" || heroImage.subarray(8, 12).toString() !== "WEBP") throw new Error("Vetrina: immagine Hero WebP non valida");
+if (!showcaseTypography.includes('data-book-preview') || !showcaseTypography.includes('role="tablist"') || !showcaseTypography.includes("Il capitolo impaginato") || !showcaseTypography.includes("Esempio dimostrativo")) throw new Error("Vetrina: anteprima interattiva del libro incompleta");
+console.log("/vetrina: tipografia editoriale, Hero e anteprima del libro disponibili");
 
 const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
-if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"')) throw new Error("Cloudflare: configurazione di produzione non valida");
+if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"') || !wranglerConfig.includes('"directory": "./public"')) throw new Error("Cloudflare: configurazione di produzione o asset statici non valida");
 if (wranglerConfig.includes('"database_name": "splendoria-v2-test"') || wranglerConfig.includes("splendoria-v2.raoulragazzi.workers.dev")) throw new Error("Cloudflare: riferimenti all’ambiente di test ancora attivi");
 console.log("/configurazione: database e URL di produzione attivi");
 
@@ -68,6 +73,8 @@ const pricingResponse = await worker.fetch(new Request("https://www.splendoria.v
 const pricingHtml = await pricingResponse.text();
 if (!pricingHtml.includes("Splendoria Digital") || !pricingHtml.includes("Splendoria Premium") || !pricingHtml.includes("Splendoria Signature")) throw new Error("Listino: formule mancanti");
 if (!pricingHtml.includes("1.500 €") || !pricingHtml.includes("10 copie cartacee comprese nel prezzo")) throw new Error("Listino: prezzi o contenuti principali non validi");
+if (!pricingHtml.includes('class="price-details"') || !pricingHtml.includes("Metodo e interviste") || !pricingHtml.includes("Confronta le tre formule") || !pricingHtml.includes("Possibile, da concordare")) throw new Error("Listino: raggruppamento o confronto delle formule mancante");
+if (!pricingHtml.includes('class="review-stars"') || !pricingHtml.includes("Valutazione: 5 stelle su 5") || !pricingHtml.includes('class="mini-cover"')) throw new Error("Social proof: valutazioni o copertine editoriali mancanti");
 if (!pricingHtml.includes('<option value="complete" selected>Splendoria Premium</option>')) throw new Error("Listino: formula Premium non riportata nel form");
 if (pricingHtml.includes("Hybrid") || pricingHtml.includes("Premium Short Book") || pricingHtml.includes("Personal Branding &amp; Corporate")) throw new Error("Listino: denominazioni precedenti ancora presenti");
 if (pricingHtml.includes("prime 5 copie") || pricingHtml.includes("consegna entro 10 giorni")) throw new Error("Listino: promesse della precedente offerta ancora presenti");
@@ -103,7 +110,8 @@ const studioJsBody = await studioJs.text();
 if (studioJs.status !== 200 || !studioJs.headers.get("content-type")?.includes("javascript") || !studioJsBody.includes("SpeechRecognition") || !studioJsBody.includes("data-plan-choice") || !studioJsBody.includes("data-print-book") || !studioJsBody.includes("window.print()")) throw new Error("Asset JavaScript: funzionalità non valide");
 if (!studioJsBody.includes("it-IT") || !studioJsBody.includes("de-DE") || !studioJsBody.includes("en-GB") || !studioJsBody.includes("splendoria-voice-language")) throw new Error("Asset JavaScript: lingue della dettatura non valide");
 if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1")) throw new Error("Asset JavaScript: password visibile, conferma o banner cookie non funzionanti");
-console.log("/assets/studio.js: dettatura trilingue e scelta formula disponibili");
+if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
+console.log("/assets/studio.js: dettatura, anteprima e animazioni accessibili disponibili");
 
 const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente Muse" };
 const museProject = {

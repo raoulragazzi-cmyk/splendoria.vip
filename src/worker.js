@@ -100,9 +100,48 @@ function home(user, url) {
   const selectedPlan = Object.hasOwn(PLANS, requestedPlan) ? requestedPlan : "";
   const planOptions = Object.entries(PLANS).map(([key, plan]) => `<option value="${key}"${selectedPlan === key ? " selected" : ""}>${esc(plan.label)}</option>`).join("");
   return page("La tua vita in un romanzo", `
-    <header class="showcase-hero"><div class="showcase-narrow"><p class="showcase-label light">Ogni vita merita un romanzo</p><h1>Splendoria</h1><p class="showcase-subtitle">La tua vita in un romanzo.</p><p class="showcase-intro">Il servizio di ghostwriting che trasforma la tua storia — o quella di chi ami — in un libro vero, scritto da professionisti.</p><div class="showcase-actions"><a class="button" href="${entry}">Scrivi il primo capitolo gratis</a><a class="showcase-link" href="#come-funziona">Scopri come funziona ›</a></div></div></header>
+    <header class="showcase-hero">
+      <div class="wrap showcase-hero-layout">
+        <div class="showcase-hero-copy">
+          <p class="showcase-label light">Ogni vita merita un romanzo</p>
+          <h1>Splendoria</h1>
+          <p class="showcase-subtitle">La tua vita in un romanzo.</p>
+          <p class="showcase-intro">Il servizio di ghostwriting che trasforma la tua storia — o quella di chi ami — in un libro vero, scritto da professionisti.</p>
+          <div class="showcase-actions"><a class="button" href="${entry}">Scrivi il primo capitolo gratis</a><a class="showcase-link" href="#come-funziona">Scopri come funziona <span aria-hidden="true">›</span></a></div>
+          <ul class="hero-trust" aria-label="Elementi distintivi di Splendoria"><li>Primo capitolo gratuito</li><li>Percorso digitale guidato</li><li>Supervisione umana</li></ul>
+        </div>
+        <figure class="showcase-hero-visual">
+          <img src="/assets/splendoria-book-hero.webp" width="1024" height="559" alt="Libro biografico rilegato con finiture dorate su una scrivania di legno" fetchpriority="high" decoding="async">
+          <figcaption>Esempio visivo di un possibile libro Splendoria.</figcaption>
+        </figure>
+      </div>
+    </header>
     <section class="showcase-section showcase-paper" id="storia"><div class="showcase-reading"><p class="showcase-label">La storia</p><h2>Storie che è un peccato dimenticare.</h2><p>In un angolo di un bar, in un incontro destinato a cambiare il corso delle cose, tre menti creative — ognuna con il proprio stile e mestiere — condividevano storie e ispirazioni. Alzarono i bicchieri per brindare a una nuova alleanza: spiriti affini, uniti da un amore comune per la scrittura. Da quel brindisi è nata Splendoria.</p><p>Hai mai pensato che la tua storia potrebbe essere raccontata in un libro, o diventare la trama di un film? Con Splendoria è possibile: sia in forma pubblica che anonima, la tua biografia — o una parte romanzata di essa — diventa un libro vero, da consegnare ad amici, figli e nipoti. <b>Per rimanere, a futura memoria, vivi per sempre.</b></p></div></section>
     <section class="showcase-section" id="come-funziona"><div class="wrap"><p class="showcase-label">Come funziona</p><h2 class="showcase-title">Quattro passi. Un libro vero.</h2><div class="showcase-grid four"><article class="showcase-card"><span>1</span><h3>Registrati</h3><p>Crea il tuo account gratuito: ricevi subito le tue credenziali e uno Studio di scrittura tutto tuo.</p></article><article class="showcase-card"><span>2</span><h3>Scrivi il primo capitolo</h3><p>Racconta l'inizio della tua storia: il primo capitolo, fino a sei pagine, è in omaggio. Senza impegno.</p></article><article class="showcase-card"><span>3</span><h3>Scegli il percorso</h3><p>Digital, Premium o Signature: le Muse guidano il lavoro e un professore di una scuola di scrittura supervisiona ogni opera.</p></article><article class="showcase-card"><span>4</span><h3>Ricevi il tuo libro</h3><p>Ricevi la versione digitale revisionata e depositata. Le copie stampate si possono aggiungere; nella formula Signature, 10 sono già comprese.</p></article></div><p class="showcase-note"><b>Scegli il genere.</b> Autobiografia, memoriale, ritratto, giallo, thriller o romanzo.</p></div></section>
+    <section class="showcase-section showcase-paper book-preview-section" id="anteprima" aria-labelledby="book-preview-title">
+      <div class="wrap">
+        <p class="showcase-label">Sfoglia un’anteprima</p>
+        <h2 class="showcase-title" id="book-preview-title">Dalle tue parole a un capitolo da leggere.</h2>
+        <p class="book-preview-intro">Osserva come un ricordo raccolto dalla Musa può diventare una pagina narrativa, mantenendo intatti fatti, voce ed emozioni.</p>
+        <div class="book-preview" data-book-preview>
+          <div class="book-preview-tabs" role="tablist" aria-label="Fasi di trasformazione del racconto">
+            <button type="button" role="tab" id="book-tab-memory" aria-controls="book-panel-memory" aria-selected="true" tabindex="0" data-book-tab="memory">1 · Il ricordo raccolto</button>
+            <button type="button" role="tab" id="book-tab-chapter" aria-controls="book-panel-chapter" aria-selected="false" tabindex="-1" data-book-tab="chapter">2 · Il capitolo impaginato</button>
+          </div>
+          <div class="book-stage" aria-live="polite">
+            <div class="book-spread" id="book-panel-memory" role="tabpanel" aria-labelledby="book-tab-memory" data-book-panel="memory">
+              <article class="book-page book-page-left"><p class="book-folio">Intervista con la Musa</p><h3>Il primo ricordo</h3><p class="book-question">«Qual è il luogo della tua infanzia che riesci ancora a vedere a occhi chiusi?»</p><p class="book-note">La Musa ascolta, pone domande delicate e aiuta a recuperare dettagli, persone e sensazioni.</p></article>
+              <article class="book-page book-page-right"><p class="book-folio">Le tue parole</p><p>La cucina di mia nonna era piccola. La domenica arrivavamo tutti e il tavolo sembrava non bastare mai. Ricordo il rumore dei piatti e il profumo del ragù. Lei teneva la finestra aperta anche d’inverno.</p><p class="book-note">Il contenuto resta tuo: puoi correggerlo, completarlo o aggiungere fotografie e documenti.</p></article>
+            </div>
+            <div class="book-spread" id="book-panel-chapter" role="tabpanel" aria-labelledby="book-tab-chapter" data-book-panel="chapter" hidden>
+              <article class="book-page book-page-left"><p class="book-folio">Capitolo I</p><h3>La stanza della domenica</h3><p>La cucina di mia nonna non era fatta per contenere una famiglia intera. Eppure, ogni domenica, le pareti sembravano arretrare di qualche passo per lasciarci entrare tutti.</p><p>Il tavolo si allungava sotto una tovaglia bianca, i piatti si rincorrevano tra le mani e dalla pentola saliva il profumo lento del ragù.</p></article>
+              <article class="book-page book-page-right"><p>La finestra restava aperta anche d’inverno. «Una casa deve respirare», diceva lei, mentre fuori l’aria fredda appannava i vetri.</p><p>Molti anni dopo avrei capito che quella stanza non era piccola: era semplicemente piena. Di voci, di gesti ripetuti, di una felicità che allora non sapevamo ancora chiamare per nome.</p><p class="book-folio book-folio-bottom">— 7 —</p></article>
+            </div>
+          </div>
+          <p class="book-preview-caption">Esempio dimostrativo: ogni testo viene costruito esclusivamente sui materiali e sulle approvazioni dell’autore.</p>
+        </div>
+      </div>
+    </section>
     <section class="showcase-section showcase-paper showcase-pricing" id="formule" aria-labelledby="pricing-title">
       <div class="wrap">
         <p class="showcase-label">Listino</p>
@@ -117,21 +156,20 @@ function home(user, url) {
             <p class="price-tagline muted">Il modo più semplice per trasformare i tuoi ricordi in un libro</p>
             <p class="showcase-amount">1.000 €</p>
             <p class="price-pages muted">Fino a 100 pagine</p>
-            <ul>
-              <li>Opera e percorso interamente digitali</li>
-              <li>Percorso guidato dalle Muse di Splendoria</li>
-              <li>Intervista iniziale online</li>
-              <li>Raccolta guidata di ricordi, fotografie e documenti</li>
-              <li>Scrittura e organizzazione narrativa realizzate con il supporto delle nostre Muse</li>
-              <li>Supervisione umana affidata a un professore di una scuola di scrittura</li>
-              <li>Revisione grammaticale e stilistica</li>
-              <li>Impaginazione digitale</li>
-              <li>Copertina personalizzata</li>
-              <li>Consegna del libro in formato PDF</li>
-              <li>Marcatura temporale e deposito digitale dell’opera</li>
-              <li>Revisione professionale prima della consegna definitiva</li>
-              <li>Possibilità di acquistare separatamente copie stampate</li>
+            <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Digital">
+              <li>Percorso digitale guidato dalle Muse</li>
+              <li>Intervista iniziale e raccolta dei ricordi</li>
+              <li>Scrittura con supervisione umana</li>
+              <li>Libro in PDF, revisionato e depositato</li>
             </ul>
+            <details class="price-details">
+              <summary>Scopri tutti i servizi inclusi</summary>
+              <div class="price-groups">
+                <section><h4>Metodo e intervista</h4><ul><li>Opera e percorso interamente digitali</li><li>Percorso guidato dalle Muse di Splendoria</li><li>Intervista iniziale online</li><li>Raccolta guidata di ricordi, fotografie e documenti</li></ul></section>
+                <section><h4>Scrittura e revisione</h4><ul><li>Scrittura e organizzazione narrativa con il supporto delle Muse</li><li>Supervisione umana affidata a un professore di una scuola di scrittura</li><li>Revisione grammaticale e stilistica</li><li>Revisione professionale prima della consegna definitiva</li></ul></section>
+                <section><h4>Consegna e tutela</h4><ul><li>Impaginazione digitale</li><li>Copertina personalizzata</li><li>Consegna del libro in formato PDF</li><li>Marcatura temporale e deposito digitale dell’opera</li><li>Possibilità di acquistare separatamente copie stampate</li></ul></section>
+              </div>
+            </details>
             <a class="button" data-plan-choice="digital" href="/?formula=digital#contatti">Inizia il tuo libro</a>
           </article>
 
@@ -142,23 +180,20 @@ function home(user, url) {
             <p class="price-tagline">Un racconto più ampio, profondo e ricco di dettagli</p>
             <p class="showcase-amount">1.500 €</p>
             <p class="price-pages">Fino a 250 pagine</p>
-            <ul>
-              <li>Opera e percorso interamente digitali</li>
-              <li>Percorso guidato dalle Muse di Splendoria</li>
-              <li>Intervista iniziale online di approfondimento</li>
-              <li>Più sessioni online dedicate alle diverse fasi della vita</li>
-              <li>Raccolta e organizzazione di fotografie, lettere e documenti</li>
-              <li>Scrittura e costruzione narrativa realizzate con il supporto delle nostre Muse</li>
-              <li>Supervisione umana affidata a un professore di una scuola di scrittura</li>
-              <li>Revisione approfondita dei contenuti</li>
-              <li>Revisione grammaticale, narrativa e stilistica</li>
-              <li>Impaginazione editoriale</li>
-              <li>Copertina personalizzata</li>
-              <li>Consegna del libro in formato PDF pronto per la stampa</li>
-              <li>Marcatura temporale e deposito digitale dell’opera</li>
-              <li>Revisione professionale prima della consegna definitiva</li>
-              <li>Possibilità di acquistare separatamente copie stampate</li>
+            <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Premium">
+              <li>Più interviste sulle diverse fasi della vita</li>
+              <li>Raccolta di fotografie, lettere e documenti</li>
+              <li>Revisione narrativa e stilistica approfondita</li>
+              <li>PDF editoriale pronto per la stampa</li>
             </ul>
+            <details class="price-details">
+              <summary>Scopri tutti i servizi inclusi</summary>
+              <div class="price-groups">
+                <section><h4>Metodo e interviste</h4><ul><li>Opera e percorso interamente digitali</li><li>Percorso guidato dalle Muse di Splendoria</li><li>Intervista iniziale online di approfondimento</li><li>Più sessioni online dedicate alle diverse fasi della vita</li><li>Raccolta e organizzazione di fotografie, lettere e documenti</li></ul></section>
+                <section><h4>Scrittura e revisione</h4><ul><li>Scrittura e costruzione narrativa con il supporto delle Muse</li><li>Supervisione umana affidata a un professore di una scuola di scrittura</li><li>Revisione approfondita dei contenuti</li><li>Revisione grammaticale, narrativa e stilistica</li><li>Revisione professionale prima della consegna definitiva</li></ul></section>
+                <section><h4>Consegna e tutela</h4><ul><li>Impaginazione editoriale</li><li>Copertina personalizzata</li><li>Consegna in PDF pronto per la stampa</li><li>Marcatura temporale e deposito digitale dell’opera</li><li>Possibilità di acquistare separatamente copie stampate</li></ul></section>
+              </div>
+            </details>
             <a class="button" data-plan-choice="complete" href="/?formula=complete#contatti">Scegli Premium</a>
           </article>
 
@@ -169,28 +204,41 @@ function home(user, url) {
             <p class="showcase-amount">2.500 €</p>
             <p class="price-pages muted">Da 250 pagine in su, secondo il progetto</p>
             <p class="signature-included"><strong>10 copie cartacee comprese nel prezzo</strong></p>
-            <ul>
-              <li>Opera e percorso interamente digitali</li>
-              <li>Percorso personalizzato guidato dalle Muse di Splendoria</li>
-              <li>Interviste online di approfondimento, senza una struttura rigida</li>
-              <li>Progetto narrativo dedicato a persone, famiglie, professionisti e imprese</li>
-              <li>Ricerca, selezione e organizzazione di fotografie, lettere, documenti e materiali d’archivio</li>
-              <li>Scrittura e costruzione narrativa realizzate con il supporto delle nostre Muse</li>
-              <li>Supervisione umana affidata a un professore di una scuola di scrittura</li>
-              <li>Possibilità di un accompagnamento editoriale più approfondito da parte della <strong>Scuola Holden</strong></li>
-              <li>Revisione narrativa, grammaticale e stilistica completa</li>
-              <li>Impaginazione editoriale realizzata su misura</li>
-              <li>Copertina personalizzata</li>
-              <li>Inserimento di fotografie, documenti, lettere e materiali d’archivio</li>
-              <li>Consegna della versione digitale completa</li>
-              <li><strong>10 copie cartacee comprese nel prezzo</strong></li>
-              <li>Marcatura temporale e deposito digitale dell’opera</li>
-              <li>Assistenza personale fino all’approvazione definitiva</li>
-              <li>Revisione professionale prima della consegna dell’opera</li>
+            <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Signature">
+              <li>Progetto biografico completamente su misura</li>
+              <li>Interviste approfondite e ricerca d’archivio</li>
+              <li>Assistenza personale fino all’approvazione</li>
+              <li><strong>10 copie cartacee comprese</strong></li>
             </ul>
+            <details class="price-details">
+              <summary>Scopri tutti i servizi inclusi</summary>
+              <div class="price-groups">
+                <section><h4>Metodo e ricerca</h4><ul><li>Opera e percorso interamente digitali</li><li>Percorso personalizzato guidato dalle Muse di Splendoria</li><li>Interviste online di approfondimento, senza una struttura rigida</li><li>Progetto dedicato a persone, famiglie, professionisti e imprese</li><li>Ricerca e organizzazione di fotografie, lettere, documenti e materiali d’archivio</li></ul></section>
+                <section><h4>Scrittura e accompagnamento</h4><ul><li>Scrittura e costruzione narrativa con il supporto delle Muse</li><li>Supervisione umana affidata a un professore di una scuola di scrittura</li><li>Possibilità, da concordare, di un accompagnamento editoriale più approfondito da parte della <strong>Scuola Holden</strong></li><li>Revisione narrativa, grammaticale e stilistica completa</li><li>Assistenza personale fino all’approvazione definitiva</li><li>Revisione professionale prima della consegna dell’opera</li></ul></section>
+                <section><h4>Edizione e consegna</h4><ul><li>Impaginazione editoriale realizzata su misura</li><li>Copertina personalizzata</li><li>Inserimento dei materiali d’archivio</li><li>Consegna della versione digitale completa</li><li><strong>10 copie cartacee comprese nel prezzo</strong></li><li>Marcatura temporale e deposito digitale dell’opera</li></ul></section>
+              </div>
+            </details>
             <a class="button" data-plan-choice="assisted" href="/?formula=assisted#contatti">Richiedi il progetto Signature</a>
           </article>
         </div>
+
+        <details class="pricing-compare">
+          <summary>Confronta le tre formule</summary>
+          <div class="pricing-compare-scroll" tabindex="0" aria-label="Tabella comparativa scorrevole">
+            <table>
+              <caption class="sr-only">Confronto tra Splendoria Digital, Premium e Signature</caption>
+              <thead><tr><th scope="col">Caratteristica</th><th scope="col">Digital</th><th scope="col">Premium</th><th scope="col">Signature</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Pagine indicative</th><td>Fino a 100</td><td>Fino a 250</td><td>Da 250, su progetto</td></tr>
+                <tr><th scope="row">Interviste online</th><td>Iniziale</td><td>Più sessioni</td><td>Approfondite e flessibili</td></tr>
+                <tr><th scope="row">Supervisione umana</th><td>Inclusa</td><td>Inclusa</td><td>Inclusa</td></tr>
+                <tr><th scope="row">PDF editoriale</th><td>Incluso</td><td>Pronto per la stampa</td><td>Edizione su misura</td></tr>
+                <tr><th scope="row">Copie cartacee</th><td>Acquistabili</td><td>Acquistabili</td><td><strong>10 incluse</strong></td></tr>
+                <tr><th scope="row">Scuola Holden</th><td>—</td><td>—</td><td>Possibile, da concordare</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
 
         <div class="pricing-method">
           <span class="method-mark" aria-hidden="true">✦</span>
@@ -211,7 +259,7 @@ function home(user, url) {
     </section>
     <section class="showcase-section" id="servizi"><div class="wrap"><p class="showcase-label">Sempre incluso</p><h2 class="showcase-title">Un percorso digitale, seguito con cura.</h2><div class="showcase-grid three"><article class="showcase-card"><h3>Guida delle Muse</h3><p>Le Muse ti accompagnano passo dopo passo, aiutandoti a far emergere ricordi, persone, luoghi e momenti decisivi.</p></article><article class="showcase-card"><h3>Intervista online</h3><p>Un dialogo guidato e riservato raccoglie la tua voce e i materiali necessari per dare profondità alla storia.</p></article><article class="showcase-card"><h3>Costruzione narrativa</h3><p>La tecnologia organizza i contenuti e sostiene la scrittura, mantenendo intatti il tuo tono e la tua sensibilità.</p></article><article class="showcase-card"><h3>Supervisione umana</h3><p>Un professore di una scuola di scrittura supervisiona l’opera e una revisione professionale ne garantisce la qualità.</p></article><article class="showcase-card"><h3>Cura editoriale</h3><p>Revisione, impaginazione e copertina personalizzata trasformano il racconto in un libro armonioso e autorevole.</p></article><article class="showcase-card"><h3>Versione digitale e tutela</h3><p>Ricevi il libro in formato digitale, con marcatura temporale e deposito dell’opera. Le copie stampate seguono la formula scelta.</p></article></div></div></section>
     <aside class="showcase-holden"><p>Nella formula Splendoria Signature può essere concordato un accompagnamento editoriale più approfondito da parte della Scuola Holden.</p><span>L’eventuale coinvolgimento è riservato ai progetti Signature e viene definito su misura, in base alle caratteristiche dell’opera.</span></aside>
-    <section class="showcase-section" id="voci"><div class="wrap"><p class="showcase-label">Dicono di noi</p><h2 class="showcase-title">Vite diventate libri.</h2><div class="showcase-grid three"><article class="showcase-quote"><blockquote>“Ho sempre desiderato scrivere un libro, ma mi intimoriva il foglio bianco. Le indicazioni online sono intuitive, i tempi sono stati rispettati e la qualità del libro è eccellente.”</blockquote><p><b>Tatiana</b> · Insegnante</p></article><article class="showcase-quote"><blockquote>“Eccellente il percorso di accompagnamento che mi ha portato a realizzare il mio sogno. Raccontare la mia vita a dei professionisti della scrittura è un'esperienza che consiglio vivamente.”</blockquote><p><b>Ettore</b> · Commerciante</p></article><article class="showcase-quote"><blockquote>“Ho trovato un team di persone serie e motivate, con la mia stessa passione. Il libro che mi hanno consegnato è stato addirittura migliore di quanto mi aspettassi.”</blockquote><p><b>Giorgia</b> · Manager d'azienda</p></article></div></div></section>
+    <section class="showcase-section" id="voci"><div class="wrap"><p class="showcase-label">Dicono di noi</p><h2 class="showcase-title">Vite diventate libri.</h2><p class="testimonial-intro">Tre esperienze diverse, unite dalla stessa sensazione: vedere finalmente la propria storia prendere forma.</p><div class="showcase-grid three testimonial-grid"><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Memorie</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Ho sempre desiderato scrivere un libro, ma mi intimoriva il foglio bianco. Le indicazioni online sono intuitive, i tempi sono stati rispettati e la qualità del libro è eccellente.”</blockquote><p><b>Tatiana</b> · Insegnante</p></article><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Racconti</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Eccellente il percorso di accompagnamento che mi ha portato a realizzare il mio sogno. Raccontare la mia vita a dei professionisti della scrittura è un'esperienza che consiglio vivamente.”</blockquote><p><b>Ettore</b> · Commerciante</p></article><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Biografia</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Ho trovato un team di persone serie e motivate, con la mia stessa passione. Il libro che mi hanno consegnato è stato addirittura migliore di quanto mi aspettassi.”</blockquote><p><b>Giorgia</b> · Manager d'azienda</p></article></div></div></section>
     <section class="showcase-section showcase-paper showcase-cta"><h2>La tua storia comincia qui.</h2><p>Crea il tuo account gratuito, scrivi il primo capitolo della tua vita e scopri com'è vederla diventare un libro. Al resto pensiamo noi.</p><a class="button" href="${entry}">Inizia gratis</a></section>
     <section id="contatti" class="showcase-section showcase-contact"><div class="wrap showcase-contact-grid"><div><p class="showcase-label left">Splendoria</p><h2>Contattaci</h2><p class="muted">Raccontami brevemente come possiamo aiutarti.</p><p><b>Parla con me</b><br><span class="muted">Raoul Ragazzi<br>Partita IVA ${VAT_NUMBER}<br>${LEGAL_ADDRESS}</span></p><p><b>Email</b><br><a href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a></p></div><form method="post" action="/contatti"><p class="small muted">Tutti i campi sono obbligatori.</p><label class="field">Formula di interesse<select name="plan" data-plan-select required><option value=""${selectedPlan ? "" : " selected"} disabled>Seleziona una formula</option>${planOptions}</select></label><div class="grid three"><label class="field">Nome e cognome<input name="fullName" required maxlength="100"></label><label class="field">Telefono<input name="phone" required maxlength="40"></label><label class="field">Email<input name="email" type="email" required maxlength="160"></label></div><label class="field">Oggetto<input name="subject" required maxlength="160"></label><label class="field">Messaggio<textarea name="message" required maxlength="3000"></textarea></label><input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px"><label class="legal-check"><input type="checkbox" name="privacyRead" value="yes" required><span>Ho letto la <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> e comprendo come saranno trattati i dati inviati.</span></label><button class="button">Invia richiesta</button></form></div></section>`, user, 200, "", "showcase-page");
 }
@@ -292,8 +340,9 @@ function aiTransparencyPage(user) {
 }
 
 function page(title, body, user, status = 200, extra = "", bodyClass = "") {
-  const account = user ? `${user.isAdmin ? `<a href="/admin">Area amministratore</a>` : `<a href="/studio">Area cliente</a>`}<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : `<a href="/area-clienti">Area clienti</a><a class="nav-admin-link" href="/area-amministratore">Area amministratore</a><a class="pill" href="/registrati">Inizia gratis</a>`;
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo."><style>${styles}${extra}</style><script src="/assets/studio.js" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main>${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  const account = user ? `${user.isAdmin ? `<a href="/admin">Dashboard</a>` : `<a href="/studio">Il mio Studio</a>`}<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : `<a href="/area-clienti">Area clienti</a><a class="pill" href="/registrati">Inizia gratis</a>`;
+  const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1f1c"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo.">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -307,6 +356,7 @@ function fontAsset(base64) {
 
 function studioScript() {
   const source = `(() => {
+    document.documentElement.classList.add('js');
     const cookieBanner = document.querySelector('[data-cookie-banner]');
     if (cookieBanner) {
       let acknowledged = false;
@@ -337,6 +387,56 @@ function studioScript() {
       password.addEventListener('input', validateConfirmation);
       confirmation.addEventListener('input', validateConfirmation);
     });
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('[data-book-preview]').forEach(preview => {
+      const tabs = [...preview.querySelectorAll('[data-book-tab]')];
+      const panels = [...preview.querySelectorAll('[data-book-panel]')];
+      let changeTimer = null;
+      const activate = (tab, animate = true) => {
+        const target = tab.dataset.bookTab;
+        if (!target || tab.getAttribute('aria-selected') === 'true') return;
+        tabs.forEach(item => {
+          const selected = item === tab;
+          item.setAttribute('aria-selected', selected ? 'true' : 'false');
+          item.tabIndex = selected ? 0 : -1;
+        });
+        const changePanel = () => {
+          panels.forEach(panel => { panel.hidden = panel.dataset.bookPanel !== target; });
+          preview.classList.remove('is-turning');
+        };
+        window.clearTimeout(changeTimer);
+        if (animate && !reducedMotion) {
+          preview.classList.add('is-turning');
+          changeTimer = window.setTimeout(changePanel, 180);
+        } else changePanel();
+      };
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activate(tab));
+        tab.addEventListener('keydown', event => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+          tabs[nextIndex].focus();
+          activate(tabs[nextIndex]);
+        });
+      });
+    });
+    const revealTargets = [...document.querySelectorAll('.showcase-page .showcase-hero-copy, .showcase-page .showcase-hero-visual, .showcase-page .showcase-reading, .showcase-page .showcase-card, .showcase-page .showcase-price, .showcase-page .book-preview, .showcase-page .pricing-method, .showcase-page .showcase-quote')];
+    revealTargets.forEach((element, index) => {
+      element.classList.add('reveal-item');
+      element.style.setProperty('--reveal-delay', Math.min(index % 4, 3) * 70 + 'ms');
+    });
+    if (reducedMotion || !('IntersectionObserver' in window)) revealTargets.forEach(element => element.classList.add('is-visible'));
+    else {
+      const revealObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('is-visible');
+          revealObserver.unobserve(entry.target);
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+      revealTargets.forEach(element => revealObserver.observe(element));
+    }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const languageSelect = document.querySelector('[data-voice-language]');
     const languageMessages = {
