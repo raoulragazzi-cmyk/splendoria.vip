@@ -42,11 +42,11 @@ if (!adminAccessHtml.includes('action="/area-amministratore"') || !adminAccessHt
 console.log("/accesso: schermate cliente e amministratore separate");
 
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
-if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("font-family:var(--font-ui)") || !showcaseTypography.includes("font-family:var(--font-editorial)")) throw new Error("Vetrina: sistema tipografico editoriale serif/sans-serif non applicato");
-if (!showcaseTypography.includes("showcase-hero-layout") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("Primo capitolo gratuito") || !showcaseTypography.includes("Supervisione umana")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-4"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette Retaggio non applicate");
+if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("Una storia destinata a restare") || !showcaseTypography.includes("Inizia il tuo Retaggio")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-5"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
-if (!publicNavigation.includes("Area clienti") || !publicNavigation.includes("Inizia gratis") || publicNavigation.includes("Area amministratore") || publicNavigation.includes("nav-admin-link")) throw new Error("Navigazione: collegamento amministratore ancora esposto nel menu pubblico");
+if (!publicNavigation.includes("Studio di Scrittura") || ["Area clienti", "Inizia gratis", "Area amministratore", "Come funziona", "Listino", "Contattaci"].some(label => publicNavigation.includes(label))) throw new Error("Navigazione: header pubblico non è minimale o espone collegamenti indesiderati");
 for (const weight of [400, 700]) {
   const fontResponse = await worker.fetch(new Request(`https://www.splendoria.vip/assets/gentium-book-plus-${weight}.woff2`), env);
   if (fontResponse.status !== 200 || fontResponse.headers.get("content-type") !== "font/woff2" || (await fontResponse.arrayBuffer()).byteLength < 20000) throw new Error(`Vetrina: font locale ${weight} non valido`);
@@ -57,8 +57,14 @@ for (const weight of [400, 700]) {
 }
 const heroImage = readFileSync(new URL("../public/assets/splendoria-book-hero.webp", import.meta.url));
 if (heroImage.byteLength < 40000 || heroImage.subarray(0, 4).toString() !== "RIFF" || heroImage.subarray(8, 12).toString() !== "WEBP") throw new Error("Vetrina: immagine Hero WebP non valida");
-if (!showcaseTypography.includes('data-book-preview') || !showcaseTypography.includes('role="tablist"') || !showcaseTypography.includes("Il capitolo impaginato") || !showcaseTypography.includes("Esempio dimostrativo")) throw new Error("Vetrina: anteprima interattiva del libro incompleta");
-console.log("/vetrina: tipografia editoriale, Hero e anteprima del libro disponibili");
+const showcaseSections = [...showcaseTypography.matchAll(/data-showcase-section="([^"]+)"/g)].map(match => match[1]);
+const requiredSections = ["hero", "advantages", "comparison", "paths", "method", "markets", "governance", "assessment", "faq", "final-cta"];
+if (requiredSections.some(section => !showcaseSections.includes(section)) || new Set(showcaseSections).size !== 10) throw new Error("Vetrina: architettura in dieci sezioni incompleta");
+if (!showcaseTypography.includes('data-legacy-slider') || !showcaseTypography.includes('data-legacy-range') || !showcaseTypography.includes("La stanza della domenica") || !showcaseTypography.includes("L’Opera Splendoria")) throw new Error("Vetrina: trasmutazione letteraria interattiva incompleta");
+if (!showcaseTypography.includes('data-editorial-assessment') || !showcaseTypography.includes("Dimensione del Retaggio") || !showcaseTypography.includes("Nodi cruciali") || !showcaseTypography.includes("Estrazione Muse") || !showcaseTypography.includes("Scheda Tecnica del Progetto Editoriale") || !showcaseTypography.includes("Stampa o salva in PDF")) throw new Error("Vetrina: Assessment Editoriale o Scheda Tecnica incompleti");
+if (!showcaseTypography.includes("Governance operativa 7Agent") || !showcaseTypography.includes("non una certificazione di terza parte") || !showcaseTypography.includes("Quattro livelli di controllo")) throw new Error("Vetrina: governance o precisazione sulla certificazione incomplete");
+if (showcaseTypography.includes("Retaggio Editoriale Certificato") || showcaseTypography.includes("scritta dai maestri") || showcaseTypography.includes("ROI Storico")) throw new Error("Vetrina: promessa commerciale non dimostrabile ancora pubblicata");
+console.log("/vetrina: dieci sezioni, Hero, slider, governance e Assessment disponibili");
 
 const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"') || !wranglerConfig.includes('"directory": "./public"')) throw new Error("Cloudflare: configurazione di produzione o asset statici non valida");
@@ -78,22 +84,18 @@ console.log("/persistenza: utenti, libri, capitoli, interviste e sessioni su Clo
 
 const pricingResponse = await worker.fetch(new Request("https://www.splendoria.vip/?formula=complete"), env);
 const pricingHtml = await pricingResponse.text();
-if (!pricingHtml.includes("Splendoria Digital") || !pricingHtml.includes("Splendoria Premium") || !pricingHtml.includes("Splendoria Signature")) throw new Error("Listino: formule mancanti");
-if (!pricingHtml.includes("1.500 €") || !pricingHtml.includes("10 copie cartacee comprese nel prezzo")) throw new Error("Listino: prezzi o contenuti principali non validi");
-if (!pricingHtml.includes('class="price-details"') || !pricingHtml.includes("Metodo e interviste") || !pricingHtml.includes("Confronta le tre formule") || !pricingHtml.includes("Possibile, da concordare")) throw new Error("Listino: raggruppamento o confronto delle formule mancante");
-if (!pricingHtml.includes('class="review-stars"') || !pricingHtml.includes("Valutazione: 5 stelle su 5") || !pricingHtml.includes('class="mini-cover"')) throw new Error("Social proof: valutazioni o copertine editoriali mancanti");
-if (!pricingHtml.includes('<option value="complete" selected>Splendoria Premium</option>')) throw new Error("Listino: formula Premium non riportata nel form");
+if (!pricingHtml.includes("Digital") || !pricingHtml.includes("Premium") || !pricingHtml.includes("Signature")) throw new Error("Listino: formule mancanti");
+if (!pricingHtml.includes("1.000 €") || !pricingHtml.includes("1.500 €") || !pricingHtml.includes("2.500 €") || !pricingHtml.includes("10 copie cartacee")) throw new Error("Listino: prezzi o contenuti principali non validi");
+if (!pricingHtml.includes("Possibile accompagnamento Scuola Holden, da concordare e soggetto a disponibilità") || !pricingHtml.includes("non è automatico né incluso senza accordo scritto")) throw new Error("Listino: precisazione Scuola Holden incompleta");
+if (!pricingHtml.includes('<option value="complete" selected>Splendoria Premium · 1.500 €</option>')) throw new Error("Listino: formula Premium non riportata nel configuratore");
 if (pricingHtml.includes("Hybrid") || pricingHtml.includes("Premium Short Book") || pricingHtml.includes("Personal Branding &amp; Corporate")) throw new Error("Listino: denominazioni precedenti ancora presenti");
 if (pricingHtml.includes("prime 5 copie") || pricingHtml.includes("consegna entro 10 giorni")) throw new Error("Listino: promesse della precedente offerta ancora presenti");
-if (!pricingHtml.includes("Le copie stampate seguono la formula scelta") || !pricingHtml.includes("riservato ai progetti Signature")) throw new Error("Listino: servizi inclusi o nota Signature non allineati");
 if (!pricingHtml.includes("Partita IVA 02950290219") || !pricingHtml.includes('href="/privacy-policy"') || !pricingHtml.includes('href="/cookie-policy"')) throw new Error("Informazioni legali: P.IVA o collegamenti del footer mancanti");
 if (pricingHtml.includes("Merano") || pricingHtml.includes("Via J. W. von Goethe")) throw new Error("Informazioni legali: vecchio indirizzo ancora presente");
 if (!pricingHtml.includes("Via Settala 22–24, Milano (MI)")) throw new Error("Informazioni legali: indirizzo di Milano mancante");
-if (!pricingHtml.includes("Raccontami brevemente come possiamo aiutarti.") || !pricingHtml.includes("<b>Parla con me</b>")) throw new Error("Contatti: testo personale richiesto non applicato");
-if (pricingHtml.includes("Raccontaci brevemente come possiamo aiutarti.") || pricingHtml.includes("<b>Titolare del servizio</b>")) throw new Error("Contatti: testo precedente ancora presente");
 if (!pricingHtml.includes('name="privacyRead"') || !pricingHtml.includes("Ho letto la")) throw new Error("Contatti: presa visione della Privacy Policy mancante");
 if (!pricingHtml.includes('data-cookie-banner') || !pricingHtml.includes("Ho capito e continuo") || !pricingHtml.includes("Non utilizziamo cookie pubblicitari o di profilazione")) throw new Error("Privacy: banner informativo cookie mancante");
-console.log("/formule: nuovo listino e selezione automatica disponibili");
+console.log("/formule: listino coerente e selezione Assessment disponibili");
 
 const legalChecks = [
   ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)", "Cloudflare Workers AI", "Diritti dell’interessato"]],
@@ -130,7 +132,8 @@ const cumulativeSpeech = mergeRecognitionText("Mi chiamo Raoul", "Mi chiamo Raou
 if (cumulativeSpeech !== spokenOnce || mergeRecognitionText(cumulativeSpeech, "vivo a Milano") !== spokenOnce) throw new Error("Muse: i risultati vocali cumulativi o sovrapposti vengono duplicati");
 if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1") || !studioJsBody.includes("La Musa sta scrivendo…")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
-console.log("/assets/studio.js: dettatura, anteprima e animazioni accessibili disponibili");
+if (!studioJsBody.includes("data-legacy-range") || !studioJsBody.includes("data-editorial-assessment") || !studioJsBody.includes("renderAssessment") || !studioJsBody.includes("Indice editoriale orientativo")) throw new Error("Asset JavaScript: slider o generazione della Scheda Tecnica mancanti");
+console.log("/assets/studio.js: dettatura, slider, Assessment e animazioni accessibili disponibili");
 
 const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente Muse" };
 const museProject = {
@@ -489,6 +492,12 @@ let contactEmail = null;
 const contactResponse = await worker.fetch(new Request("https://www.splendoria.vip/contatti", { method: "POST", body: contactBody }), { ...env, DB: contactDb, CONTACT_EMAIL: { async send(message) { contactEmail = message; return { messageId: "contact-message-id" }; } } });
 if (contactResponse.status !== 303 || contactResponse.headers.get("location") !== "/?contatto=inviato#contatti" || !contactValues?.[4]?.includes("Splendoria Signature") || !contactValues?.[5]?.startsWith("Formula scelta: Splendoria Signature")) throw new Error("Contatti: formula selezionata non registrata");
 if (contactEmail?.to !== "raoulragazzi@gmail.com" || !contactEmail?.text?.includes("mario@example.com") || contactDelivery?.[0] !== "sent") throw new Error("Contatti: email non inoltrata all’amministratore");
+
+contactValues = null;
+contactDelivery = null;
+const assessmentBody = new URLSearchParams({ assessment: "editorial", fullName: "Anna Bianchi", phone: "+39 111 111111", email: "anna@example.com", plan: "complete", legacyScope: "Una storia generazionale", turningOrigins: "yes", turningRelationships: "yes", turningVision: "yes", memoryKeywords: "cascina, fotografie, domenica", governance: "Livello 3 · Supervisione umana", privacyRead: "yes" });
+const assessmentResponse = await worker.fetch(new Request("https://www.splendoria.vip/contatti", { method: "POST", body: assessmentBody }), { ...env, DB: contactDb, CONTACT_EMAIL: { async send(message) { contactEmail = message; return { messageId: "assessment-message-id" }; } } });
+if (assessmentResponse.headers.get("location") !== "/?contatto=inviato#contatti" || !contactValues?.[4]?.includes("Assessment editoriale Splendoria") || !contactValues?.[5]?.includes("Una storia generazionale") || !contactValues?.[5]?.includes("cascina, fotografie, domenica") || !contactEmail?.text?.includes("Livello 3 · Supervisione umana")) throw new Error("Assessment: fallback senza JavaScript non genera o non inoltra la Scheda Tecnica");
 
 contactDelivery = null;
 const failedContactResponse = await worker.fetch(new Request("https://www.splendoria.vip/contatti", { method: "POST", body: contactBody }), { ...env, DB: contactDb, CONTACT_EMAIL: { async send() { const error = new Error("Destinazione non disponibile"); error.code = "E_DESTINATION"; throw error; } } });
