@@ -131,17 +131,16 @@ function editorialHome(user, url) {
     <header class="legacy-hero" data-showcase-section="hero">
       <div class="wrap legacy-hero-grid">
         <div class="legacy-hero-copy">
-          <p class="legacy-kicker">Casa editoriale della memoria</p>
-          <h1>La tua vita in un romanzo.<br><em>Una storia destinata a restare.</em></h1>
+          <h1>La tua vita in un romanzo.<br><em>La tua storia destinata a vivere centinaia di anni.</em></h1>
           <p class="legacy-lead">Non lasciare che il tempo sbiadisca ciò che hai costruito. Trasformiamo i tuoi ricordi o la visione della tua impresa in un’opera editoriale d’eccezione, guidata dalle Muse e rifinita attraverso una supervisione umana.</p>
           <div class="legacy-actions">
-            <a class="legacy-button" href="${entry}">Inizia il tuo Retaggio</a>
+            <a class="legacy-button" href="${entry}">Inizia il tuo libro</a>
             <a class="legacy-text-link" href="#metodo">Osserva la trasformazione <span aria-hidden="true">↓</span></a>
           </div>
           <dl class="legacy-credentials" aria-label="Principi del metodo Splendoria">
             <div><dt>01</dt><dd>La tua voce resta sovrana</dd></div>
             <div><dt>02</dt><dd>Supervisione e approvazione umana</dd></div>
-            <div><dt>03</dt><dd>Dati custoditi nell’infrastruttura Cloudflare</dd></div>
+            <div><dt>03</dt><dd>Dati custoditi nell’infrastruttura Splendoria</dd></div>
           </dl>
         </div>
         <figure class="legacy-hero-book">
@@ -171,7 +170,7 @@ function editorialHome(user, url) {
       <div class="wrap">
         <p class="legacy-kicker legacy-kicker-light">Una scelta di metodo</p>
         <div class="legacy-section-heading legacy-heading-split light">
-          <h2 id="comparison-title">Splendoria o il precipizio del testo indistinto.</h2>
+          <h2 id="comparison-title">Splendoria e la passione per la bella scrittura.</h2>
           <p>La differenza non è nella quantità delle parole, ma nella responsabilità con cui vengono raccolte, verificate e trasformate.</p>
         </div>
         <div class="legacy-comparison-table" role="region" aria-label="Confronto tra Splendoria e una lavorazione editoriale frammentata" tabindex="0">
@@ -182,7 +181,7 @@ function editorialHome(user, url) {
               <tr><th scope="row">Origine del racconto</th><td>Materiali, ricordi e approvazioni dell’autore</td><td>Prompt isolati o interviste senza continuità</td></tr>
               <tr><th scope="row">Voce</th><td>Coerenza personale lungo l’intera opera</td><td>Tono variabile, spesso anonimo</td></tr>
               <tr><th scope="row">Controllo</th><td>Verifiche automatiche e supervisione umana</td><td>Controllo affidato al singolo passaggio</td></tr>
-              <tr><th scope="row">Dato</th><td>Progetto conservato su Cloudflare D1 con accessi separati</td><td>File e copie dispersi tra strumenti diversi</td></tr>
+              <tr><th scope="row">Dato</th><td>Progetto conservato su Splendoria D1 con accessi separati</td><td>File e copie dispersi tra strumenti diversi</td></tr>
               <tr><th scope="row">Esito</th><td>Un libro progettato, revisionato e approvato</td><td>Una raccolta di testi da ricomporre</td></tr>
             </tbody>
           </table>
@@ -260,16 +259,15 @@ function editorialHome(user, url) {
     <section class="legacy-section legacy-governance" id="governance" data-showcase-section="governance" aria-labelledby="governance-title">
       <div class="wrap legacy-governance-grid">
         <div class="legacy-governance-intro">
-          <p class="legacy-kicker legacy-kicker-light">Governance operativa 7Agent</p>
+          <p class="legacy-kicker legacy-kicker-light">Le Muse ti guidano</p>
           <h2 id="governance-title">Quattro livelli di controllo. Nessuna delega cieca.</h2>
-          <p>“7Agent” identifica il modello operativo interno di Splendoria: non una certificazione di terza parte, ma una disciplina di lavoro in cui la tecnologia prepara e l’essere umano decide.</p>
           <a href="/trasparenza-ai" class="legacy-text-link light">Leggi la Trasparenza IA <span aria-hidden="true">↗</span></a>
         </div>
         <ol class="legacy-control-list">
           <li><span>01</span><div><h3>Assistenza guidata</h3><p>La Musa propone; l’Autore modifica, approva o rifiuta.</p></div></li>
           <li><span>02</span><div><h3>Coerenza editoriale</h3><p>Controlli automatici intercettano ripetizioni, incoerenze e risposte incomplete.</p></div></li>
           <li><span>03</span><div><h3>Supervisione umana</h3><p>La revisione professionale prevista dal percorso precede la consegna definitiva.</p></div></li>
-          <li><span>04</span><div><h3>Protezione del dato</h3><p>Account e opere sono custoditi su Cloudflare D1 con accessi cliente e amministratore separati.</p></div></li>
+          <li><span>04</span><div><h3>I tuoi racconti rimangono segreti.</h3></div></li>
         </ol>
       </div>
     </section>
@@ -344,7 +342,7 @@ function editorialHome(user, url) {
         <div><p class="legacy-kicker">FAQ e riservatezza</p><h2 id="faq-title">L’opera è tua. La fiducia è il primo contratto.</h2><p>La memoria personale richiede discrezione, chiarezza e controllo. Queste risposte definiscono i principi; le condizioni definitive sono sempre quelle concordate per iscritto.</p><a class="legacy-text-link dark" href="/privacy-policy">Leggi la Privacy Policy <span aria-hidden="true">↗</span></a></div>
         <div class="legacy-faq-list">
           <details><summary>La Musa può inventare episodi?</summary><p>No: le istruzioni vietano di introdurre fatti, nomi o ricordi non forniti. Poiché un sistema generativo può comunque sbagliare, ogni testo resta modificabile e deve essere approvato dall’autore.</p></details>
-          <details><summary>Chi conserva i materiali del libro?</summary><p>Account, progetti, capitoli e interviste sono conservati nell’infrastruttura Cloudflare; sul dispositivo restano soltanto preferenze tecniche dichiarate nella Cookie Policy.</p></details>
+          <details><summary>Chi conserva i materiali del libro?</summary><p>Account, progetti, capitoli e interviste sono conservati nell’infrastruttura Splendoria; sul dispositivo restano soltanto preferenze tecniche dichiarate nella Cookie Policy.</p></details>
           <details><summary>Chi possiede l’opera?</summary><p>L’autore conserva i diritti sui materiali originali. Diritti e facoltà d’uso dell’opera finale sono precisati nella conferma contrattuale, nel rispetto del diritto d’autore.</p></details>
           <details><summary>La Scuola Holden è sempre inclusa?</summary><p>No. Un eventuale accompagnamento può essere concordato soltanto per Signature, in base al progetto e alla disponibilità, e deve risultare dalla proposta scritta.</p></details>
           <details><summary>Il libro viene stampato?</summary><p>Digital e Premium prevedono il PDF editoriale; le copie possono essere richieste separatamente. Signature include 10 copie cartacee, con caratteristiche definite nella proposta.</p></details>
@@ -352,7 +350,7 @@ function editorialHome(user, url) {
       </div>
     </section>
 
-    <section class="legacy-final-cta" data-showcase-section="final-cta"><div class="wrap"><p class="legacy-kicker legacy-kicker-light">Splendoria</p><h2>La memoria non chiede di essere celebrata.<br>Chiede di essere salvata.</h2><a class="legacy-button" href="${entry}">Entra nello Studio di Scrittura</a></div></section>
+    <section class="legacy-final-cta" data-showcase-section="final-cta"><div class="wrap"><p class="legacy-kicker legacy-kicker-light">Splendoria</p><h2>La bellezza di poter finalmente trasmettere una visione.</h2><a class="legacy-button" href="${entry}">Entra nello Studio di Scrittura</a></div></section>
   `, user, 200, "", "showcase-page legacy-showcase");
 }
 
@@ -544,9 +542,9 @@ function privacyPage(user) {
     <section><h2>2. Dati trattati</h2><ul><li><strong>Dati di navigazione e sicurezza:</strong> indirizzo IP o sua impronta crittografica, data e ora, richieste tecniche, eventi di autenticazione e informazioni necessarie a prevenire abusi.</li><li><strong>Dati dell’account:</strong> nome, email, credenziali conservate sotto forma di hash crittografico, sessioni, richieste di recupero password e preferenze.</li><li><strong>Dati di contatto e commerciali:</strong> nome, telefono, email, formula scelta, oggetto e contenuto della richiesta, ordini e stato del progetto.</li><li><strong>Contenuti dell’opera:</strong> ricordi, testi, persone, eventi, risposte alle interviste, capitoli, scelte stilistiche e metadati editoriali inseriti dall’utente.</li><li><strong>Dati tecnici della dettatura:</strong> Splendoria riceve il testo trascritto nel campo, non conserva intenzionalmente la registrazione audio. Il riconoscimento vocale è fornito dal browser e può essere elaborato dal relativo fornitore secondo le sue impostazioni e informative.</li><li><strong>Preferenza linguistica:</strong> la lingua della dettatura è memorizzata localmente nel dispositivo.</li></ul></section>
     <section><h2>3. Finalità e basi giuridiche</h2><div class="legal-table-wrap"><table><thead><tr><th>Finalità</th><th>Base giuridica</th></tr></thead><tbody><tr><td>Fornire account, Studio, strumenti editoriali, anteprime e assistenza</td><td>Esecuzione di un contratto o misure precontrattuali, art. 6.1.b GDPR</td></tr><tr><td>Ricevere e gestire richieste di contatto e preventivo</td><td>Misure precontrattuali e legittimo interesse a rispondere, artt. 6.1.b e 6.1.f</td></tr><tr><td>Gestire ordini, pagamenti, fatturazione e obblighi amministrativi</td><td>Contratto e obblighi di legge, artt. 6.1.b e 6.1.c</td></tr><tr><td>Proteggere account, piattaforma e diritti del Titolare o di terzi</td><td>Legittimo interesse alla sicurezza e alla tutela dei diritti, art. 6.1.f</td></tr><tr><td>Svolgere controlli umani riservati di qualità, sicurezza e conformità sui contenuti dell’opera</td><td>Esecuzione del servizio e legittimo interesse a prevenire o gestire contenuti manifestamente illeciti e violazioni di diritti, artt. 6.1.b e 6.1.f</td></tr><tr><td>Elaborare contenuti narrativi tramite le Muse e strumenti IA</td><td>Esecuzione del servizio richiesto, art. 6.1.b; consenso esplicito per eventuali categorie particolari, art. 9.2.a</td></tr></tbody></table></div><p>Il sito non utilizza i dati per pubblicità comportamentale e non li vende.</p></section>
     <section><h2>4. Racconti, dati particolari e dati di terzi</h2><p>Una biografia può contenere informazioni delicate o appartenenti alle categorie particolari dell’art. 9 GDPR, come salute, convinzioni religiose o politiche, origine etnica, vita o orientamento sessuale. Tali dati devono essere inseriti soltanto quando pertinenti al progetto e, se riguardano l’utente, sulla base del suo consenso esplicito. Il consenso può essere revocato, senza pregiudicare i trattamenti già effettuati; la revoca può rendere impossibile proseguire la parte del progetto che necessita di quei dati.</p><p>Chi inserisce dati, fotografie, lettere o vicende riguardanti altre persone dichiara di poterli lecitamente comunicare e si impegna a rispettarne dignità, riservatezza, diritti d’autore e altri diritti. Splendoria può chiedere chiarimenti, limitare o rimuovere contenuti manifestamente illeciti o eccedenti.</p></section>
-    <section><h2>5. Intelligenza artificiale e supervisione umana</h2><p>Le Muse sono strumenti di intelligenza artificiale che aiutano a formulare domande, organizzare materiali, generare bozze e revisionare testi. Gli input necessari possono essere elaborati tramite l’infrastruttura Cloudflare Workers AI. L’utente viene informato quando interagisce con l’IA; gli output restano modificabili e possono contenere errori. Non vengono adottate decisioni unicamente automatizzate che producano effetti giuridici o analogamente significativi sull’utente. L’opera è sottoposta alla supervisione umana prevista dalla formula scelta.</p><p>Il Titolare e le persone espressamente autorizzate possono accedere ai contenuti nella misura necessaria alla revisione editoriale, all’assistenza, alla sicurezza e alla verifica di possibili violazioni di legge o di diritti di terzi. L’accesso avviene tramite area amministrativa riservata e deve rispettare riservatezza e minimizzazione.</p><p>Per maggiori dettagli: <a href="/trasparenza-ai">Trasparenza sull’intelligenza artificiale</a>.</p></section>
+    <section><h2>5. Intelligenza artificiale e supervisione umana</h2><p>Le Muse sono strumenti di intelligenza artificiale che aiutano a formulare domande, organizzare materiali, generare bozze e revisionare testi. Gli input necessari possono essere elaborati tramite l’infrastruttura Splendoria. L’utente viene informato quando interagisce con l’IA; gli output restano modificabili e possono contenere errori. Non vengono adottate decisioni unicamente automatizzate che producano effetti giuridici o analogamente significativi sull’utente. L’opera è sottoposta alla supervisione umana prevista dalla formula scelta.</p><p>Il Titolare e le persone espressamente autorizzate possono accedere ai contenuti nella misura necessaria alla revisione editoriale, all’assistenza, alla sicurezza e alla verifica di possibili violazioni di legge o di diritti di terzi. L’accesso avviene tramite area amministrativa riservata e deve rispettare riservatezza e minimizzazione.</p><p>Per maggiori dettagli: <a href="/trasparenza-ai">Trasparenza sull’intelligenza artificiale</a>.</p></section>
     <section><h2>6. Natura del conferimento</h2><p>I dati contrassegnati come obbligatori sono necessari per creare l’account, rispondere, proteggere il servizio o eseguire il progetto. Il mancato conferimento impedisce la relativa funzione. Gli altri dati sono facoltativi; l’utente decide quali ricordi e materiali condividere.</p></section>
-    <section><h2>7. Destinatari e responsabili</h2><p>I dati possono essere trattati, nei limiti necessari, da fornitori di infrastruttura cloud, database, sicurezza, email e intelligenza artificiale; professionisti incaricati della scrittura, revisione, grafica e supervisione; consulenti amministrativi o legali; autorità quando previsto dalla legge. L’infrastruttura principale è fornita da Cloudflare. L’eventuale coinvolgimento della Scuola Holden riguarda esclusivamente progetti Signature concordati con il cliente.</p><p>I soggetti che operano per conto del Titolare sono vincolati da istruzioni, riservatezza e accordi sul trattamento ove richiesti.</p></section>
+    <section><h2>7. Destinatari e responsabili</h2><p>I dati possono essere trattati, nei limiti necessari, da fornitori di infrastruttura cloud, database, sicurezza, email e intelligenza artificiale; professionisti incaricati della scrittura, revisione, grafica e supervisione; consulenti amministrativi o legali; autorità quando previsto dalla legge. L’infrastruttura principale è gestita da Splendoria mediante fornitori cloud qualificati. L’eventuale coinvolgimento della Scuola Holden riguarda esclusivamente progetti Signature concordati con il cliente.</p><p>I soggetti che operano per conto del Titolare sono vincolati da istruzioni, riservatezza e accordi sul trattamento ove richiesti.</p></section>
     <section><h2>8. Trasferimenti fuori dallo Spazio Economico Europeo</h2><p>Alcuni fornitori tecnologici possono utilizzare infrastrutture distribuite globalmente. Ove un trattamento comporti un trasferimento fuori dal SEE, il Titolare adotta uno degli strumenti previsti dal Capo V GDPR, quali decisioni di adeguatezza o clausole contrattuali standard, insieme alle misure supplementari eventualmente necessarie.</p></section>
     <section><h2>9. Conservazione</h2><p>I dati sono conservati secondo criteri proporzionati alla finalità: account e progetti per la durata del rapporto e fino alla richiesta di cancellazione, salvo dati necessari a obblighi o controversie; richieste di contatto per il tempo necessario alla risposta e al seguito precontrattuale; ordini e documentazione amministrativa per i termini civilistici e fiscali applicabili; sessioni per un massimo di 30 giorni; collegamenti di recupero password per 30 minuti. I contenuti possono essere conservati più a lungo solo quando necessario a completare, consegnare, documentare o tutelare l’opera e il rapporto contrattuale.</p></section>
     <section><h2>10. Sicurezza</h2><p>Splendoria applica misure tecniche e organizzative proporzionate, tra cui connessioni cifrate, cookie di sessione HttpOnly e Secure, password trasformate con derivazione crittografica, separazione degli accessi, limitazione dei tentativi e controllo amministrativo. Nessun sistema può tuttavia garantire un rischio pari a zero.</p></section>
@@ -599,7 +597,7 @@ function legalNoticePage(user) {
 
 function aiTransparencyPage(user) {
   return legalPage("Trasparenza sull’intelligenza artificiale", "Musa e supervisione umana", "Informazioni chiare sul ruolo dell’IA nel percorso Splendoria, ai sensi dei principi di trasparenza dell’AI Act.", `
-    <section><h2>Stai interagendo con un sistema di intelligenza artificiale</h2><p>Le Muse di Splendoria sono funzioni di intelligenza artificiale. Quando chiedi domande, una struttura, una bozza o una revisione, una parte del risultato è generata o trasformata automaticamente tramite modelli resi disponibili sull’infrastruttura Cloudflare Workers AI.</p></section>
+    <section><h2>Stai interagendo con un sistema di intelligenza artificiale</h2><p>Le Muse di Splendoria sono funzioni di intelligenza artificiale. Quando chiedi domande, una struttura, una bozza o una revisione, una parte del risultato è generata o trasformata automaticamente tramite modelli resi disponibili sull’infrastruttura Splendoria.</p></section>
     <section><h2>Che cosa fa la Musa</h2><ul><li>propone domande per far emergere ricordi e dettagli;</li><li>organizza le informazioni in una possibile struttura narrativa;</li><li>genera bozze di capitoli su richiesta;</li><li>suggerisce revisioni grammaticali, stilistiche o narrative;</li><li>trascrive la voce tramite le funzioni di riconoscimento del browser.</li></ul></section>
     <section><h2>Che cosa non fa</h2><p>La Musa non sostituisce l’autore, non garantisce l’esattezza dei fatti, non formula valutazioni legali e non assume decisioni con effetti giuridici sull’utente. Non utilizza riconoscimento delle emozioni, classificazione biometrica o sistemi di valutazione delle persone.</p></section>
     <section><h2>Controllo dell’utente e supervisione umana</h2><p>Ogni testo resta modificabile. L’utente può correggere, rifiutare o rigenerare gli output e mantiene il controllo sulla propria storia. Prima della consegna definitiva, l’opera segue la supervisione umana e la revisione professionale previste dalla formula acquistata.</p></section>
