@@ -65,7 +65,7 @@ async function route(request, env) {
   if (method === "GET" && path === "/assets/gentium-book-plus-700.woff2") return fontAsset(GENTIUM_700);
   if (method === "GET" && path === "/assets/eb-garamond-400.woff2") return fontAsset(GARAMOND_400);
   if (method === "GET" && path === "/assets/eb-garamond-700.woff2") return fontAsset(GARAMOND_700);
-  if (method === "GET" && path === "/") return home(user, url);
+  if (method === "GET" && path === "/") return editorialHome(user, url);
   if (method === "GET" && path === "/privacy-policy") return privacyPage(user);
   if (method === "GET" && path === "/cookie-policy") return cookiePage(user);
   if (method === "GET" && path === "/termini-condizioni") return termsPage(user);
@@ -111,6 +111,249 @@ async function route(request, env) {
   if (method === "GET" && /^\/admin\/cliente\/[^/]+\/anteprima-storica$/.test(path)) return adminLegacyPreview(path.split("/")[3], user, env);
   if (method === "GET" && path === "/admin/esporta.csv") return exportCsv(user, env);
   return page("Pagina non trovata", `<div class="formbox center"><h1>Pagina non trovata</h1><p class="muted">La pagina richiesta non esiste.</p><a class="button" href="/">Torna alla home</a></div>`, user, 404);
+}
+
+function editorialHome(user, url) {
+  const entry = user ? (user.isAdmin ? "/admin" : "/studio") : "/registrati";
+  const requestedPlan = url?.searchParams?.get("formula") || "";
+  const selectedPlan = Object.hasOwn(PLANS, requestedPlan) ? requestedPlan : "";
+  const planOptions = Object.entries(PLANS).map(([key, plan]) => `<option value="${key}"${selectedPlan === key ? " selected" : ""}>${esc(plan.label)} · ${String(plan.price).replace(/\B(?=(\d{3})+(?!\d))/g, ".")} €</option>`).join("");
+  const contactStatus = url?.searchParams?.get("contatto") || "";
+  const contactNotice = contactStatus === "inviato"
+    ? `<p class="success" role="status">La tua Scheda Tecnica è stata affidata a Splendoria. Ti risponderemo al più presto.</p>`
+    : contactStatus === "errore"
+      ? `<p class="error" role="alert">La richiesta è stata registrata, ma l’email non è stata consegnata. Riprova tra poco oppure scrivi a <a href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a>.</p>`
+      : contactStatus === "non-valido"
+        ? `<p class="error" role="alert">Controlla i campi obbligatori e riprova.</p>`
+        : "";
+
+  return page("La tua vita in un romanzo", `
+    <header class="legacy-hero" data-showcase-section="hero">
+      <div class="wrap legacy-hero-grid">
+        <div class="legacy-hero-copy">
+          <p class="legacy-kicker">Casa editoriale della memoria</p>
+          <h1>La tua vita in un romanzo.<br><em>Una storia destinata a restare.</em></h1>
+          <p class="legacy-lead">Non lasciare che il tempo sbiadisca ciò che hai costruito. Trasformiamo i tuoi ricordi o la visione della tua impresa in un’opera editoriale d’eccezione, guidata dalle Muse e rifinita attraverso una supervisione umana.</p>
+          <div class="legacy-actions">
+            <a class="legacy-button" href="${entry}">Inizia il tuo Retaggio</a>
+            <a class="legacy-text-link" href="#metodo">Osserva la trasformazione <span aria-hidden="true">↓</span></a>
+          </div>
+          <dl class="legacy-credentials" aria-label="Principi del metodo Splendoria">
+            <div><dt>01</dt><dd>La tua voce resta sovrana</dd></div>
+            <div><dt>02</dt><dd>Supervisione e approvazione umana</dd></div>
+            <div><dt>03</dt><dd>Dati custoditi nell’infrastruttura Cloudflare</dd></div>
+          </dl>
+        </div>
+        <figure class="legacy-hero-book">
+          <div class="legacy-book-aura" aria-hidden="true"></div>
+          <img src="/assets/splendoria-book-hero.webp" width="1024" height="559" alt="Esempio di un libro biografico Splendoria rilegato, con titolo dorato" fetchpriority="high" decoding="async">
+          <figcaption><span>Edizione privata</span> Esempio visivo; copertina e allestimento sono definiti sul progetto.</figcaption>
+        </figure>
+      </div>
+    </header>
+
+    <section class="legacy-section legacy-advantages" id="vantaggi" data-showcase-section="advantages" aria-labelledby="advantages-title">
+      <div class="wrap">
+        <p class="legacy-kicker">Il valore del Retaggio</p>
+        <div class="legacy-section-heading legacy-heading-split">
+          <h2 id="advantages-title">Il diritto di non essere dimenticati.</h2>
+          <p>Una vita non è una successione di date. È un patrimonio di scelte, gesti, errori e visioni che può continuare a orientare chi verrà dopo.</p>
+        </div>
+        <div class="legacy-three-grid">
+          <article class="legacy-value-card"><span aria-hidden="true">I</span><h3>Memoria</h3><p>Raccogliere ciò che oggi vive soltanto nei ricordi, prima che il tempo ne consumi i dettagli.</p></article>
+          <article class="legacy-value-card"><span aria-hidden="true">II</span><h3>Identità</h3><p>Riconoscere il filo che unisce origini, svolte e conquiste, senza tradire la voce di chi racconta.</p></article>
+          <article class="legacy-value-card"><span aria-hidden="true">III</span><h3>Trasmissione</h3><p>Consegnare a famiglia, collaboratori e nuove generazioni un’opera leggibile, autorevole e duratura.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="legacy-section legacy-comparison-section" id="confronto" data-showcase-section="comparison" aria-labelledby="comparison-title">
+      <div class="wrap">
+        <p class="legacy-kicker legacy-kicker-light">Una scelta di metodo</p>
+        <div class="legacy-section-heading legacy-heading-split light">
+          <h2 id="comparison-title">Splendoria o il precipizio del testo indistinto.</h2>
+          <p>La differenza non è nella quantità delle parole, ma nella responsabilità con cui vengono raccolte, verificate e trasformate.</p>
+        </div>
+        <div class="legacy-comparison-table" role="region" aria-label="Confronto tra Splendoria e una lavorazione editoriale frammentata" tabindex="0">
+          <table>
+            <caption class="sr-only">Confronto tra il metodo Splendoria e un processo generico o frammentato</caption>
+            <thead><tr><th scope="col">Criterio</th><th scope="col">Splendoria</th><th scope="col">Testo generico o processo frammentato</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Origine del racconto</th><td>Materiali, ricordi e approvazioni dell’autore</td><td>Prompt isolati o interviste senza continuità</td></tr>
+              <tr><th scope="row">Voce</th><td>Coerenza personale lungo l’intera opera</td><td>Tono variabile, spesso anonimo</td></tr>
+              <tr><th scope="row">Controllo</th><td>Verifiche automatiche e supervisione umana</td><td>Controllo affidato al singolo passaggio</td></tr>
+              <tr><th scope="row">Dato</th><td>Progetto conservato su Cloudflare D1 con accessi separati</td><td>File e copie dispersi tra strumenti diversi</td></tr>
+              <tr><th scope="row">Esito</th><td>Un libro progettato, revisionato e approvato</td><td>Una raccolta di testi da ricomporre</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="legacy-section legacy-paths" id="formule" data-showcase-section="paths" aria-labelledby="paths-title">
+      <div class="wrap">
+        <p class="legacy-kicker">Catalogo dei Percorsi</p>
+        <div class="legacy-section-heading">
+          <h2 id="paths-title">Tre forme di prestigio. Una sola cura editoriale.</h2>
+          <p>Il percorso si sceglie in base alla profondità della storia, alla quantità dei materiali e al livello di accompagnamento desiderato.</p>
+        </div>
+        <div class="legacy-path-grid">
+          <article class="legacy-path-card">
+            <p class="legacy-path-number">I</p><p class="legacy-path-tone">Tonalità intima</p><h3>Digital</h3><p class="legacy-price">1.000 €</p><p class="legacy-path-pages">Fino a 100 pagine</p>
+            <p>Per le memorie di famiglia. Un racconto delicato, per sussurrare la tua storia a chi verrà dopo di te.</p>
+            <ul><li>Percorso digitale guidato dalle Muse</li><li>Raccolta dei ricordi e costruzione narrativa</li><li>Supervisione umana e PDF editoriale</li></ul>
+            <a class="legacy-button legacy-button-outline" data-plan-choice="digital" href="/?formula=digital#contatti">Scegli Digital</a>
+          </article>
+          <article class="legacy-path-card legacy-path-featured">
+            <p class="legacy-path-number">II</p><p class="legacy-path-tone">Tonalità giornalistica</p><h3>Premium</h3><p class="legacy-price">1.500 €</p><p class="legacy-path-pages">Fino a 250 pagine</p>
+            <p>Per vite d’inchiesta e cronache vissute. Un approfondimento capace di ordinare lettere, documenti e verità ritrovate.</p>
+            <ul><li>Più interviste e maggiore profondità</li><li>Organizzazione di fotografie e documenti</li><li>Revisione narrativa e stilistica approfondita</li></ul>
+            <a class="legacy-button" data-plan-choice="complete" href="/?formula=complete#contatti">Scegli Premium</a>
+          </article>
+          <article class="legacy-path-card legacy-path-signature">
+            <p class="legacy-path-number">III</p><p class="legacy-path-tone">Tonalità epica</p><h3>Signature</h3><p class="legacy-price">2.500 €</p><p class="legacy-path-pages">Progetto su misura</p>
+            <p>Per fondatori d’impresa e grandi visionari. Include 10 copie cartacee e un allestimento editoriale definito sul progetto.</p>
+            <ul><li>Ricerca e interviste approfondite</li><li>Assistenza personale fino all’approvazione</li><li>Possibile accompagnamento Scuola Holden, da concordare e soggetto a disponibilità</li></ul>
+            <a class="legacy-button legacy-button-outline" data-plan-choice="assisted" href="/?formula=assisted#contatti">Richiedi Signature</a>
+          </article>
+        </div>
+        <p class="legacy-commercial-note">Pagine e caratteristiche sono indicative e vengono confermate nella proposta contrattuale. L’eventuale coinvolgimento della Scuola Holden non è automatico né incluso senza accordo scritto.</p>
+      </div>
+    </section>
+
+    <section class="legacy-section legacy-method" id="metodo" data-showcase-section="method" aria-labelledby="method-title">
+      <div class="wrap">
+        <p class="legacy-kicker">La stanza della domenica</p>
+        <div class="legacy-section-heading legacy-heading-split">
+          <h2 id="method-title">La trasmutazione letteraria: dall’aneddoto all’Opera.</h2>
+          <p>Muovi il cursore. I fatti restano gli stessi; cambiano ritmo, precisione e forza narrativa.</p>
+        </div>
+        <div class="legacy-slider" data-legacy-slider style="--legacy-position:50%">
+          <article class="legacy-slider-layer legacy-slider-before">
+            <p class="legacy-slider-label">Il Grezzo</p>
+            <blockquote>«La cucina di mia nonna era piccola, c’era profumo di ragù.»</blockquote>
+          </article>
+          <article class="legacy-slider-layer legacy-slider-after" data-legacy-after>
+            <p class="legacy-slider-label">L’Opera Splendoria</p>
+            <blockquote>«La cucina di mia nonna non era fatta per contenere una famiglia intera. Eppure, ogni domenica, le pareti sembravano arretrare di qualche passo per lasciarci entrare tutti. Il tavolo si allungava sotto una tovaglia bianca e dalla pentola saliva il profumo lento e sapiente del ragù.»</blockquote>
+          </article>
+          <div class="legacy-slider-divider" aria-hidden="true"><span>↔</span></div>
+          <label class="sr-only" for="legacy-transform-range">Mostra il testo grezzo o l’opera trasformata</label>
+          <input id="legacy-transform-range" data-legacy-range type="range" min="8" max="92" value="50" aria-describedby="legacy-transform-value">
+          <output id="legacy-transform-value" data-legacy-value for="legacy-transform-range">50% Opera</output>
+        </div>
+        <p class="legacy-slider-note">Esempio dimostrativo. Splendoria non inventa fatti: l’autore verifica e approva ogni passaggio.</p>
+      </div>
+    </section>
+
+    <section class="legacy-section legacy-markets" id="mercati" data-showcase-section="markets" aria-labelledby="markets-title">
+      <div class="wrap">
+        <p class="legacy-kicker legacy-kicker-light">Due patrimoni da custodire</p>
+        <h2 id="markets-title">La memoria di una famiglia. Le gesta di un’impresa.</h2>
+        <div class="legacy-market-grid">
+          <article><span aria-hidden="true">01</span><div><p class="legacy-market-label">Memoria di famiglia</p><h3>Ciò che i figli non hanno mai avuto il tempo di chiedere.</h3><p>Infanzia, migrazioni, amori, svolte e piccoli rituali diventano una narrazione capace di attraversare le generazioni.</p></div></article>
+          <article><span aria-hidden="true">02</span><div><p class="legacy-market-label">Gesta d’impresa</p><h3>La visione che esisteva prima dei risultati.</h3><p>Origini, decisioni, crisi e innovazioni restituiscono a fondatori, famiglie imprenditoriali e organizzazioni il senso della propria identità.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="legacy-section legacy-governance" id="governance" data-showcase-section="governance" aria-labelledby="governance-title">
+      <div class="wrap legacy-governance-grid">
+        <div class="legacy-governance-intro">
+          <p class="legacy-kicker legacy-kicker-light">Governance operativa 7Agent</p>
+          <h2 id="governance-title">Quattro livelli di controllo. Nessuna delega cieca.</h2>
+          <p>“7Agent” identifica il modello operativo interno di Splendoria: non una certificazione di terza parte, ma una disciplina di lavoro in cui la tecnologia prepara e l’essere umano decide.</p>
+          <a href="/trasparenza-ai" class="legacy-text-link light">Leggi la Trasparenza IA <span aria-hidden="true">↗</span></a>
+        </div>
+        <ol class="legacy-control-list">
+          <li><span>01</span><div><h3>Assistenza guidata</h3><p>La Musa propone; l’Autore modifica, approva o rifiuta.</p></div></li>
+          <li><span>02</span><div><h3>Coerenza editoriale</h3><p>Controlli automatici intercettano ripetizioni, incoerenze e risposte incomplete.</p></div></li>
+          <li><span>03</span><div><h3>Supervisione umana</h3><p>La revisione professionale prevista dal percorso precede la consegna definitiva.</p></div></li>
+          <li><span>04</span><div><h3>Protezione del dato</h3><p>Account e opere sono custoditi su Cloudflare D1 con accessi cliente e amministratore separati.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="legacy-section legacy-assessment-section" id="contatti" data-showcase-section="assessment" aria-labelledby="assessment-title">
+      <div class="wrap">
+        <span id="configuratore" class="legacy-anchor" aria-hidden="true"></span>
+        <p class="legacy-kicker">Assessment Editoriale</p>
+        <div class="legacy-section-heading legacy-heading-split">
+          <h2 id="assessment-title">Non un preventivo. La prima architettura del tuo libro.</h2>
+          <p>Definisci il Retaggio, indica i passaggi decisivi e ricevi una Scheda Tecnica del Progetto Editoriale pronta da stampare o salvare in PDF.</p>
+        </div>
+        ${contactNotice}
+        <form class="legacy-assessment" method="post" action="/contatti" data-editorial-assessment>
+          <input type="hidden" name="assessment" value="editorial">
+          <input type="hidden" name="subject" value="Assessment editoriale Splendoria" data-assessment-subject>
+          <textarea name="message" data-assessment-message hidden></textarea>
+          <label class="sr-only">Non compilare questo campo<input name="website" tabindex="-1" autocomplete="off"></label>
+
+          <fieldset><legend><span>01</span> Dimensione del Retaggio</legend><p class="legacy-field-help">Quale arco della tua storia vuoi consegnare al futuro?</p><div class="legacy-choice-grid">
+            <label><input type="radio" name="legacyScope" value="Una stagione decisiva" required><span>Una stagione</span><small>Un passaggio decisivo</small></label>
+            <label><input type="radio" name="legacyScope" value="Una vita intera"><span>Una vita</span><small>Dalle origini a oggi</small></label>
+            <label><input type="radio" name="legacyScope" value="Una storia generazionale"><span>Una famiglia</span><small>Più generazioni</small></label>
+            <label><input type="radio" name="legacyScope" value="Un’impresa e la sua visione"><span>Un’impresa</span><small>Fondazione ed eredità</small></label>
+          </div></fieldset>
+
+          <fieldset><legend><span>02</span> Nodi cruciali</legend><p class="legacy-field-help">Seleziona le svolte che dovranno dare struttura all’opera.</p><div class="legacy-check-grid">
+            <label><input type="checkbox" name="turningOrigins" value="yes"><span>Origini e infanzia</span></label>
+            <label><input type="checkbox" name="turningCareer" value="yes"><span>Carriera e impresa</span></label>
+            <label><input type="checkbox" name="turningRelationships" value="yes"><span>Legami e incontri</span></label>
+            <label><input type="checkbox" name="turningCrises" value="yes"><span>Crisi e rinascite</span></label>
+            <label><input type="checkbox" name="turningVision" value="yes"><span>Visione e futuro</span></label>
+          </div></fieldset>
+
+          <fieldset><legend><span>03</span> Estrazione Muse</legend><label class="legacy-field-wide">Tre parole che aprono la memoria<input name="memoryKeywords" data-memory-keywords required maxlength="180" placeholder="Per esempio: officina, domenica, mare"></label><p class="legacy-field-help">Scrivi tre parole separate da virgole: luoghi, oggetti, persone o gesti capaci di riportarti dentro una scena.</p></fieldset>
+
+          <div class="legacy-assessment-pair">
+            <fieldset><legend><span>04</span> Investimento editoriale</legend><label class="legacy-field-wide">Percorso<select name="plan" data-plan-select required><option value="">Scegli il percorso</option>${planOptions}</select></label></fieldset>
+            <fieldset><legend><span>05</span> Governance</legend><label class="legacy-field-wide">Supervisione desiderata<select name="governance" data-governance-select required><option value="">Scegli il livello</option><option value="Livello 1 · Assistenza guidata">Livello 1 · Assistenza guidata</option><option value="Livello 2 · Coerenza editoriale">Livello 2 · Coerenza editoriale</option><option value="Livello 3 · Supervisione umana">Livello 3 · Supervisione umana</option><option value="Livello 4 · Accompagnamento dedicato">Livello 4 · Accompagnamento dedicato</option></select></label></fieldset>
+          </div>
+
+          <fieldset><legend><span>06</span> L’Autore</legend><div class="legacy-contact-grid">
+            <label>Nome e cognome<input name="fullName" autocomplete="name" required maxlength="120"></label>
+            <label>Telefono<input name="phone" type="tel" autocomplete="tel" required maxlength="40"></label>
+            <label>Email<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
+          </div><label class="legacy-privacy-check"><input type="checkbox" name="privacyRead" value="yes" required> Ho letto la <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> e chiedo di essere ricontattato per questo progetto.</label></fieldset>
+
+          <div class="legacy-assessment-actions"><button class="legacy-button" type="button" data-assessment-generate>Genera la Scheda Tecnica</button><p>La generazione avviene nel browser e non invia i dati finché non premi “Affida la scheda a Splendoria”.</p></div>
+
+          <article class="legacy-project-sheet" data-assessment-output hidden aria-live="polite" aria-labelledby="project-sheet-title">
+            <div class="legacy-sheet-header"><p>Splendoria · Scheda Tecnica</p><span data-assessment-date></span></div>
+            <h3 id="project-sheet-title">Progetto Editoriale <span data-assessment-author></span></h3>
+            <p class="legacy-sheet-declaration">Una prima mappa del patrimonio narrativo emerso dall’Assessment.</p>
+            <dl class="legacy-sheet-grid">
+              <div><dt>Dimensione del Retaggio</dt><dd data-assessment-scope></dd></div>
+              <div><dt>Percorso indicato</dt><dd data-assessment-plan></dd></div>
+              <div><dt>Nodi narrativi</dt><dd data-assessment-turning></dd></div>
+              <div><dt>Parole-soglia</dt><dd data-assessment-keywords></dd></div>
+              <div><dt>Governance</dt><dd data-assessment-governance></dd></div>
+              <div><dt>Orizzonte</dt><dd>Trasmissione familiare o d’impresa nel tempo</dd></div>
+            </dl>
+            <div class="legacy-value-index"><div><span data-assessment-score>0</span><small>/ 100</small></div><p><strong data-assessment-rating>Retaggio da definire</strong><br>Indice editoriale orientativo basato sulla densità dei materiali indicati; non rappresenta un rendimento economico né una garanzia.</p></div>
+            <p class="legacy-sheet-next" data-assessment-next></p>
+            <div class="legacy-sheet-actions"><button class="legacy-button legacy-button-outline" type="button" data-assessment-print>Stampa o salva in PDF</button><button class="legacy-button" type="submit">Affida la scheda a Splendoria</button></div>
+          </article>
+        </form>
+      </div>
+    </section>
+
+    <section class="legacy-section legacy-faq" id="riservatezza" data-showcase-section="faq" aria-labelledby="faq-title">
+      <div class="wrap legacy-faq-grid">
+        <div><p class="legacy-kicker">FAQ e riservatezza</p><h2 id="faq-title">L’opera è tua. La fiducia è il primo contratto.</h2><p>La memoria personale richiede discrezione, chiarezza e controllo. Queste risposte definiscono i principi; le condizioni definitive sono sempre quelle concordate per iscritto.</p><a class="legacy-text-link dark" href="/privacy-policy">Leggi la Privacy Policy <span aria-hidden="true">↗</span></a></div>
+        <div class="legacy-faq-list">
+          <details><summary>La Musa può inventare episodi?</summary><p>No: le istruzioni vietano di introdurre fatti, nomi o ricordi non forniti. Poiché un sistema generativo può comunque sbagliare, ogni testo resta modificabile e deve essere approvato dall’autore.</p></details>
+          <details><summary>Chi conserva i materiali del libro?</summary><p>Account, progetti, capitoli e interviste sono conservati nell’infrastruttura Cloudflare; sul dispositivo restano soltanto preferenze tecniche dichiarate nella Cookie Policy.</p></details>
+          <details><summary>Chi possiede l’opera?</summary><p>L’autore conserva i diritti sui materiali originali. Diritti e facoltà d’uso dell’opera finale sono precisati nella conferma contrattuale, nel rispetto del diritto d’autore.</p></details>
+          <details><summary>La Scuola Holden è sempre inclusa?</summary><p>No. Un eventuale accompagnamento può essere concordato soltanto per Signature, in base al progetto e alla disponibilità, e deve risultare dalla proposta scritta.</p></details>
+          <details><summary>Il libro viene stampato?</summary><p>Digital e Premium prevedono il PDF editoriale; le copie possono essere richieste separatamente. Signature include 10 copie cartacee, con caratteristiche definite nella proposta.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="legacy-final-cta" data-showcase-section="final-cta"><div class="wrap"><p class="legacy-kicker legacy-kicker-light">Splendoria</p><h2>La memoria non chiede di essere celebrata.<br>Chiede di essere salvata.</h2><a class="legacy-button" href="${entry}">Entra nello Studio di Scrittura</a></div></section>
+  `, user, 200, "", "showcase-page legacy-showcase");
 }
 
 function home(user, url) {
@@ -367,9 +610,16 @@ function aiTransparencyPage(user) {
 }
 
 function page(title, body, user, status = 200, extra = "", bodyClass = "") {
-  const account = user ? `${user.isAdmin ? `<a href="/admin">Dashboard</a>` : `<a href="/studio">Il mio Studio</a>`}<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : `<a href="/area-clienti">Area clienti</a><a class="pill" href="/registrati">Inizia gratis</a>`;
+  const isEditorialShowcase = bodyClass.includes("legacy-showcase");
+  const account = isEditorialShowcase
+    ? `<a class="legacy-studio-access" href="${user ? (user.isAdmin ? "/admin" : "/studio") : "/area-clienti"}">Studio di Scrittura <span aria-hidden="true">↗</span></a>`
+    : user ? `${user.isAdmin ? `<a href="/admin">Dashboard</a>` : `<a href="/studio">Il mio Studio</a>`}<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : `<a href="/area-clienti">Area clienti</a><a class="pill" href="/registrati">Inizia gratis</a>`;
+  const navigationLinks = isEditorialShowcase ? account : `<a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}`;
+  const description = isEditorialShowcase
+    ? "Splendoria trasforma memorie di famiglia e storie d’impresa in opere editoriali curate, con Muse digitali, controllo dell’autore e supervisione umana."
+    : "Splendoria trasforma la tua storia in un libro, con Muse digitali, controllo dell’autore e supervisione umana.";
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1f1c"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo.">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-4" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-5" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -484,7 +734,85 @@ function studioScript() {
         });
       });
     });
-    const revealTargets = [...document.querySelectorAll('.showcase-page .showcase-hero-copy, .showcase-page .showcase-hero-visual, .showcase-page .showcase-reading, .showcase-page .showcase-card, .showcase-page .showcase-price, .showcase-page .book-preview, .showcase-page .pricing-method, .showcase-page .showcase-quote')];
+    document.querySelectorAll('[data-legacy-slider]').forEach(slider => {
+      const range = slider.querySelector('[data-legacy-range]');
+      const output = slider.querySelector('[data-legacy-value]');
+      if (!range) return;
+      const update = () => {
+        const value = Math.max(8, Math.min(92, Number(range.value) || 50));
+        slider.style.setProperty('--legacy-position', value + '%');
+        if (output) output.textContent = value + '% Opera';
+      };
+      range.addEventListener('input', update);
+      update();
+    });
+    document.querySelectorAll('[data-editorial-assessment]').forEach(assessment => {
+      const output = assessment.querySelector('[data-assessment-output]');
+      const generateButton = assessment.querySelector('[data-assessment-generate]');
+      const printButton = assessment.querySelector('[data-assessment-print]');
+      const keywordsInput = assessment.querySelector('[data-memory-keywords]');
+      const messageInput = assessment.querySelector('[data-assessment-message]');
+      const subjectInput = assessment.querySelector('[data-assessment-subject]');
+      const fieldText = selector => assessment.querySelector(selector)?.value?.trim() || '';
+      const checkedLabels = () => [...assessment.querySelectorAll('.legacy-check-grid input:checked')].map(input => input.parentElement.querySelector('span')?.textContent?.trim()).filter(Boolean);
+      const put = (selector, value) => { const node = assessment.querySelector(selector); if (node) node.textContent = value; };
+      const renderAssessment = (scrollToResult = true) => {
+        const scope = fieldText('input[name="legacyScope"]:checked');
+        const planSelect = assessment.querySelector('[data-plan-select]');
+        const governanceSelect = assessment.querySelector('[data-governance-select]');
+        const plan = planSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
+        const governance = governanceSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
+        const keywords = String(keywordsInput?.value || '').split(/[,;\\n]+/).map(value => value.trim()).filter(Boolean).slice(0, 8);
+        const author = fieldText('input[name="fullName"]') || 'dell’Autore';
+        if (keywordsInput) keywordsInput.setCustomValidity(keywords.length >= 3 ? '' : 'Inserisci almeno tre parole separate da virgole.');
+        if (!scope || !planSelect?.value || !governanceSelect?.value || keywords.length < 3) {
+          assessment.reportValidity();
+          return false;
+        }
+        const nodes = checkedLabels();
+        const scopeScores = { 'Una stagione decisiva': 26, 'Una vita intera': 40, 'Una storia generazionale': 48, 'Un’impresa e la sua visione': 44 };
+        const governanceLevel = Number((governance.match(/\d/) || ['1'])[0]);
+        const score = Math.min(100, (scopeScores[scope] || 24) + Math.min(nodes.length * 6, 24) + Math.min(keywords.length * 4, 20) + Math.min(governanceLevel * 4, 16));
+        const rating = score >= 78 ? 'Retaggio ad alta densità narrativa' : score >= 58 ? 'Retaggio definito' : 'Nucleo narrativo da approfondire';
+        const next = nodes.length >= 3
+          ? 'Prossimo passo consigliato: ordinare i nodi scelti in una cronologia e associare a ciascuno persone, date, luoghi e documenti disponibili.'
+          : 'Prossimo passo consigliato: aggiungere almeno tre svolte concrete, indicando per ciascuna persone, date, luoghi e conseguenze.';
+        put('[data-assessment-date]', new Intl.DateTimeFormat('it-IT', { dateStyle: 'long' }).format(new Date()));
+        put('[data-assessment-author]', author);
+        put('[data-assessment-scope]', scope);
+        put('[data-assessment-plan]', plan);
+        put('[data-assessment-turning]', nodes.join(', ') || 'Da approfondire nell’intervista');
+        put('[data-assessment-keywords]', keywords.join(' · '));
+        put('[data-assessment-governance]', governance);
+        put('[data-assessment-score]', String(score));
+        put('[data-assessment-rating]', rating);
+        put('[data-assessment-next]', next);
+        if (subjectInput) subjectInput.value = 'Assessment editoriale · ' + author;
+        if (messageInput) messageInput.value = [
+          'SCHEDA TECNICA DEL PROGETTO EDITORIALE',
+          'Autore: ' + author,
+          'Dimensione del Retaggio: ' + scope,
+          'Nodi cruciali: ' + (nodes.join(', ') || 'da approfondire'),
+          'Parole-soglia: ' + keywords.join(', '),
+          'Percorso: ' + plan,
+          'Governance: ' + governance,
+          'Indice editoriale orientativo: ' + score + '/100 · ' + rating,
+          next
+        ].join('\\n');
+        if (output) {
+          output.hidden = false;
+          if (scrollToResult) output.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        }
+        return true;
+      };
+      keywordsInput?.addEventListener('input', () => keywordsInput.setCustomValidity(''));
+      generateButton?.addEventListener('click', () => renderAssessment(true));
+      printButton?.addEventListener('click', () => window.print());
+      assessment.addEventListener('submit', event => {
+        if (!renderAssessment(false)) event.preventDefault();
+      });
+    });
+    const revealTargets = [...document.querySelectorAll('.showcase-page .showcase-hero-copy, .showcase-page .showcase-hero-visual, .showcase-page .showcase-reading, .showcase-page .showcase-card, .showcase-page .showcase-price, .showcase-page .book-preview, .showcase-page .pricing-method, .showcase-page .showcase-quote, .legacy-showcase .legacy-hero-copy, .legacy-showcase .legacy-hero-book, .legacy-showcase .legacy-section-heading, .legacy-showcase .legacy-value-card, .legacy-showcase .legacy-path-card, .legacy-showcase .legacy-slider, .legacy-showcase .legacy-market-grid article, .legacy-showcase .legacy-control-list li, .legacy-showcase .legacy-assessment, .legacy-showcase .legacy-faq-list details')];
     revealTargets.forEach((element, index) => {
       element.classList.add('reveal-item');
       element.style.setProperty('--reveal-delay', Math.min(index % 4, 3) * 70 + 'ms');
@@ -1061,7 +1389,23 @@ async function contact(request, env) {
   if (f.website) return redirect("/");
   const fullName = clean(f.fullName, 100), phone = clean(f.phone, 40), email = normalizeEmail(f.email);
   const plan = PLANS[clean(f.plan, 30)]?.label || "";
-  const rawSubject = clean(f.subject, 160).replace(/[\r\n]+/g, " "), rawMessage = clean(f.message, 3000);
+  const isAssessment = f.assessment === "editorial";
+  const assessmentNodes = [
+    f.turningOrigins === "yes" ? "Origini e infanzia" : "",
+    f.turningCareer === "yes" ? "Carriera e impresa" : "",
+    f.turningRelationships === "yes" ? "Legami e incontri" : "",
+    f.turningCrises === "yes" ? "Crisi e rinascite" : "",
+    f.turningVision === "yes" ? "Visione e futuro" : ""
+  ].filter(Boolean);
+  const assessmentMessage = isAssessment ? clean([
+    "SCHEDA TECNICA DEL PROGETTO EDITORIALE",
+    `Dimensione del Retaggio: ${clean(f.legacyScope, 120) || "non indicata"}`,
+    `Nodi cruciali: ${assessmentNodes.join(", ") || "da approfondire"}`,
+    `Parole-soglia: ${clean(f.memoryKeywords, 180) || "non indicate"}`,
+    `Governance: ${clean(f.governance, 120) || "non indicata"}`
+  ].join("\n"), 3000) : "";
+  const rawSubject = (clean(f.subject, 160) || (isAssessment ? "Assessment editoriale Splendoria" : "")).replace(/[\r\n]+/g, " ");
+  const rawMessage = clean(f.message, 3000) || assessmentMessage;
   if (!fullName || !phone || !validEmail(email) || !plan || !rawSubject || !rawMessage || f.privacyRead !== "yes") return redirect("/?contatto=non-valido#contatti");
 
   const subject = `[${plan}] ${rawSubject}`.slice(0, 160);
