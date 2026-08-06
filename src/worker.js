@@ -26,9 +26,9 @@ const EDITORIAL_STATES = ["iniziato", "in_lavorazione", "in_revisione", "approva
 const COMMERCIAL_STATES = ["gratuito", "formula_scelta", "da_pagare", "pagato", "rimborsato"];
 const PLAN_LABELS = { free: "Primo capitolo gratuito", digital: "Splendoria Digital", complete: "Splendoria Premium", assisted: "Splendoria Signature" };
 const PLANS = {
-  digital: { label: "Splendoria Digital", price: 1000, description: "Fino a 100 pagine · percorso interamente digitale guidato dalle Muse, con supervisione umana." },
-  complete: { label: "Splendoria Premium", price: 1500, description: "Fino a 250 pagine · percorso digitale più ampio e approfondito, con supervisione umana." },
-  assisted: { label: "Splendoria Signature", price: 2500, description: "Da 250 pagine in su · progetto biografico digitale su misura, con 10 copie cartacee comprese." }
+  digital: { label: "Splendoria Digital", price: 1000, description: "Fino a 80 pagine · percorso interamente digitale guidato dalle Muse, con supervisione umana." },
+  complete: { label: "Splendoria Premium", price: 1500, description: "Fino a 120 pagine · percorso digitale più ampio e approfondito, con supervisione umana." },
+  assisted: { label: "Splendoria Signature", price: 2500, description: "Progetto biografico digitale su misura, con 10 copie cartacee comprese." }
 };
 
 export default {
@@ -153,10 +153,10 @@ function editorialHome(user, url) {
 
     <section class="legacy-section legacy-advantages" id="vantaggi" data-showcase-section="advantages" aria-labelledby="advantages-title">
       <div class="wrap">
-        <p class="legacy-kicker">Il valore del Retaggio</p>
+        <p class="legacy-kicker">La forza della tradizione</p>
         <div class="legacy-section-heading legacy-heading-split">
           <h2 id="advantages-title">Il diritto di non essere dimenticati.</h2>
-          <p>Una vita non è una successione di date. È un patrimonio di scelte, gesti, errori e visioni che può continuare a orientare chi verrà dopo.</p>
+          <p>Una vita non è una successione di date. È un patrimonio di scelte, gesti, fallimenti, errori e visioni che può continuare a orientare chi verrà dopo.</p>
         </div>
         <div class="legacy-three-grid">
           <article class="legacy-value-card"><span aria-hidden="true">I</span><h3>Memoria</h3><p>Raccogliere ciò che oggi vive soltanto nei ricordi, prima che il tempo ne consumi i dettagli.</p></article>
@@ -193,18 +193,18 @@ function editorialHome(user, url) {
       <div class="wrap">
         <p class="legacy-kicker">Catalogo dei Percorsi</p>
         <div class="legacy-section-heading">
-          <h2 id="paths-title">Tre forme di prestigio. Una sola cura editoriale.</h2>
+          <h2 id="paths-title">Tre possibilità, una grande cura editoriale.</h2>
           <p>Il percorso si sceglie in base alla profondità della storia, alla quantità dei materiali e al livello di accompagnamento desiderato.</p>
         </div>
         <div class="legacy-path-grid">
           <article class="legacy-path-card">
-            <p class="legacy-path-number">I</p><p class="legacy-path-tone">Tonalità intima</p><h3>Digital</h3><p class="legacy-price">1.000 €</p><p class="legacy-path-pages">Fino a 100 pagine</p>
+            <p class="legacy-path-number">I</p><p class="legacy-path-tone">Tonalità intima</p><h3>Digital</h3><p class="legacy-price">1.000 €</p><p class="legacy-path-pages">Fino a 80 pagine</p>
             <p>Per le memorie di famiglia. Un racconto delicato, per sussurrare la tua storia a chi verrà dopo di te.</p>
             <ul><li>Percorso digitale guidato dalle Muse</li><li>Raccolta dei ricordi e costruzione narrativa</li><li>Supervisione umana e PDF editoriale</li></ul>
             <a class="legacy-button legacy-button-outline" data-plan-choice="digital" href="/?formula=digital#contatti">Scegli Digital</a>
           </article>
           <article class="legacy-path-card legacy-path-featured">
-            <p class="legacy-path-number">II</p><p class="legacy-path-tone">Tonalità giornalistica</p><h3>Premium</h3><p class="legacy-price">1.500 €</p><p class="legacy-path-pages">Fino a 250 pagine</p>
+            <p class="legacy-path-number">II</p><p class="legacy-path-tone">Tonalità giornalistica</p><h3>Premium</h3><p class="legacy-price">1.500 €</p><p class="legacy-path-pages">Fino a 120 pagine</p>
             <p>Per vite d’inchiesta e cronache vissute. Un approfondimento capace di ordinare lettere, documenti e verità ritrovate.</p>
             <ul><li>Più interviste e maggiore profondità</li><li>Organizzazione di fotografie e documenti</li><li>Revisione narrativa e stilistica approfondita</li></ul>
             <a class="legacy-button" data-plan-choice="complete" href="/?formula=complete#contatti">Scegli Premium</a>
@@ -234,11 +234,16 @@ function editorialHome(user, url) {
           </article>
           <article class="legacy-slider-layer legacy-slider-after" data-legacy-after>
             <p class="legacy-slider-label">L’Opera Splendoria</p>
-            <blockquote>«La cucina di mia nonna non era fatta per contenere una famiglia intera. Eppure, ogni domenica, le pareti sembravano arretrare di qualche passo per lasciarci entrare tutti. Il tavolo si allungava sotto una tovaglia bianca e dalla pentola saliva il profumo lento e sapiente del ragù.»</blockquote>
+            <blockquote>
+              <p>«La cucina di mia nonna non era stata pensata per contenere una famiglia intera. Era una stanza piccola, raccolta, con pochi mobili e un’unica finestra dalla quale entrava una luce chiara, soprattutto nelle mattine d’inverno. Eppure, ogni domenica, accadeva qualcosa di misterioso: le pareti sembravano arretrare di qualche passo per lasciarci entrare tutti.</p>
+              <p>Il tavolo occupava quasi tutto lo spazio. Durante la settimana sembrava un tavolo qualunque, ma la domenica diventava il centro del nostro mondo. Veniva allungato con assi che comparivano da qualche angolo della casa e ricoperto con la tovaglia migliore, quella bianca, un po’ ruvida, che mia nonna conservava piegata con cura in un cassetto. Intorno si sistemavano sedie diverse tra loro, prese dalla cucina, dal soggiorno e perfino dalle camere. Per i più piccoli c’erano gli sgabelli, oppure qualche cuscino aggiunto per farli arrivare all’altezza del piatto.</p>
+              <p>Non ricordo di aver mai sentito qualcuno lamentarsi della mancanza di spazio. Ci stringevamo, spostavamo i gomiti, passavamo i piatti sopra le teste e ci alzavamo ogni volta che qualcuno doveva raggiungere il proprio posto. Tutto avveniva in una confusione allegra e perfettamente organizzata. Mia nonna sembrava conoscere una geometria segreta: sapeva dove far sedere ciascuno, come riempire ogni angolo e come aggiungere un posto anche quando sembrava davvero impossibile.</p>
+              <p>Lei era già ai fornelli da ore. Quando arrivavamo, la casa era piena di profumi: il sugo che sobbolliva lentamente, la carne...»</p>
+            </blockquote>
           </article>
           <div class="legacy-slider-divider" aria-hidden="true"><span>↔</span></div>
           <label class="sr-only" for="legacy-transform-range">Mostra il testo grezzo o l’opera trasformata</label>
-          <input id="legacy-transform-range" data-legacy-range type="range" min="8" max="92" value="50" aria-describedby="legacy-transform-value">
+          <input id="legacy-transform-range" data-legacy-range type="range" min="0" max="100" value="50" aria-describedby="legacy-transform-value">
           <output id="legacy-transform-value" data-legacy-value for="legacy-transform-range">50% Opera</output>
         </div>
         <p class="legacy-slider-note">Esempio dimostrativo. Splendoria non inventa fatti: l’autore verifica e approva ogni passaggio.</p>
@@ -277,8 +282,8 @@ function editorialHome(user, url) {
         <span id="configuratore" class="legacy-anchor" aria-hidden="true"></span>
         <p class="legacy-kicker">Assessment Editoriale</p>
         <div class="legacy-section-heading legacy-heading-split">
-          <h2 id="assessment-title">Non un preventivo. La prima architettura del tuo libro.</h2>
-          <p>Definisci il Retaggio, indica i passaggi decisivi e ricevi una Scheda Tecnica del Progetto Editoriale pronta da stampare o salvare in PDF.</p>
+          <h2 id="assessment-title">La prima architettura del tuo libro.</h2>
+          <p>Definisci la trama del libro, indica i passaggi decisivi e ricevi una Scheda Tecnica del Progetto Editoriale pronta da stampare o salvare in PDF.</p>
         </div>
         ${contactNotice}
         <form class="legacy-assessment" method="post" action="/contatti" data-editorial-assessment>
@@ -287,7 +292,7 @@ function editorialHome(user, url) {
           <textarea name="message" data-assessment-message hidden></textarea>
           <label class="sr-only">Non compilare questo campo<input name="website" tabindex="-1" autocomplete="off"></label>
 
-          <fieldset><legend><span>01</span> Dimensione del Retaggio</legend><p class="legacy-field-help">Quale arco della tua storia vuoi consegnare al futuro?</p><div class="legacy-choice-grid">
+          <fieldset><legend><span>01</span> Dimensione della trama del libro</legend><p class="legacy-field-help">Quale arco della tua storia vuoi consegnare al futuro?</p><div class="legacy-choice-grid">
             <label><input type="radio" name="legacyScope" value="Una stagione decisiva" required><span>Una stagione</span><small>Un passaggio decisivo</small></label>
             <label><input type="radio" name="legacyScope" value="Una vita intera"><span>Una vita</span><small>Dalle origini a oggi</small></label>
             <label><input type="radio" name="legacyScope" value="Una storia generazionale"><span>Una famiglia</span><small>Più generazioni</small></label>
@@ -322,14 +327,14 @@ function editorialHome(user, url) {
             <h3 id="project-sheet-title">Progetto Editoriale <span data-assessment-author></span></h3>
             <p class="legacy-sheet-declaration">Una prima mappa del patrimonio narrativo emerso dall’Assessment.</p>
             <dl class="legacy-sheet-grid">
-              <div><dt>Dimensione del Retaggio</dt><dd data-assessment-scope></dd></div>
+              <div><dt>Dimensione della trama del libro</dt><dd data-assessment-scope></dd></div>
               <div><dt>Percorso indicato</dt><dd data-assessment-plan></dd></div>
               <div><dt>Nodi narrativi</dt><dd data-assessment-turning></dd></div>
               <div><dt>Parole-soglia</dt><dd data-assessment-keywords></dd></div>
               <div><dt>Governance</dt><dd data-assessment-governance></dd></div>
               <div><dt>Orizzonte</dt><dd>Trasmissione familiare o d’impresa nel tempo</dd></div>
             </dl>
-            <div class="legacy-value-index"><div><span data-assessment-score>0</span><small>/ 100</small></div><p><strong data-assessment-rating>Retaggio da definire</strong><br>Indice editoriale orientativo basato sulla densità dei materiali indicati; non rappresenta un rendimento economico né una garanzia.</p></div>
+            <div class="legacy-value-index"><div><span data-assessment-score>0</span><small>/ 100</small></div><p><strong data-assessment-rating>Trama da definire</strong><br>Indice editoriale orientativo basato sulla densità dei materiali indicati; non rappresenta un rendimento economico né una garanzia.</p></div>
             <p class="legacy-sheet-next" data-assessment-next></p>
             <div class="legacy-sheet-actions"><button class="legacy-button legacy-button-outline" type="button" data-assessment-print>Stampa o salva in PDF</button><button class="legacy-button" type="submit">Affida la scheda a Splendoria</button></div>
           </article>
@@ -423,7 +428,7 @@ function home(user, url) {
             <h3 id="digital-title">Splendoria Digital</h3>
             <p class="price-tagline muted">Il modo più semplice per trasformare i tuoi ricordi in un libro</p>
             <p class="showcase-amount">1.000 €</p>
-            <p class="price-pages muted">Fino a 100 pagine</p>
+            <p class="price-pages muted">Fino a 80 pagine</p>
             <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Digital">
               <li>Percorso digitale guidato dalle Muse</li>
               <li>Intervista iniziale e raccolta dei ricordi</li>
@@ -447,7 +452,7 @@ function home(user, url) {
             <h3 id="premium-title">Splendoria Premium</h3>
             <p class="price-tagline">Un racconto più ampio, profondo e ricco di dettagli</p>
             <p class="showcase-amount">1.500 €</p>
-            <p class="price-pages">Fino a 250 pagine</p>
+            <p class="price-pages">Fino a 120 pagine</p>
             <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Premium">
               <li>Più interviste sulle diverse fasi della vita</li>
               <li>Raccolta di fotografie, lettere e documenti</li>
@@ -470,7 +475,7 @@ function home(user, url) {
             <h3 id="signature-title">Splendoria Signature</h3>
             <p class="price-tagline muted">Un’opera biografica completa, costruita su misura</p>
             <p class="showcase-amount">2.500 €</p>
-            <p class="price-pages muted">Da 250 pagine in su, secondo il progetto</p>
+            <p class="price-pages muted">Progetto su misura</p>
             <p class="signature-included"><strong>10 copie cartacee comprese nel prezzo</strong></p>
             <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Signature">
               <li>Progetto biografico completamente su misura</li>
@@ -497,7 +502,7 @@ function home(user, url) {
               <caption class="sr-only">Confronto tra Splendoria Digital, Premium e Signature</caption>
               <thead><tr><th scope="col">Caratteristica</th><th scope="col">Digital</th><th scope="col">Premium</th><th scope="col">Signature</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Pagine indicative</th><td>Fino a 100</td><td>Fino a 250</td><td>Da 250, su progetto</td></tr>
+                <tr><th scope="row">Pagine indicative</th><td>Fino a 80</td><td>Fino a 120</td><td>Su progetto</td></tr>
                 <tr><th scope="row">Interviste online</th><td>Iniziale</td><td>Più sessioni</td><td>Approfondite e flessibili</td></tr>
                 <tr><th scope="row">Supervisione umana</th><td>Inclusa</td><td>Inclusa</td><td>Inclusa</td></tr>
                 <tr><th scope="row">PDF editoriale</th><td>Incluso</td><td>Pronto per la stampa</td><td>Edizione su misura</td></tr>
@@ -617,7 +622,7 @@ function page(title, body, user, status = 200, extra = "", bodyClass = "") {
     ? "Splendoria trasforma memorie di famiglia e storie d’impresa in opere editoriali curate, con Muse digitali, controllo dell’autore e supervisione umana."
     : "Splendoria trasforma la tua storia in un libro, con Muse digitali, controllo dell’autore e supervisione umana.";
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-5" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-5" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -771,7 +776,7 @@ function studioScript() {
         const scopeScores = { 'Una stagione decisiva': 26, 'Una vita intera': 40, 'Una storia generazionale': 48, 'Un’impresa e la sua visione': 44 };
         const governanceLevel = Number((governance.match(/\d/) || ['1'])[0]);
         const score = Math.min(100, (scopeScores[scope] || 24) + Math.min(nodes.length * 6, 24) + Math.min(keywords.length * 4, 20) + Math.min(governanceLevel * 4, 16));
-        const rating = score >= 78 ? 'Retaggio ad alta densità narrativa' : score >= 58 ? 'Retaggio definito' : 'Nucleo narrativo da approfondire';
+        const rating = score >= 78 ? 'Trama ad alta densità narrativa' : score >= 58 ? 'Trama definita' : 'Nucleo narrativo da approfondire';
         const next = nodes.length >= 3
           ? 'Prossimo passo consigliato: ordinare i nodi scelti in una cronologia e associare a ciascuno persone, date, luoghi e documenti disponibili.'
           : 'Prossimo passo consigliato: aggiungere almeno tre svolte concrete, indicando per ciascuna persone, date, luoghi e conseguenze.';
@@ -789,7 +794,7 @@ function studioScript() {
         if (messageInput) messageInput.value = [
           'SCHEDA TECNICA DEL PROGETTO EDITORIALE',
           'Autore: ' + author,
-          'Dimensione del Retaggio: ' + scope,
+          'Dimensione della trama del libro: ' + scope,
           'Nodi cruciali: ' + (nodes.join(', ') || 'da approfondire'),
           'Parole-soglia: ' + keywords.join(', '),
           'Percorso: ' + plan,
@@ -1318,7 +1323,7 @@ function bookPrintStyles(){return `
 .book-preview-shell{padding:42px 20px 80px;background:#eef1ef}.book-preview-toolbar{width:min(980px,100%);margin:0 auto 28px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px}.book-preview-toolbar>div{text-align:right;max-width:650px}.book-preview-toolbar p{margin:9px 0 0}.book-volume{width:155.575mm;min-height:233.892mm;margin:auto;padding:19.53mm 27.94mm 20mm 12.7mm;background:#fff;color:#171d1b;box-shadow:0 20px 70px rgba(16,45,41,.2);font-family:Garamond,"EB Garamond","Adobe Garamond Pro",Georgia,"Times New Roman",serif}.book-title-page{min-height:194.362mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.book-imprint-space{display:block;width:1px;height:calc(13.2pt + 18mm);flex:0 0 auto}.book-title-page h1{max-width:100mm;font:700 22.08pt/1.08 Garamond,"EB Garamond",Georgia,serif}.book-author{margin:12mm 0 0;font-size:12pt}.book-edition{margin:auto 0 0;font-size:9pt;letter-spacing:.08em;text-transform:uppercase}.book-toc{padding-top:12mm}.book-overline,.book-chapter-number{margin:0 0 3mm;color:#0b746b;font:700 9pt/1.2 ui-sans-serif,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase}.book-toc h2,.book-chapter h2{font-size:18pt;margin:0 0 9mm}.book-toc ol{list-style:none;padding:0;margin:0}.book-toc li{display:grid;grid-template-columns:12.5mm 1fr;gap:2mm;padding:2.35mm 0;border-bottom:.2mm solid #d8e1dc;font-size:12pt;line-height:13.44pt}.book-toc li span{color:#7a8782;font-size:9pt}.book-chapter{padding-top:8mm}.book-chapter p:not(.book-chapter-number){margin:0;text-indent:12.5mm;font-size:12pt;line-height:13.44pt;text-align:justify;text-align-last:left;hyphens:auto;orphans:3;widows:3}.book-chapter h2+p{text-indent:0}.book-chapter-number+h2{margin-top:0}.book-crop-marks{display:none}
 @page{size:171.575mm 249.892mm;margin-top:27.53mm;margin-bottom:28mm;@top-left-corner{content:"";background:linear-gradient(#111,#111) left 0 top 8mm/4mm .2mm no-repeat,linear-gradient(#111,#111) left 8mm top 0/.2mm 4mm no-repeat}@top-right-corner{content:"";background:linear-gradient(#111,#111) right 0 top 8mm/4mm .2mm no-repeat,linear-gradient(#111,#111) right 8mm top 0/.2mm 4mm no-repeat}@bottom-left-corner{content:"";background:linear-gradient(#111,#111) left 0 bottom 8mm/4mm .2mm no-repeat,linear-gradient(#111,#111) left 8mm bottom 0/.2mm 4mm no-repeat}@bottom-right-corner{content:"";background:linear-gradient(#111,#111) right 0 bottom 8mm/4mm .2mm no-repeat,linear-gradient(#111,#111) right 8mm bottom 0/.2mm 4mm no-repeat}}@page:left{margin-left:35.94mm;margin-right:20.7mm}@page:right{margin-left:20.7mm;margin-right:35.94mm}@page:first{margin-left:20.7mm;margin-right:35.94mm}
 @media print{html,body{margin:0!important;padding:0!important;background:#fff!important;color:#111!important}.nav,.footer,.book-preview-toolbar,.admin-content-review,.cookie-banner{display:none!important}.book-preview-shell{padding:0!important;background:#fff!important}.book-volume{width:auto;min-height:0;margin:0;padding:0;box-shadow:none;font-family:Garamond,"EB Garamond","Adobe Garamond Pro",Georgia,"Times New Roman",serif}.book-title-page{min-height:194.362mm;break-after:right}.book-toc{padding-top:0;break-after:right}.book-chapter{padding-top:0;break-before:right}.book-chapter h2{font:700 18pt/1.12 Garamond,"EB Garamond","Adobe Garamond Pro",Georgia,serif;margin:0 0 9mm}.book-chapter p:not(.book-chapter-number){font-size:12pt;line-height:13.44pt;text-align:justify;text-align-last:left;text-indent:12.5mm;margin:0;hyphens:auto;orphans:3;widows:3}.book-chapter h2+p{text-indent:0}.book-toc h2{font:700 18pt/1.12 Garamond,"EB Garamond","Adobe Garamond Pro",Georgia,serif}.book-crop-marks{display:block;position:fixed;z-index:9999;inset:0;pointer-events:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}.crop-mark{position:absolute;width:8mm;height:8mm}.crop-mark:before,.crop-mark:after{content:"";position:absolute;background:#111}.crop-mark:before{width:4mm;height:.2mm}.crop-mark:after{width:.2mm;height:4mm}.crop-top-left{left:0;top:0}.crop-top-left:before{left:0;bottom:0}.crop-top-left:after{right:0;top:0}.crop-top-right{right:0;top:0}.crop-top-right:before{right:0;bottom:0}.crop-top-right:after{left:0;top:0}.crop-bottom-left{left:0;bottom:0}.crop-bottom-left:before{left:0;top:0}.crop-bottom-left:after{right:0;bottom:0}.crop-bottom-right{right:0;bottom:0}.crop-bottom-right:before{right:0;top:0}.crop-bottom-right:after{left:0;bottom:0}}
-@media print{.skip-link,.book-crop-marks{display:none!important}}
+@media print{.book-crop-marks{display:none!important}}
 @media(max-width:560px){.book-preview-shell{padding:24px 10px 55px}.book-preview-toolbar{display:block}.book-preview-toolbar>div{text-align:left;margin-top:18px}.book-volume{width:100%;min-height:0;padding:12vw 10vw}.book-title-page{min-height:120vw}}
 .book-volume{font-size:14pt}.book-title-page h1{font-size:24.08pt}.book-author{font-size:14pt}.book-edition{font-size:11pt}.book-overline,.book-chapter-number{font-size:11pt}.book-toc h2,.book-chapter h2{font-size:20pt}.book-toc li{font-size:14pt;line-height:15.68pt}.book-toc li span{font-size:11pt}.book-chapter p:not(.book-chapter-number){font-size:14pt;line-height:15.68pt}
 `}
@@ -1397,7 +1402,7 @@ async function contact(request, env) {
   ].filter(Boolean);
   const assessmentMessage = isAssessment ? clean([
     "SCHEDA TECNICA DEL PROGETTO EDITORIALE",
-    `Dimensione del Retaggio: ${clean(f.legacyScope, 120) || "non indicata"}`,
+    `Dimensione della trama del libro: ${clean(f.legacyScope, 120) || "non indicata"}`,
     `Nodi cruciali: ${assessmentNodes.join(", ") || "da approfondire"}`,
     `Parole-soglia: ${clean(f.memoryKeywords, 180) || "non indicate"}`,
     `Governance: ${clean(f.governance, 120) || "non indicata"}`
