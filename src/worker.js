@@ -46,6 +46,11 @@ export default {
       console.error(error);
       return page("Errore", `<div class="formbox center"><h1>Qualcosa non ha funzionato</h1><p class="muted">Il problema è stato registrato. Riprova tra poco.</p><a class="button" href="/">Torna alla home</a></div>`, null, 500);
     }
+  },
+  async email(message, env) {
+    const destination = normalizeEmail(env.ADMIN_EMAIL);
+    if (!validEmail(destination)) throw new Error("Destinazione dell’inoltro email non configurata.");
+    await message.forward(destination);
   }
 };
 
@@ -113,6 +118,14 @@ function home(user, url) {
   const requestedPlan = url?.searchParams?.get("formula") || "";
   const selectedPlan = Object.hasOwn(PLANS, requestedPlan) ? requestedPlan : "";
   const planOptions = Object.entries(PLANS).map(([key, plan]) => `<option value="${key}"${selectedPlan === key ? " selected" : ""}>${esc(plan.label)}</option>`).join("");
+  const contactStatus = url?.searchParams?.get("contatto") || "";
+  const contactNotice = contactStatus === "inviato"
+    ? `<p class="success" role="status">Grazie. La richiesta è stata inviata correttamente: ti risponderemo al più presto.</p>`
+    : contactStatus === "errore"
+      ? `<p class="error" role="alert">La richiesta è stata registrata, ma l’email non è stata consegnata. Riprova tra poco oppure scrivi a <a href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a>.</p>`
+      : contactStatus === "non-valido"
+        ? `<p class="error" role="alert">Controlla i campi obbligatori e riprova.</p>`
+        : "";
   return page("La tua vita in un romanzo", `
     <header class="showcase-hero">
       <div class="wrap showcase-hero-layout">
@@ -275,7 +288,7 @@ function home(user, url) {
     <aside class="showcase-holden"><p>Nella formula Splendoria Signature può essere concordato un accompagnamento editoriale più approfondito da parte della Scuola Holden.</p><span>L’eventuale coinvolgimento è riservato ai progetti Signature e viene definito su misura, in base alle caratteristiche dell’opera.</span></aside>
     <section class="showcase-section" id="voci"><div class="wrap"><p class="showcase-label">Dicono di noi</p><h2 class="showcase-title">Vite diventate libri.</h2><p class="testimonial-intro">Tre esperienze diverse, unite dalla stessa sensazione: vedere finalmente la propria storia prendere forma.</p><div class="showcase-grid three testimonial-grid"><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Memorie</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Ho sempre desiderato scrivere un libro, ma mi intimoriva il foglio bianco. Le indicazioni online sono intuitive, i tempi sono stati rispettati e la qualità del libro è eccellente.”</blockquote><p><b>Tatiana</b> · Insegnante</p></article><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Racconti</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Eccellente il percorso di accompagnamento che mi ha portato a realizzare il mio sogno. Raccontare la mia vita a dei professionisti della scrittura è un'esperienza che consiglio vivamente.”</blockquote><p><b>Ettore</b> · Commerciante</p></article><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Biografia</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Ho trovato un team di persone serie e motivate, con la mia stessa passione. Il libro che mi hanno consegnato è stato addirittura migliore di quanto mi aspettassi.”</blockquote><p><b>Giorgia</b> · Manager d'azienda</p></article></div></div></section>
     <section class="showcase-section showcase-paper showcase-cta"><h2>La tua storia comincia qui.</h2><p>Crea il tuo account gratuito, scrivi il primo capitolo della tua vita e scopri com'è vederla diventare un libro. Al resto pensiamo noi.</p><a class="button" href="${entry}">Inizia gratis</a></section>
-    <section id="contatti" class="showcase-section showcase-contact"><div class="wrap showcase-contact-grid"><div><p class="showcase-label left">Splendoria</p><h2>Contattaci</h2><p class="muted">Raccontami brevemente come possiamo aiutarti.</p><p><b>Parla con me</b><br><span class="muted">Raoul Ragazzi<br>Partita IVA ${VAT_NUMBER}<br>${LEGAL_ADDRESS}</span></p><p><b>Email</b><br><a href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a></p></div><form method="post" action="/contatti"><p class="small muted">Tutti i campi sono obbligatori.</p><label class="field">Formula di interesse<select name="plan" data-plan-select required><option value=""${selectedPlan ? "" : " selected"} disabled>Seleziona una formula</option>${planOptions}</select></label><div class="grid three"><label class="field">Nome e cognome<input name="fullName" required maxlength="100"></label><label class="field">Telefono<input name="phone" required maxlength="40"></label><label class="field">Email<input name="email" type="email" required maxlength="160"></label></div><label class="field">Oggetto<input name="subject" required maxlength="160"></label><label class="field">Messaggio<textarea name="message" required maxlength="3000"></textarea></label><input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px"><label class="legal-check"><input type="checkbox" name="privacyRead" value="yes" required><span>Ho letto la <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> e comprendo come saranno trattati i dati inviati.</span></label><button class="button">Invia richiesta</button></form></div></section>`, user, 200, "", "showcase-page");
+    <section id="contatti" class="showcase-section showcase-contact"><div class="wrap showcase-contact-grid"><div><p class="showcase-label left">Splendoria</p><h2>Contattaci</h2><p class="muted">Raccontami brevemente come possiamo aiutarti.</p><p><b>Parla con me</b><br><span class="muted">Raoul Ragazzi<br>Partita IVA ${VAT_NUMBER}<br>${LEGAL_ADDRESS}</span></p><p><b>Email</b><br><a href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a></p></div><form method="post" action="/contatti">${contactNotice}<p class="small muted">Tutti i campi sono obbligatori.</p><label class="field">Formula di interesse<select name="plan" data-plan-select required><option value=""${selectedPlan ? "" : " selected"} disabled>Seleziona una formula</option>${planOptions}</select></label><div class="grid three"><label class="field">Nome e cognome<input name="fullName" required maxlength="100"></label><label class="field">Telefono<input name="phone" required maxlength="40"></label><label class="field">Email<input name="email" type="email" required maxlength="160"></label></div><label class="field">Oggetto<input name="subject" required maxlength="160"></label><label class="field">Messaggio<textarea name="message" required maxlength="3000"></textarea></label><input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px"><label class="legal-check"><input type="checkbox" name="privacyRead" value="yes" required><span>Ho letto la <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> e comprendo come saranno trattati i dati inviati.</span></label><button class="button">Invia richiesta</button></form></div></section>`, user, 200, "", "showcase-page");
 }
 
 function legalPage(title, label, intro, content, user) {
@@ -1022,7 +1035,40 @@ async function updateAdminLegacyClient(request,userId,user,env){
 
 async function exportCsv(user,env){if(!user?.isAdmin)return redirect("/area-amministratore");const rows=await env.DB.prepare(`SELECT u.nome,u.email,p.title,p.genre,p.status,p.plan,p.createdAt,p.updatedAt FROM "BookProject" p JOIN "User" u ON u.id=p.userId ORDER BY p.updatedAt DESC`).all();const csv=["Nome,Email,Titolo,Genere,Stato,Piano,Creato,Aggiornato",...rows.results.map(r=>[r.nome,r.email,r.title,r.genre,r.status,r.plan,r.createdAt,r.updatedAt].map(csvCell).join(","))].join("\r\n");return new Response("\ufeff"+csv,{headers:{"content-type":"text/csv; charset=utf-8","content-disposition":"attachment; filename=splendoria-progetti.csv"}});}
 
-async function contact(request,env){const f=await form(request);if(f.website)return redirect("/");const plan=PLANS[clean(f.plan,30)]?.label||"",rawSubject=clean(f.subject,160),rawMessage=clean(f.message,3000),subject=(plan?`[${plan}] ${rawSubject}`:rawSubject).slice(0,160),message=(plan?`Formula scelta: ${plan}\n\n${rawMessage}`:rawMessage).slice(0,3000),id=crypto.randomUUID(),now=new Date().toISOString();await env.DB.prepare('INSERT INTO "ContactMessage" (id,fullName,phone,email,subject,message,lang,ipHash,deliveryStatus,deliveryError,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(id,clean(f.fullName,100),clean(f.phone,40),normalizeEmail(f.email),subject,message,"it",await sha256(request.headers.get("cf-connecting-ip")||"unknown"),"pending","",now).run();return redirect("/?contatto=inviato#contatti");}
+async function contact(request, env) {
+  const f = await form(request);
+  if (f.website) return redirect("/");
+  const fullName = clean(f.fullName, 100), phone = clean(f.phone, 40), email = normalizeEmail(f.email);
+  const plan = PLANS[clean(f.plan, 30)]?.label || "";
+  const rawSubject = clean(f.subject, 160).replace(/[\r\n]+/g, " "), rawMessage = clean(f.message, 3000);
+  if (!fullName || !phone || !validEmail(email) || !plan || !rawSubject || !rawMessage || f.privacyRead !== "yes") return redirect("/?contatto=non-valido#contatti");
+
+  const subject = `[${plan}] ${rawSubject}`.slice(0, 160);
+  const message = `Formula scelta: ${plan}\n\n${rawMessage}`.slice(0, 3000);
+  const id = crypto.randomUUID(), now = new Date().toISOString();
+  await env.DB.prepare('INSERT INTO "ContactMessage" (id,fullName,phone,email,subject,message,lang,ipHash,deliveryStatus,deliveryError,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(id, fullName, phone, email, subject, message, "it", await sha256(request.headers.get("cf-connecting-ip") || "unknown"), "pending", "", now).run();
+
+  try {
+    if (!env.CONTACT_EMAIL?.send) {
+      const error = new Error("Il binding per l’invio email non è configurato.");
+      error.code = "EMAIL_BINDING_MISSING";
+      throw error;
+    }
+    await env.CONTACT_EMAIL.send({
+      to: env.ADMIN_EMAIL,
+      from: { email: env.EMAIL_FROM, name: "Splendoria" },
+      subject: `Nuova richiesta · ${subject}`.slice(0, 200),
+      text: `Nuova richiesta dal sito Splendoria\n\nNome: ${fullName}\nEmail: ${email}\nTelefono: ${phone}\nFormula: ${plan}\nOggetto: ${rawSubject}\n\nMessaggio:\n${rawMessage}`,
+      html: `<h2>Nuova richiesta dal sito Splendoria</h2><p><strong>Nome:</strong> ${esc(fullName)}<br><strong>Email:</strong> <a href="mailto:${esc(email)}">${esc(email)}</a><br><strong>Telefono:</strong> ${esc(phone)}<br><strong>Formula:</strong> ${esc(plan)}<br><strong>Oggetto:</strong> ${esc(rawSubject)}</p><p><strong>Messaggio:</strong></p><p>${esc(rawMessage).replace(/\n/g, "<br>")}</p>`
+    });
+    await env.DB.prepare('UPDATE "ContactMessage" SET deliveryStatus=?,deliveryError=? WHERE id=?').bind("sent", "", id).run();
+    return redirect("/?contatto=inviato#contatti");
+  } catch (error) {
+    console.error("Contact email failed", error);
+    await env.DB.prepare('UPDATE "ContactMessage" SET deliveryStatus=?,deliveryError=? WHERE id=?').bind("failed", emailDeliveryError(error), id).run();
+    return redirect("/?contatto=errore#contatti");
+  }
+}
 
 async function currentUser(request,env){const token=cookie(request,"spl_session");if(!token)return null;const row=await env.DB.prepare(`SELECT u.* FROM "Session" s JOIN "User" u ON u.id=s.userId WHERE s.tokenHash=? AND s.expiresAt>?`).bind(await sha256(token),new Date().toISOString()).first();if(!row)return null;return{...row,isAdmin:normalizeEmail(row.email)===normalizeEmail(env.ADMIN_EMAIL)}}
 async function createSessionResponse(userId,env,path){const token=randomToken(),hash=await sha256(token),now=new Date(),expires=new Date(now.getTime()+SESSION_DAYS*86400000);await env.DB.prepare('DELETE FROM "Session" WHERE userId=? AND expiresAt<=?').bind(userId,now.toISOString()).run();await env.DB.prepare('INSERT INTO "Session" (id,userId,tokenHash,expiresAt,createdAt) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),userId,hash,expires.toISOString(),now.toISOString()).run();return redirect(path,sessionCookie(token))}
