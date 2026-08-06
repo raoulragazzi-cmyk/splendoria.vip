@@ -2,6 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "splendoria-v2",
   "main": "src/worker.js",
+  "addresses": [
+    "contatti@splendoria.vip"
+  ],
   "assets": {
     "directory": "./public"
   },
