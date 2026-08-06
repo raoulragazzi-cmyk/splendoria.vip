@@ -44,7 +44,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("font-family:var(--font-ui)") || !showcaseTypography.includes("font-family:var(--font-editorial)")) throw new Error("Vetrina: sistema tipografico editoriale serif/sans-serif non applicato");
 if (!showcaseTypography.includes("showcase-hero-layout") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("Primo capitolo gratuito") || !showcaseTypography.includes("Supervisione umana")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260805-3"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-1"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (!publicNavigation.includes("Area clienti") || !publicNavigation.includes("Inizia gratis") || publicNavigation.includes("Area amministratore") || publicNavigation.includes("nav-admin-link")) throw new Error("Navigazione: collegamento amministratore ancora esposto nel menu pubblico");
 for (const weight of [400, 700]) {
@@ -115,6 +115,7 @@ const studioJsBody = await studioJs.text();
 if (studioJs.status !== 200 || !studioJs.headers.get("content-type")?.includes("javascript") || !studioJsBody.includes("SpeechRecognition") || !studioJsBody.includes("data-plan-choice") || !studioJsBody.includes("data-print-book") || !studioJsBody.includes("window.print()")) throw new Error("Asset JavaScript: funzionalità non valide");
 if (!studioJsBody.includes("splendoria-writing-position") || !studioJsBody.includes("sessionStorage") || !studioJsBody.includes("data-keep-writing-position")) throw new Error("Muse: mantenimento della posizione di scrittura non disponibile");
 if (!studioJsBody.includes("it-IT") || !studioJsBody.includes("de-DE") || !studioJsBody.includes("en-GB") || !studioJsBody.includes("splendoria-voice-language")) throw new Error("Asset JavaScript: lingue della dettatura non valide");
+if ((studioJsBody.match(/new SpeechRecognition\(\)/g) || []).length !== 1 || !studioJsBody.includes("const finalSegments = new Map()") || studioJsBody.includes("finalText +=") || !studioJsBody.includes("/api/musa/trascrizione")) throw new Error("Muse: dettatura può duplicare i segmenti o non corregge fedelmente la trascrizione");
 if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1")) throw new Error("Asset JavaScript: password visibile, conferma o banner cookie non funzionanti");
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
 console.log("/assets/studio.js: dettatura, anteprima e animazioni accessibili disponibili");
@@ -127,6 +128,8 @@ const museProject = {
 };
 const museChapter = { id: "capitolo-muse", projectId: museProject.id, position: 1, title: "Il primo ricordo", content: "Un capitolo già iniziato.", status: "generato" };
 const museChapterUpdates = [];
+const museProjectUpdates = [];
+const museBatches = [];
 const museDb = {
   prepare(sql) {
     return {
@@ -134,6 +137,7 @@ const museDb = {
       bind(...values) { this.values = values; return this; },
       async run() {
         if (sql.includes('UPDATE "BookChapter" SET title=?,content=?')) museChapterUpdates.push(this.values);
+        if (sql.includes('UPDATE "BookProject" SET title=?,tone=?,audience=?,targetPages=?')) museProjectUpdates.push(this.values);
         return { success: true };
       },
       async all() {
@@ -148,16 +152,18 @@ const museDb = {
       }
     };
   },
-  async batch(statements) { return statements.map(() => ({ success: true })); }
+  async batch(statements) { museBatches.push(statements.length); return statements.map(() => ({ success: true })); }
 };
 const museResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse", { headers: { cookie: "spl_session=test" } }), { ...env, DB: museDb });
 const museHtml = await museResponse.text();
 if (museResponse.status !== 200 || !museHtml.includes("Racconta con la tua voce") || !museHtml.includes("data-voice-language")) throw new Error("Muse: nuova sezione non disponibile");
 if (!museHtml.includes('<option value="it-IT">Italiano</option>') || !museHtml.includes('<option value="de-DE">Deutsch</option>') || !museHtml.includes('<option value="en-GB">English</option>')) throw new Error("Muse: selettore trilingue non valido");
 if (!museHtml.includes('aria-live="polite"')) throw new Error("Muse: stato della dettatura non accessibile");
-if (!museHtml.includes("Stai interagendo con un sistema di intelligenza artificiale") || !museHtml.includes('name="specialDataConsent"')) throw new Error("Muse: trasparenza IA o consenso ai dati particolari mancante");
+if (!museHtml.includes("Trasparenza IA") || !museHtml.includes("Gli output restano modificabili") || !museHtml.includes('name="specialDataConsent"')) throw new Error("Muse: trasparenza IA o consenso ai dati particolari mancante");
 if (!museHtml.includes('id="chapter-card-capitolo-muse"') || !museHtml.includes('data-keep-writing-position') || !museHtml.includes('data-book-path="/libro/libro-muse"')) throw new Error("Muse: capitolo non predisposto a mantenere la posizione");
 if (!museHtml.includes('Titolo del capitolo') || !museHtml.includes('name="title" value="Il primo ricordo"')) throw new Error("Studio: titolo del capitolo non modificabile");
+if (!museHtml.includes("12 capitoli · circa 7 pagine ciascuno") || !museHtml.includes("18 capitoli · circa 6–7 pagine ciascuno") || !museHtml.includes("Avanzamento del libro") || !museHtml.includes("pagine stimate")) throw new Error("Studio: strutture o avanzamento parole/pagine mancanti");
+if ((museHtml.match(/✦ Migliora/g) || []).length < 5 || !museHtml.includes('formaction="/libro/libro-muse/migliora"') || !museHtml.includes('value="improve"')) throw new Error("Muse: pulsante Migliora non disponibile accanto a tutti i campi di scrittura");
 const chapterSaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/capitolo/capitolo-muse/salva", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
@@ -165,6 +171,21 @@ const chapterSaveResponse = await worker.fetch(new Request("https://www.splendor
 }), { ...env, DB: museDb });
 if (chapterSaveResponse.status !== 303 || chapterSaveResponse.headers.get("location") !== "/libro/libro-muse#chapter-card-capitolo-muse") throw new Error("Studio: ritorno al capitolo modificato non valido");
 if (!museChapterUpdates.some(values => values[0] === "Il titolo aggiornato" && values[1] === "Il testo aggiornato del capitolo.")) throw new Error("Studio: nuovo titolo del capitolo non salvato in Cloudflare D1");
+const dictationResponse = await worker.fetch(new Request("https://www.splendoria.vip/api/musa/trascrizione", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/json" },
+  body: JSON.stringify({ text: "ciao mi chiamo Anna e ho 72 anni", language: "it-IT" })
+}), { ...env, DB: museDb, AI: { async run() { return { response: "Ciao, mi chiamo Anna e ho 72 anni." }; } } });
+const correctedDictation = await dictationResponse.json();
+if (dictationResponse.status !== 200 || correctedDictation.text !== "Ciao, mi chiamo Anna e ho 72 anni.") throw new Error("Muse: trascrizione fedele con sole correzioni grammaticali non valida");
+const improveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/migliora", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams({ improveField: "story", title: "La mia storia", tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: "84", story: "Sono nato a Milano e ricordo la casa di mia nonna.", people: "", events: "", message: "", specialDataConsent: "yes" })
+}), { ...env, DB: museDb, AI: { async run() { return { response: "Sono nato a Milano e ricordo con chiarezza la casa accogliente di mia nonna." }; } } });
+if (improveResponse.status !== 303 || !museProjectUpdates.some(values => values[3] === 84 && values[4]?.includes("con chiarezza"))) throw new Error("Muse: Migliora non salva il testo narrativo nel progetto D1");
+const outlineResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/struttura", { method: "POST", headers: { cookie: "spl_session=test" } }), { ...env, DB: museDb });
+if (outlineResponse.status !== 303 || !museBatches.includes(14)) throw new Error("Muse: struttura da 12 capitoli non generata integralmente");
 console.log("/libro/libro-muse: sezione Muse e selettore trilingue disponibili");
 
 const previewUser = { id: "admin-pdf", email: "raoulragazzi@gmail.com", nome: "Raoul" };
@@ -194,7 +215,7 @@ const previewDb = {
 };
 const previewResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin/progetto/libro-pdf/anteprima", { headers: { cookie: "spl_session=test" } }), { ...env, DB: previewDb });
 const previewHtml = await previewResponse.text();
-const printRequirements = ["data-print-book", "Formato Royal", "155,6 × 233,9 mm", "size:171.575mm 249.892mm", "margin-top:27.53mm", "margin-bottom:28mm", "margin-left:35.94mm", "margin-right:20.7mm", "@top-left-corner", "@bottom-right-corner", "3 mm di abbondanza", "book-crop-marks", "crop-top-left", "eb-garamond-400.woff2", "font-size:12pt", "line-height:13.44pt", "text-align:justify", "text-indent:12.5mm", "La mia infanzia"];
+const printRequirements = ["data-print-book", "Formato Royal", "155,6 × 233,9 mm", "size:171.575mm 249.892mm", "margin-top:27.53mm", "margin-bottom:28mm", "margin-left:35.94mm", "margin-right:20.7mm", "@top-left-corner", "@bottom-right-corner", "3 mm di abbondanza", "book-crop-marks", "crop-top-left", "eb-garamond-400.woff2", "font-size:14pt", "line-height:15.68pt", "font-size:20pt", "font-size:11pt", "text-align:justify", "text-indent:12.5mm", "La mia infanzia"];
 if (previewResponse.status !== 200 || printRequirements.some(text => !previewHtml.includes(text))) throw new Error("PDF: impaginazione Royal con linee di taglio incompleta");
 if (previewHtml.includes('onclick="window.print()"')) throw new Error("PDF: gestore inline incompatibile con la CSP ancora presente");
 if (!previewHtml.includes("Controllo umano dei contenuti") || !previewHtml.includes("diritti d’autore") || !previewHtml.includes("non sostituisce una valutazione legale")) throw new Error("Admin: checklist riservata di controllo contenuti mancante");
