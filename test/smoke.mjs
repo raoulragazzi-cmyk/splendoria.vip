@@ -44,7 +44,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("font-family:var(--font-ui)") || !showcaseTypography.includes("font-family:var(--font-editorial)")) throw new Error("Vetrina: sistema tipografico editoriale serif/sans-serif non applicato");
 if (!showcaseTypography.includes("showcase-hero-layout") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("Primo capitolo gratuito") || !showcaseTypography.includes("Supervisione umana")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-3"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-4"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (!publicNavigation.includes("Area clienti") || !publicNavigation.includes("Inizia gratis") || publicNavigation.includes("Area amministratore") || publicNavigation.includes("nav-admin-link")) throw new Error("Navigazione: collegamento amministratore ancora esposto nel menu pubblico");
 for (const weight of [400, 700]) {
@@ -128,7 +128,7 @@ for (const repeatedBrowserResult of [spokenOnce, spokenOnce, spokenOnce]) merged
 if (mergedSpeech !== spokenOnce) throw new Error("Muse: lo stesso risultato vocale viene ancora scritto più volte");
 const cumulativeSpeech = mergeRecognitionText("Mi chiamo Raoul", "Mi chiamo Raoul e vivo a Milano");
 if (cumulativeSpeech !== spokenOnce || mergeRecognitionText(cumulativeSpeech, "vivo a Milano") !== spokenOnce) throw new Error("Muse: i risultati vocali cumulativi o sovrapposti vengono duplicati");
-if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1")) throw new Error("Asset JavaScript: password visibile, conferma o banner cookie non funzionanti");
+if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1") || !studioJsBody.includes("La Musa sta scrivendo…")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
 console.log("/assets/studio.js: dettatura, anteprima e animazioni accessibili disponibili");
 
@@ -254,6 +254,60 @@ const secondAnswerResponse = await worker.fetch(new Request("https://www.splendo
   return { response: options.messages?.[0]?.content?.includes("controllo qualità editoriale") ? "APPROVATO" : "Mia nonna Anna mi ha insegnato che custodire i ricordi della famiglia significa conservarne il valore nel tempo." };
 } } });
 if (secondAnswerResponse.status !== 303 || secondAnswerResponse.headers.get("location") !== "/libro/libro-muse#interview-step-1" || !museInterviewUpdates.some(values => values[0]?.includes("Domanda 2:") && values[0]?.includes("conservarne il valore nel tempo"))) throw new Error("Muse: generazione non stabile su una seconda domanda contestuale");
+const sparseProject = {
+  ...museProject, id: "libro-ferrari", title: "Ferrari Trento", sourceMaterial: "", story: "", people: "", events: "", message: ""
+};
+const sparseQuestion = "In che modo l'incontro con il gusto unico delle bollicine Ferrari Trento ha influenzato il tuo legame con la tradizione e la cultura italiana, e come ti ha fatto sentire parte di qualcosa di più grande?";
+const sparseInterview = { projectId: sparseProject.id, questions: sparseQuestion, answers: "" };
+const sparseDb = {
+  prepare(sql) {
+    return {
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() {
+        if (sql.includes('UPDATE "BookInterview" SET answers=?')) sparseInterview.answers = this.values[0];
+        return { success: true };
+      },
+      async all() {
+        if (sql.startsWith("PRAGMA table_info")) return { results: [{ name: "projectId" }] };
+        if (sql.includes('FROM "BookChapter"')) return { results: [] };
+        return { results: [] };
+      },
+      async first() {
+        if (sql.includes('FROM "Session" s JOIN "User" u')) return museUser;
+        if (sql.includes('SELECT p.* FROM "BookProject" p LEFT JOIN "BookProjectAdmin"')) return sparseProject;
+        if (sql.includes('FROM "BookInterview"')) return sparseInterview;
+        return null;
+      }
+    };
+  },
+  async batch(statements) { const results=[]; for(const statement of statements)results.push(await statement.run()); return results; }
+};
+const sparseDraft = "L'incontro con il gusto unico delle bollicine Ferrari Trento ha rafforzato il mio legame con la tradizione e la cultura italiana. In quel gusto riconosco un sapere che appartiene a una storia condivisa: per questo mi sento parte di qualcosa di più grande, capace di unire memoria, territorio e cultura.";
+const sparseAnswerResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-ferrari/risposte/affidati", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams({ generateAnswer: "0", answer_0: "" })
+}), { ...env, DB: sparseDb, AI: { async run(_model, options) {
+  return { response: options.messages?.[0]?.content?.includes("controllo qualità editoriale") ? "APPROVATO" : sparseDraft };
+} } });
+if (sparseAnswerResponse.status !== 303 || !sparseInterview.answers.includes("Ferrari Trento") || !sparseInterview.answers.includes("qualcosa di più grande")) throw new Error("Muse: la domanda non viene usata come fonte e il campo resta vuoto quando mancano altri materiali");
+const sparseEditorResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-ferrari", { headers: { cookie: "spl_session=test" } }), { ...env, DB: sparseDb });
+const sparseEditorHtml = await sparseEditorResponse.text();
+if (sparseEditorResponse.status !== 200 || !sparseEditorHtml.includes('id="interview-0"') || !sparseEditorHtml.includes("qualcosa di più grande")) throw new Error("Muse: la risposta generata viene salvata ma non ricompare nel campo corrispondente");
+let strictReviewCalls = 0, safeRescueCalls = 0;
+const safeRescueDraft = "Il gusto delle bollicine Ferrari Trento mi avvicina alla tradizione e alla cultura italiana. Vi riconosco un legame con una storia condivisa, e proprio questo legame mi fa sentire parte di qualcosa di più grande.";
+const rescuedAnswerResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-ferrari/risposte/affidati", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams({ generateAnswer: "0", answer_0: "" })
+}), { ...env, DB: sparseDb, AI: { async run(_model, options) {
+  const system = options.messages?.[0]?.content || "";
+  if (system.includes("controllo qualità editoriale")) { strictReviewCalls += 1; return { response: "RIFIUTATO: controllo prudenziale" }; }
+  if (system.includes("redattrice di sicurezza")) { safeRescueCalls += 1; return { response: safeRescueDraft }; }
+  return { response: sparseDraft };
+} } });
+if (rescuedAnswerResponse.status !== 303 || strictReviewCalls !== 2 || safeRescueCalls !== 1 || !sparseInterview.answers.includes(safeRescueDraft)) throw new Error("Muse: dopo due bozze respinte non produce una risposta sicura e lascia il campo vuoto");
 const allAnswersResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/risposte", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },

@@ -369,7 +369,7 @@ function aiTransparencyPage(user) {
 function page(title, body, user, status = 200, extra = "", bodyClass = "") {
   const account = user ? `${user.isAdmin ? `<a href="/admin">Dashboard</a>` : `<a href="/studio">Il mio Studio</a>`}<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : `<a href="/area-clienti">Area clienti</a><a class="pill" href="/registrati">Inizia gratis</a>`;
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1f1c"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo.">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-3" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1f1c"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo.">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-4" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -394,6 +394,14 @@ function studioScript() {
             savedAt: Date.now()
           }));
         } catch {}
+      });
+    });
+    document.querySelectorAll('form').forEach(form => {
+      form.addEventListener('submit', event => {
+        const submitter = event.submitter;
+        if (!submitter?.classList.contains('muse-draft-button')) return;
+        submitter.textContent = 'La Musa sta scrivendo…';
+        submitter.setAttribute('aria-busy', 'true');
       });
     });
     try {
@@ -1270,7 +1278,8 @@ async function reviewMuseDraft(env, { task, source, candidate }) {
 async function generateMuseDraft(env, { task, context, current = "", targetWords = 180, minWords = 8, maxWords, maxTokens = 2200, overlap = .16 }) {
   const currentClean = collapseAccidentalRepetitions(clean(current,12000),12000);
   const source = clean([context,currentClean ? `Testo attuale dell'autore:\n${currentClean}` : ""].filter(Boolean).join("\n\n"), 28000);
-  if (wordCount(source) < 8) return "";
+  const validationSource = clean([`Domanda o compito da sviluppare:\n${task}`,source].filter(Boolean).join("\n\n"), 30000);
+  if (wordCount(validationSource) < 8) return "";
   let previousIssues = [];
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -1279,11 +1288,20 @@ async function generateMuseDraft(env, { task, context, current = "", targetWords
         { role: "user", content: `COMPITO:\n${task}\n\nLUNGHEZZA: circa ${targetWords} parole, soltanto se le fonti lo consentono.${attempt ? `\nSECONDO TENTATIVO: la bozza precedente è stata respinta per ${previousIssues.join(", ") || "coerenza insufficiente"}. Riscrivi da zero senza ripeterne gli errori.` : ""}\n\nFONTI DELL'AUTORE:\n${source}` }
       ], temperature: attempt ? .08 : .14, max_tokens: Math.min(maxTokens,Math.max(180,Math.ceil(targetWords * 1.75))) });
       const candidate = basicWrittenForm(collapseAccidentalRepetitions(clean(ai.response,60000),60000));
-      previousIssues = museDraftIssues(source,candidate,targetWords,{minWords,maxWords,overlap});
+      previousIssues = museDraftIssues(validationSource,candidate,targetWords,{minWords,maxWords,overlap});
       if (!previousIssues.length && await reviewMuseDraft(env,{task,source,candidate})) return candidate;
       if (!previousIssues.length) previousIssues = ["coerenza, leggibilità o completezza insufficienti"];
     } catch { previousIssues = ["generazione non completata"]; }
   }
+  try {
+    const ai = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { messages: [
+      { role: "system", content: "Sei la redattrice di sicurezza della Musa di Splendoria. Crea una risposta breve, chiara e in prima persona usando esclusivamente fatti e parole già presenti nella domanda, nelle fonti autorizzate o nel testo dell'autore. Non aggiungere mai nomi, date, luoghi, avvenimenti, ricordi, dialoghi, dettagli sensoriali o emozioni specifiche non dichiarate. Se il materiale è scarso, sviluppa soltanto il significato già implicito nella domanda e fermati presto. Ordina le frasi in modo naturale, correggi sintassi e punteggiatura, elimina ripetizioni e formule generiche. Restituisci soltanto il testo finale, senza spiegazioni né premesse." },
+      { role: "user", content: `COMPITO:\n${task}\n\nLUNGHEZZA MASSIMA: ${Math.max(70,Math.min(targetWords,260))} parole; usa meno parole se le fonti sono limitate.\n\nFONTI AUTORIZZATE:\n${source}` }
+    ], temperature: .04, max_tokens: Math.min(maxTokens,Math.max(180,Math.ceil(Math.min(targetWords,260) * 1.6))) });
+    const candidate = basicWrittenForm(collapseAccidentalRepetitions(clean(ai.response,60000),60000));
+    const rescueOverlap = Math.min(overlap,.08);
+    if (validContextualDraft(validationSource,candidate,targetWords,{minWords,maxWords,overlap:rescueOverlap})) return candidate;
+  } catch {}
   return "";
 }
 
@@ -1340,7 +1358,7 @@ async function generateInterviewAnswer(request, id, user, env) {
   const plan = interviewPlan(project, chapters.results);
   const answerContext = serializeInterviewAnswers(questions, answers);
   const persistAnswers = () => env.DB.prepare('UPDATE "BookInterview" SET answers=?,updatedAt=? WHERE projectId=?').bind(serializeInterviewAnswers(questions, answers),new Date().toISOString(),id).run();
-  const rawMaterial = museSourceMaterial(project, chapters.results, answers.filter(Boolean).join("\n\n"));
+  const rawMaterial = clean([questions[index],museSourceMaterial(project, chapters.results, answers.filter(Boolean).join("\n\n"))].filter(Boolean).join("\n\n"),28000);
   if (wordCount(rawMaterial) < 5) { await persistAnswers(); return bookEditor(id, user, env, "Racconta prima almeno un ricordo: la Musa può scrivere una base, ma non può inventare la tua vita."); }
   const draft = await generateMuseDraft(env, { task: `Rispondi in prima persona alla domanda «${questions[index]}» con una bozza contestuale e pertinente.`, context: museContext(project, chapters.results, answerContext), current: answers[index], targetWords: Math.min(260, plan.targetAnswerWords) });
   if (!draft) { await persistAnswers(); return bookEditor(id, user, env, "La Musa non ha generato una risposta sufficientemente fedele. I testi inseriti sono stati salvati e sono rimasti intatti."); }
