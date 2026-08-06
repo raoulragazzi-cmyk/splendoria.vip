@@ -650,10 +650,12 @@ const mismatchResponse = await worker.fetch(new Request("https://www.splendoria.
 const mismatchHtml = await mismatchResponse.text();
 if (mismatchResponse.status !== 200 || !mismatchHtml.includes("Le due password non coincidono") || !mismatchHtml.includes('value="errore@example.com"') || registration.state.insertedUsers !== 0) throw new Error("Registrazione: password discordanti non gestite correttamente");
 
-const registerResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", body: new URLSearchParams({ email: newEmail, nome: "Nuova Cliente", password: newPassword, passwordConfirm: newPassword, privacyRead: "yes" }) }), { ...env, DB: registration.db });
+let registrationEmail = null;
+const registerResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", body: new URLSearchParams({ email: newEmail, nome: "Nuova Cliente", password: newPassword, passwordConfirm: newPassword, privacyRead: "yes" }) }), { ...env, DB: registration.db, CONTACT_EMAIL: { async send(message) { registrationEmail = message; return { messageId: "registration-message-id" }; } } });
 const firstCookie = registerResponse.headers.get("set-cookie")?.match(/^spl_session=([^;]+)/)?.[1];
 if (registerResponse.status !== 303 || registerResponse.headers.get("location") !== "/studio" || !firstCookie || registration.state.insertedUsers !== 1 || registration.state.registrationBatchSize !== 2) throw new Error("Registrazione: creazione atomica di account e sessione non riuscita");
 if (!registration.state.passwordHash.startsWith("pbkdf2$100000$")) throw new Error("Registrazione: hash password non compatibile con Cloudflare Workers");
+if (registrationEmail?.to !== env.ADMIN_EMAIL || !registrationEmail?.subject?.includes("Nuova iscrizione a Splendoria") || !registrationEmail?.text?.includes("Nuova Cliente") || !registrationEmail?.text?.includes(newEmail) || registrationEmail?.text?.includes(newPassword)) throw new Error("Registrazione: notifica email all’amministratore assente o non sicura");
 
 const studioAfterRegistration = await worker.fetch(new Request("https://www.splendoria.vip/studio", { headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
 const studioAfterRegistrationHtml = await studioAfterRegistration.text();
