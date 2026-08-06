@@ -44,7 +44,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("font-family:var(--font-ui)") || !showcaseTypography.includes("font-family:var(--font-editorial)")) throw new Error("Vetrina: sistema tipografico editoriale serif/sans-serif non applicato");
 if (!showcaseTypography.includes("showcase-hero-layout") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("Primo capitolo gratuito") || !showcaseTypography.includes("Supervisione umana")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-1"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-2"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (!publicNavigation.includes("Area clienti") || !publicNavigation.includes("Inizia gratis") || publicNavigation.includes("Area amministratore") || publicNavigation.includes("nav-admin-link")) throw new Error("Navigazione: collegamento amministratore ancora esposto nel menu pubblico");
 for (const weight of [400, 700]) {
@@ -115,7 +115,17 @@ const studioJsBody = await studioJs.text();
 if (studioJs.status !== 200 || !studioJs.headers.get("content-type")?.includes("javascript") || !studioJsBody.includes("SpeechRecognition") || !studioJsBody.includes("data-plan-choice") || !studioJsBody.includes("data-print-book") || !studioJsBody.includes("window.print()")) throw new Error("Asset JavaScript: funzionalità non valide");
 if (!studioJsBody.includes("splendoria-writing-position") || !studioJsBody.includes("sessionStorage") || !studioJsBody.includes("data-keep-writing-position")) throw new Error("Muse: mantenimento della posizione di scrittura non disponibile");
 if (!studioJsBody.includes("it-IT") || !studioJsBody.includes("de-DE") || !studioJsBody.includes("en-GB") || !studioJsBody.includes("splendoria-voice-language")) throw new Error("Asset JavaScript: lingue della dettatura non valide");
-if ((studioJsBody.match(/new SpeechRecognition\(\)/g) || []).length !== 1 || !studioJsBody.includes("const finalSegments = new Map()") || studioJsBody.includes("finalText +=") || !studioJsBody.includes("/api/musa/trascrizione")) throw new Error("Muse: dettatura può duplicare i segmenti o non corregge fedelmente la trascrizione");
+if ((studioJsBody.match(/new SpeechRecognition\(\)/g) || []).length !== 1 || !studioJsBody.includes("const mergeRecognitionText") || studioJsBody.includes("finalSegments") || studioJsBody.includes("finalText +=") || !studioJsBody.includes("/api/musa/trascrizione")) throw new Error("Muse: dettatura può duplicare i segmenti o non corregge fedelmente la trascrizione");
+const mergeHelperStart = studioJsBody.indexOf("const speechWords =");
+const mergeHelperEnd = studioJsBody.indexOf("const setStatus =", mergeHelperStart);
+if (mergeHelperStart < 0 || mergeHelperEnd < 0) throw new Error("Muse: funzione di unione dei segmenti vocali non trovata");
+const mergeRecognitionText = new Function(`${studioJsBody.slice(mergeHelperStart, mergeHelperEnd)}; return mergeRecognitionText;`)();
+const spokenOnce = "Mi chiamo Raoul e vivo a Milano";
+let mergedSpeech = "";
+for (const repeatedBrowserResult of [spokenOnce, spokenOnce, spokenOnce]) mergedSpeech = mergeRecognitionText(mergedSpeech, repeatedBrowserResult);
+if (mergedSpeech !== spokenOnce) throw new Error("Muse: lo stesso risultato vocale viene ancora scritto più volte");
+const cumulativeSpeech = mergeRecognitionText("Mi chiamo Raoul", "Mi chiamo Raoul e vivo a Milano");
+if (cumulativeSpeech !== spokenOnce || mergeRecognitionText(cumulativeSpeech, "vivo a Milano") !== spokenOnce) throw new Error("Muse: i risultati vocali cumulativi o sovrapposti vengono duplicati");
 if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1")) throw new Error("Asset JavaScript: password visibile, conferma o banner cookie non funzionanti");
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
 console.log("/assets/studio.js: dettatura, anteprima e animazioni accessibili disponibili");
@@ -178,12 +188,27 @@ const dictationResponse = await worker.fetch(new Request("https://www.splendoria
 }), { ...env, DB: museDb, AI: { async run() { return { response: "Ciao, mi chiamo Anna e ho 72 anni." }; } } });
 const correctedDictation = await dictationResponse.json();
 if (dictationResponse.status !== 200 || correctedDictation.text !== "Ciao, mi chiamo Anna e ho 72 anni.") throw new Error("Muse: trascrizione fedele con sole correzioni grammaticali non valida");
+const repeatedDictationResponse = await worker.fetch(new Request("https://www.splendoria.vip/api/musa/trascrizione", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/json" },
+  body: JSON.stringify({ text: "ciao mi chiamo Anna e ho 72 anni ciao mi chiamo Anna e ho 72 anni ciao mi chiamo Anna e ho 72 anni", language: "it-IT" })
+}), { ...env, DB: museDb, AI: { async run() { return { response: "Ciao, mi chiamo Anna e ho 72 anni." }; } } });
+const repeatedDictation = await repeatedDictationResponse.json();
+if (repeatedDictationResponse.status !== 200 || repeatedDictation.text !== "Ciao, mi chiamo Anna e ho 72 anni.") throw new Error("Muse: la correzione della dettatura non elimina la triplicazione accidentale");
+const fallbackDictationResponse = await worker.fetch(new Request("https://www.splendoria.vip/api/musa/trascrizione", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/json" },
+  body: JSON.stringify({ text: "questa frase compare tre volte questa frase compare tre volte questa frase compare tre volte", language: "it-IT" })
+}), { ...env, DB: museDb, AI: { async run() { throw new Error("AI non disponibile"); } } });
+const fallbackDictation = await fallbackDictationResponse.json();
+if (fallbackDictation.text !== "Questa frase compare tre volte.") throw new Error("Muse: la rimozione delle ripetizioni dipende ancora dalla disponibilità dell'AI");
 const improveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/migliora", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
-  body: new URLSearchParams({ improveField: "story", title: "La mia storia", tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: "84", story: "Sono nato a Milano e ricordo la casa di mia nonna.", people: "", events: "", message: "", specialDataConsent: "yes" })
+  body: new URLSearchParams({ improveField: "story", title: "La mia storia", tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: "84", story: "sono nato a Milano e ricordo la casa di mia nonna sono nato a Milano e ricordo la casa di mia nonna sono nato a Milano e ricordo la casa di mia nonna", people: "", events: "", message: "", specialDataConsent: "yes" })
 }), { ...env, DB: museDb, AI: { async run() { return { response: "Sono nato a Milano e ricordo con chiarezza la casa accogliente di mia nonna." }; } } });
-if (improveResponse.status !== 303 || !museProjectUpdates.some(values => values[3] === 84 && values[4]?.includes("con chiarezza"))) throw new Error("Muse: Migliora non salva il testo narrativo nel progetto D1");
+const improvedProject = museProjectUpdates.find(values => values[3] === 84 && values[4]?.includes("con chiarezza"));
+if (improveResponse.status !== 303 || !improvedProject || (improvedProject[4].match(/Sono nato a Milano/g) || []).length !== 1) throw new Error("Muse: Migliora non corregge o non elimina le ripetizioni prima di salvare nel progetto D1");
 const outlineResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/struttura", { method: "POST", headers: { cookie: "spl_session=test" } }), { ...env, DB: museDb });
 if (outlineResponse.status !== 303 || !museBatches.includes(14)) throw new Error("Muse: struttura da 12 capitoli non generata integralmente");
 console.log("/libro/libro-muse: sezione Muse e selettore trilingue disponibili");
