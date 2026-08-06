@@ -134,11 +134,13 @@ const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente
 const museProject = {
   id: "libro-muse", userId: museUser.id, title: "La mia storia", genre: "Autobiografia",
   tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: 100,
-  story: "Un ricordo", people: "", events: "", message: "", status: "bozza", plan: "free"
+  story: "Sono nato a Milano e ricordo la casa di mia nonna Anna.", people: "Mia nonna Anna", events: "Le estati trascorse nella sua casa", message: "Custodire i ricordi di famiglia", status: "bozza", plan: "free"
 };
 const museChapter = { id: "capitolo-muse", projectId: museProject.id, position: 1, title: "Il primo ricordo", content: "Un capitolo già iniziato.", status: "generato" };
+const museInterview = { projectId: museProject.id, questions: "Quale immagine ricordi della casa di tua nonna?\nChe cosa ti ha insegnato tua nonna?", answers: "" };
 const museChapterUpdates = [];
 const museProjectUpdates = [];
+const museInterviewUpdates = [];
 const museBatches = [];
 const museDb = {
   prepare(sql) {
@@ -148,6 +150,7 @@ const museDb = {
       async run() {
         if (sql.includes('UPDATE "BookChapter" SET title=?,content=?')) museChapterUpdates.push(this.values);
         if (sql.includes('UPDATE "BookProject" SET title=?,tone=?,audience=?,targetPages=?')) museProjectUpdates.push(this.values);
+        if (sql.includes('UPDATE "BookInterview" SET answers=?')) museInterviewUpdates.push(this.values);
         return { success: true };
       },
       async all() {
@@ -158,6 +161,7 @@ const museDb = {
       async first() {
         if (sql.includes('FROM "Session" s JOIN "User" u')) return museUser;
         if (sql.includes('SELECT p.* FROM "BookProject" p LEFT JOIN "BookProjectAdmin"')) return museProject;
+        if (sql.includes('FROM "BookInterview"')) return museInterview;
         return null;
       }
     };
@@ -173,7 +177,10 @@ if (!museHtml.includes("Trasparenza IA") || !museHtml.includes("Gli output resta
 if (!museHtml.includes('id="chapter-card-capitolo-muse"') || !museHtml.includes('data-keep-writing-position') || !museHtml.includes('data-book-path="/libro/libro-muse"')) throw new Error("Muse: capitolo non predisposto a mantenere la posizione");
 if (!museHtml.includes('Titolo del capitolo') || !museHtml.includes('name="title" value="Il primo ricordo"')) throw new Error("Studio: titolo del capitolo non modificabile");
 if (!museHtml.includes("12 capitoli · circa 7 pagine ciascuno") || !museHtml.includes("18 capitoli · circa 6–7 pagine ciascuno") || !museHtml.includes("Avanzamento del libro") || !museHtml.includes("pagine stimate")) throw new Error("Studio: strutture o avanzamento parole/pagine mancanti");
-if ((museHtml.match(/✦ Migliora/g) || []).length < 5 || !museHtml.includes('formaction="/libro/libro-muse/migliora"') || !museHtml.includes('value="improve"')) throw new Error("Muse: pulsante Migliora non disponibile accanto a tutti i campi di scrittura");
+const improveButtonCount = (museHtml.match(/✦ Migliora/g) || []).length;
+const museDraftButtonCount = (museHtml.match(/>Affidati alla Musa<\/button>/g) || []).length;
+if (improveButtonCount < 7 || museDraftButtonCount !== improveButtonCount || !museHtml.includes('formaction="/libro/libro-muse/migliora"') || !museHtml.includes('formaction="/libro/libro-muse/affidati"') || !museHtml.includes('formaction="/libro/libro-muse/risposte/affidati"') || !museHtml.includes('value="improve"')) throw new Error("Muse: Migliora e Affidati alla Musa non sono affiancati in tutti i campi di scrittura");
+if (!museHtml.includes('id="intervista-narrativa"') || !museHtml.includes("Affida queste risposte alla Musa")) throw new Error("Muse: generazione contestuale dell'intera intervista non disponibile");
 const chapterSaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/capitolo/capitolo-muse/salva", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
@@ -209,6 +216,25 @@ const improveResponse = await worker.fetch(new Request("https://www.splendoria.v
 }), { ...env, DB: museDb, AI: { async run() { return { response: "Sono nato a Milano e ricordo con chiarezza la casa accogliente di mia nonna." }; } } });
 const improvedProject = museProjectUpdates.find(values => values[3] === 84 && values[4]?.includes("con chiarezza"));
 if (improveResponse.status !== 303 || !improvedProject || (improvedProject[4].match(/Sono nato a Milano/g) || []).length !== 1) throw new Error("Muse: Migliora non corregge o non elimina le ripetizioni prima di salvare nel progetto D1");
+const projectDraftResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/affidati", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams({ museField: "events", title: "La mia storia", tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: "84", story: "Sono nato a Milano e ogni estate tornavo nella casa di mia nonna Anna.", people: "Mia nonna Anna", events: "", message: "Custodire i ricordi di famiglia", specialDataConsent: "yes" })
+}), { ...env, DB: museDb, AI: { async run() { return { response: "Ricordo come momento decisivo le estati trascorse nella casa di mia nonna Anna a Milano, dove imparavo a custodire i ricordi di famiglia." }; } } });
+if (projectDraftResponse.status !== 303 || !museProjectUpdates.some(values => values[6]?.includes("momento decisivo"))) throw new Error("Muse: Affidati alla Musa non genera e salva una bozza contestuale nel campo del progetto");
+const singleAnswerResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/risposte/affidati", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams({ generateAnswer: "0", answer_0: "", answer_1: "" })
+}), { ...env, DB: museDb, AI: { async run() { return { response: "Ricordo la casa di mia nonna Anna a Milano, dove trascorrevo le estati della mia infanzia." }; } } });
+if (singleAnswerResponse.status !== 303 || singleAnswerResponse.headers.get("location") !== "/libro/libro-muse#interview-step-0" || !museInterviewUpdates.some(values => values[0]?.includes("Ricordo la casa di mia nonna Anna"))) throw new Error("Muse: Affidati alla Musa non genera la singola risposta contestuale");
+const allAnswersResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/risposte", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams({ answer_0: "", answer_1: "" })
+}), { ...env, DB: museDb, AI: { async run() { return { response: "RISPOSTA 1: Ricordo la casa di mia nonna Anna a Milano, dove trascorrevo le estati della mia infanzia.\n\nRISPOSTA 2: Mia nonna Anna mi ha insegnato a custodire i ricordi di famiglia." }; } } });
+const generatedInterview = museInterviewUpdates[museInterviewUpdates.length - 1]?.[0] || "";
+if (allAnswersResponse.status !== 303 || allAnswersResponse.headers.get("location") !== "/libro/libro-muse#intervista-narrativa" || !generatedInterview.includes("Domanda 1:") || !generatedInterview.includes("Domanda 2:") || !generatedInterview.includes("custodire i ricordi di famiglia")) throw new Error("Muse: Affida queste risposte alla Musa non genera tutte le basi pertinenti dell'intervista");
 const outlineResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/struttura", { method: "POST", headers: { cookie: "spl_session=test" } }), { ...env, DB: museDb });
 if (outlineResponse.status !== 303 || !museBatches.includes(14)) throw new Error("Muse: struttura da 12 capitoli non generata integralmente");
 console.log("/libro/libro-muse: sezione Muse e selettore trilingue disponibili");
@@ -242,6 +268,8 @@ const previewResponse = await worker.fetch(new Request("https://www.splendoria.v
 const previewHtml = await previewResponse.text();
 const printRequirements = ["data-print-book", "Formato Royal", "155,6 × 233,9 mm", "size:171.575mm 249.892mm", "margin-top:27.53mm", "margin-bottom:28mm", "margin-left:35.94mm", "margin-right:20.7mm", "@top-left-corner", "@bottom-right-corner", "3 mm di abbondanza", "book-crop-marks", "crop-top-left", "eb-garamond-400.woff2", "font-size:14pt", "line-height:15.68pt", "font-size:20pt", "font-size:11pt", "text-align:justify", "text-indent:12.5mm", "La mia infanzia"];
 if (previewResponse.status !== 200 || printRequirements.some(text => !previewHtml.includes(text))) throw new Error("PDF: impaginazione Royal con linee di taglio incompleta");
+const titlePageHtml = previewHtml.match(/<section class="book-title-page">([\s\S]*?)<\/section>/)?.[1] || "";
+if (!titlePageHtml || /Splendoria/i.test(titlePageHtml) || titlePageHtml.includes("book-imprint\"")) throw new Error("PDF: la scritta Splendoria è ancora presente nella prima pagina");
 if (previewHtml.includes('onclick="window.print()"')) throw new Error("PDF: gestore inline incompatibile con la CSP ancora presente");
 if (!previewHtml.includes("Controllo umano dei contenuti") || !previewHtml.includes("diritti d’autore") || !previewHtml.includes("non sostituisce una valutazione legale")) throw new Error("Admin: checklist riservata di controllo contenuti mancante");
 console.log("/anteprima: stampa PDF Royal 155,6 × 233,9 mm con abbondanza e linee di taglio disponibile");
