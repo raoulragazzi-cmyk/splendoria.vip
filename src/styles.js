@@ -127,6 +127,7 @@ h1,h2,h3,h4,.brand,.price,.editor-paper,.interview-step h4,.interview-step texta
 .legacy-hero-copy{position:relative;z-index:2;min-width:0}
 .legacy-showcase main .legacy-hero h1{max-width:690px;margin:0;font-family:var(--font-editorial)!important;font-size:clamp(58px,5.8vw,86px)!important;line-height:.94;letter-spacing:-.035em}
 .legacy-hero h1 em{display:block;margin-top:10px;color:var(--satin-gold-light);font-weight:400}
+@media(min-width:1101px){.legacy-showcase main .legacy-hero h1 em{font-size:clamp(44px,4.2vw,60px);line-height:1.02}}
 .legacy-showcase main .legacy-lead{max-width:670px;margin:30px 0 0;color:#d8e3dd;font-family:var(--font-editorial)!important;font-size:22px!important;line-height:1.5!important}
 .legacy-actions{display:flex;align-items:center;gap:26px;flex-wrap:wrap;margin-top:34px}
 .legacy-credentials{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:54px 0 0;border-top:1px solid rgba(255,255,255,.17)}
