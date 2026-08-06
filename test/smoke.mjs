@@ -374,10 +374,15 @@ if (legacyManagementPost.status !== 200 || !legacyManagementPostHtml.includes("S
 console.log("/admin/cliente: stati gratuito, da pagare, pagato e rimborsato ripristinati");
 
 let contactValues = null;
+let contactDelivery = null;
 const contactDb = {
   prepare(sql) {
     return {
-      bind(...values) { if (sql.includes('INSERT INTO "ContactMessage"')) contactValues = values; return this; },
+      bind(...values) {
+        if (sql.includes('INSERT INTO "ContactMessage"')) contactValues = values;
+        if (sql.includes('UPDATE "ContactMessage" SET deliveryStatus=')) contactDelivery = values;
+        return this;
+      },
       async run() { return { success: true }; },
       async first() { return null; },
       async all() { return { results: [] }; }
@@ -386,9 +391,19 @@ const contactDb = {
   async batch(statements) { return statements.map(() => ({ success: true })); }
 };
 const contactBody = new URLSearchParams({ fullName: "Mario Rossi", phone: "+39 000 000000", email: "mario@example.com", plan: "assisted", subject: "Vorrei informazioni", message: "Contattatemi, grazie.", privacyRead: "yes" });
-const contactResponse = await worker.fetch(new Request("https://www.splendoria.vip/contatti", { method: "POST", body: contactBody }), { ...env, DB: contactDb });
-if (contactResponse.status !== 303 || !contactValues?.[4]?.includes("Splendoria Signature") || !contactValues?.[5]?.startsWith("Formula scelta: Splendoria Signature")) throw new Error("Contatti: formula selezionata non registrata");
-console.log("/contatti: formula selezionata registrata correttamente");
+let contactEmail = null;
+const contactResponse = await worker.fetch(new Request("https://www.splendoria.vip/contatti", { method: "POST", body: contactBody }), { ...env, DB: contactDb, CONTACT_EMAIL: { async send(message) { contactEmail = message; return { messageId: "contact-message-id" }; } } });
+if (contactResponse.status !== 303 || contactResponse.headers.get("location") !== "/?contatto=inviato#contatti" || !contactValues?.[4]?.includes("Splendoria Signature") || !contactValues?.[5]?.startsWith("Formula scelta: Splendoria Signature")) throw new Error("Contatti: formula selezionata non registrata");
+if (contactEmail?.to !== "raoulragazzi@gmail.com" || !contactEmail?.text?.includes("mario@example.com") || contactDelivery?.[0] !== "sent") throw new Error("Contatti: email non inoltrata all’amministratore");
+
+contactDelivery = null;
+const failedContactResponse = await worker.fetch(new Request("https://www.splendoria.vip/contatti", { method: "POST", body: contactBody }), { ...env, DB: contactDb, CONTACT_EMAIL: { async send() { const error = new Error("Destinazione non disponibile"); error.code = "E_DESTINATION"; throw error; } } });
+if (failedContactResponse.headers.get("location") !== "/?contatto=errore#contatti" || contactDelivery?.[0] !== "failed" || !contactDelivery?.[1]?.includes("E_DESTINATION")) throw new Error("Contatti: errore di consegna non gestito");
+
+let forwardedTo = null;
+await worker.email({ async forward(destination) { forwardedTo = destination; } }, env);
+if (forwardedTo !== "raoulragazzi@gmail.com") throw new Error("Posta in entrata: inoltro a Gmail non configurato");
+console.log("/contatti: modulo e posta in entrata inoltrati a Gmail");
 
 function authDb(user) {
   return {
