@@ -8,6 +8,12 @@ const RESET_MINUTES = 30;
 const FREE_AI_LIMIT = 3;
 const AUTH_WINDOW_MINUTES = 15;
 const AUTH_MAX_ATTEMPTS = 8;
+const PRINT_WORDS_PER_PAGE = 220;
+const BOOK_FRONT_MATTER_PAGES = 2;
+const BOOK_STRUCTURES = {
+  12: { chapters: 12, targetPages: 84, label: "12 capitoli · circa 7 pagine ciascuno" },
+  18: { chapters: 18, targetPages: 117, label: "18 capitoli · circa 6–7 pagine ciascuno" }
+};
 // Cloudflare Workers accepts at most 100,000 PBKDF2 iterations. Keeping the
 // value explicit prevents registration, login migration and password reset
 // from failing before any data can be written to D1.
@@ -78,11 +84,14 @@ async function route(request, env) {
   if (method === "POST" && path === "/nuovo-libro") return newBook(request, user, env);
   if (method === "GET" && /^\/libro\/[^/]+$/.test(path)) return bookEditor(path.split("/")[2], user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/salva$/.test(path)) return saveBook(request, path.split("/")[2], user, env);
+  if (method === "POST" && /^\/libro\/[^/]+\/migliora$/.test(path)) return improveProjectField(request, path.split("/")[2], user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/struttura$/.test(path)) return generateOutline(path.split("/")[2], user, env);
-  if (method === "POST" && /^\/libro\/[^/]+\/intervista$/.test(path)) return generateInterview(path.split("/")[2], user, env);
+  if (method === "POST" && /^\/libro\/[^/]+\/intervista$/.test(path)) return generateAdaptiveInterview(path.split("/")[2], user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/risposte$/.test(path)) return saveInterview(request, path.split("/")[2], user, env);
-  if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/genera$/.test(path)) return generateChapter(request, path.split("/")[2], path.split("/")[4], user, env);
-  if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/rifinisci$/.test(path)) return refineChapter(request, path.split("/")[2], path.split("/")[4], user, env);
+  if (method === "POST" && /^\/libro\/[^/]+\/risposte\/migliora$/.test(path)) return improveInterviewAnswer(request, path.split("/")[2], user, env);
+  if (method === "POST" && path === "/api/musa/trascrizione") return correctDictation(request, user, env);
+  if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/genera$/.test(path)) return generateAdaptiveChapter(request, path.split("/")[2], path.split("/")[4], user, env);
+  if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/rifinisci$/.test(path)) return refineChapterV2(request, path.split("/")[2], path.split("/")[4], user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/salva$/.test(path)) return saveChapter(request, path.split("/")[2], path.split("/")[4], user, env);
   if (method === "GET" && /^\/libro\/[^/]+\/anteprima$/.test(path)) return previewBook(path.split("/")[2], user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/acquista$/.test(path)) return purchase(request, path.split("/")[2], user, env);
@@ -345,7 +354,7 @@ function aiTransparencyPage(user) {
 function page(title, body, user, status = 200, extra = "", bodyClass = "") {
   const account = user ? `${user.isAdmin ? `<a href="/admin">Dashboard</a>` : `<a href="/studio">Il mio Studio</a>`}<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : `<a href="/area-clienti">Area clienti</a><a class="pill" href="/registrati">Inizia gratis</a>`;
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1f1c"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo.">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260805-3" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1f1c"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo.">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-1" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -477,6 +486,7 @@ function studioScript() {
         listening: 'Sto ascoltando… parla liberamente',
         denied: 'Consenti l’uso del microfono nel browser',
         interrupted: 'Dettatura interrotta: riprova',
+        correcting: 'Correggo soltanto grammatica e punteggiatura…',
         finished: 'Dettatura terminata'
       },
       'de-DE': {
@@ -485,6 +495,7 @@ function studioScript() {
         listening: 'Ich höre zu… erzählen Sie frei',
         denied: 'Bitte erlauben Sie den Mikrofonzugriff im Browser',
         interrupted: 'Diktat unterbrochen: Bitte erneut versuchen',
+        correcting: 'Ich korrigiere nur Grammatik und Zeichensetzung…',
         finished: 'Diktat beendet'
       },
       'en-GB': {
@@ -493,12 +504,21 @@ function studioScript() {
         listening: 'I’m listening… speak freely',
         denied: 'Allow microphone access in your browser',
         interrupted: 'Dictation stopped: please try again',
+        correcting: 'Correcting grammar and punctuation only…',
         finished: 'Dictation finished'
       }
     };
     const selectedLanguage = () => languageSelect?.value || 'it-IT';
     const message = key => (languageMessages[selectedLanguage()] || languageMessages['it-IT'])[key];
-    let active = null;
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+    let activeButton = null;
+    let activeTarget = null;
+    let baseText = '';
+    let endedWithError = false;
+    const finalSegments = new Map();
+    const interimSegments = new Map();
+    const orderedText = segments => [...segments.entries()].sort((a,b) => a[0] - b[0]).map(entry => entry[1].trim()).filter(Boolean).join(' ');
+    const joinText = (...parts) => parts.map(part => String(part || '').trim()).filter(Boolean).join(' ');
     const setStatus = (button, text, live = false) => {
       button.classList.toggle('listening', live);
       button.setAttribute('aria-pressed', live ? 'true' : 'false');
@@ -512,12 +532,66 @@ function studioScript() {
       } catch {}
       languageSelect.addEventListener('change', () => {
         try { localStorage.setItem('splendoria-voice-language', languageSelect.value); } catch {}
-        if (active) active.stop();
-        document.querySelectorAll('[data-voice-target]').forEach(button => setStatus(button, SpeechRecognition ? message('ready') : message('unavailable')));
+        if (activeButton && recognition) recognition.stop();
+        document.querySelectorAll('[data-voice-target]').forEach(button => setStatus(button, recognition ? message('ready') : message('unavailable')));
       });
     }
+    if (recognition) {
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = () => {
+        if (activeButton) setStatus(activeButton, message('listening'), true);
+      };
+      recognition.onresult = event => {
+        if (!activeTarget) return;
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = String(event.results[i][0]?.transcript || '').trim();
+          if (event.results[i].isFinal) {
+            finalSegments.set(i, transcript);
+            interimSegments.delete(i);
+          } else interimSegments.set(i, transcript);
+        }
+        activeTarget.value = joinText(baseText, orderedText(finalSegments), orderedText(interimSegments));
+        activeTarget.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      recognition.onerror = event => {
+        endedWithError = true;
+        if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));
+      };
+      recognition.onend = async () => {
+        const button = activeButton;
+        const target = activeTarget;
+        const rawFinal = orderedText(finalSegments);
+        const committed = joinText(baseText, rawFinal);
+        if (target) {
+          target.value = committed;
+          target.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        activeButton = null;
+        activeTarget = null;
+        interimSegments.clear();
+        if (button && !endedWithError && rawFinal && target) {
+          setStatus(button, message('correcting'));
+          try {
+            const response = await fetch('/api/musa/trascrizione', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ text: rawFinal, language: selectedLanguage() })
+            });
+            const result = response.ok ? await response.json() : null;
+            if (result?.text && target.value === committed) {
+              target.value = joinText(baseText, result.text);
+              target.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          } catch {}
+        }
+        if (button && !endedWithError) setStatus(button, message('finished'));
+        target?.focus();
+      };
+    }
     document.querySelectorAll('[data-voice-target]').forEach(button => {
-      if (!SpeechRecognition) {
+      if (!recognition) {
         button.disabled = true;
         setStatus(button, message('unavailable'));
         return;
@@ -526,36 +600,25 @@ function studioScript() {
       button.addEventListener('click', () => {
         const target = document.getElementById(button.dataset.voiceTarget);
         if (!target) return;
-        if (active) { active.stop(); active = null; return; }
-        const recognition = new SpeechRecognition();
+        if (activeButton) { recognition.stop(); return; }
+        activeButton = button;
+        activeTarget = target;
+        baseText = target.value.trim();
+        endedWithError = false;
+        finalSegments.clear();
+        interimSegments.clear();
         recognition.lang = selectedLanguage();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.maxAlternatives = 1;
-        const original = target.value.trim();
-        let finalText = '';
-        let endedWithError = false;
-        recognition.onstart = () => { active = recognition; setStatus(button, message('listening'), true); };
-        recognition.onresult = event => {
-          let interim = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const text = event.results[i][0].transcript;
-            if (event.results[i].isFinal) finalText += text + ' '; else interim += text;
-          }
-          target.value = [original, finalText.trim(), interim.trim()].filter(Boolean).join(' ');
-          target.dispatchEvent(new Event('input', { bubbles: true }));
-        };
-        recognition.onerror = event => {
-          endedWithError = true;
-          setStatus(button, event.error === 'not-allowed' ? message('denied') : message('interrupted'));
-        };
-        recognition.onend = () => { active = null; if (!endedWithError) setStatus(button, message('finished')); target.focus(); };
         recognition.start();
       });
     });
     document.querySelectorAll('textarea[data-word-count]').forEach(area => {
       const output = document.querySelector('[data-count-for="' + area.id + '"]');
-      const update = () => { if (output) output.textContent = (area.value.trim().match(/\\S+/g) || []).length + ' parole'; };
+      const update = () => {
+        if (!output) return;
+        const words = (area.value.trim().match(/\\S+/g) || []).length;
+        const pages = words / ${PRINT_WORDS_PER_PAGE};
+        output.textContent = words + ' parole' + (output.hasAttribute('data-show-pages') ? ' · ' + pages.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' pagine stimate' : '');
+      };
       area.addEventListener('input', update); update();
     });
     const planSelect = document.querySelector('[data-plan-select]');
@@ -578,6 +641,29 @@ function studioScript() {
     });
   })();`;
   return new Response(source, { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=300", "x-content-type-options": "nosniff" } });
+}
+
+async function correctDictation(request, user, env) {
+  if (!user) return jsonResponse({ error: "Accesso richiesto" }, 401);
+  let data;
+  try { data = await request.json(); } catch { return jsonResponse({ error: "Richiesta non valida" }, 400); }
+  const source = clean(data?.text, 8000);
+  if (!source) return jsonResponse({ text: "" });
+  const language = { "it-IT": "italiano", "de-DE": "tedesco", "en-GB": "inglese britannico" }[clean(data?.language, 10)] || "italiano";
+  let text = source;
+  try {
+    const ai = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+      messages: [
+        { role: "system", content: `Trascrivi fedelmente in ${language}. Correggi esclusivamente grammatica, ortografia, maiuscole e punteggiatura. Non riassumere, non ampliare, non sostituire concetti, nomi, date, numeri o dettagli, non cambiare significato, tono o ordine delle idee. Restituisci soltanto il testo corretto.` },
+        { role: "user", content: source }
+      ],
+      temperature: 0,
+      max_tokens: Math.min(1800, Math.max(96, Math.ceil(wordCount(source) * 1.7)))
+    });
+    const candidate = clean(ai.response, 8000);
+    if (validFaithfulCorrection(source, candidate)) text = candidate;
+  } catch {}
+  return jsonResponse({ text });
 }
 
 function accessChoice(user, message = "") {
@@ -694,18 +780,22 @@ async function studio(user, env) {
   if (!user) return redirect("/area-clienti");
   if (user.isAdmin) return redirect("/admin");
   const projects = await env.DB.prepare(`SELECT p.*,a.statoCommerciale,COUNT(c.id) chapters,SUM(CASE WHEN length(c.content)>200 THEN 1 ELSE 0 END) completed FROM "BookProject" p LEFT JOIN "BookChapter" c ON c.projectId=p.id LEFT JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE p.userId=? GROUP BY p.id ORDER BY p.updatedAt DESC`).bind(user.id).all();
-  const cards = projects.results.map(p => { const pct = p.chapters ? Math.round((Number(p.completed || 0) / Number(p.chapters)) * 100) : 10, unlocked = p.plan === "free" || p.statoCommerciale === "pagato"; return `<article class="card"><p class="kicker">${esc(PLAN_LABELS[p.plan] || p.plan)}</p><h3>${esc(p.title || "Libro senza titolo")}</h3><p class="muted">${esc(p.genre)} · ${p.targetPages} pagine</p><div class="meter"><span style="width:${pct}%"></span></div><p class="small">${pct}% completato · ${p.completed || 0}/${p.chapters || 0} capitoli</p>${unlocked ? `<a class="button" href="/libro/${p.id}">Continua il libro</a>` : `<span class="badge">Pagamento in attesa</span><p class="small muted">Il contenuto sarà accessibile appena il pagamento sarà confermato.</p>`}</article>`; }).join("");
-  return page("Il tuo Studio", `<section class="studio alt"><div class="wrap"><div class="studiohead"><div><p class="eyebrow">Il tuo Studio</p><h1>Ciao, ${esc(user.nome || "autore")}</h1><p class="muted">Qui puoi creare, modificare e completare i tuoi libri in autonomia.</p></div></div><div class="grid three">${cards || `<article class="card"><h3>La tua storia comincia qui</h3><p>Imposta il libro in meno di due minuti. Potrai cambiare tutto in seguito.</p></article>`}</div><div class="card" style="margin-top:24px"><h3>Crea un nuovo libro</h3><form method="post" action="/nuovo-libro"><div class="grid three"><label class="field">Titolo provvisorio<input name="title" placeholder="La mia storia" required></label><label class="field">Genere<select name="genre"><option>Autobiografia</option><option>Memoriale</option><option>Romanzo</option><option>Storia di famiglia</option><option>Biografia aziendale</option></select></label><label class="field">Lunghezza<select name="targetPages"><option value="50">Breve · circa 50 pagine</option><option value="80" selected>Standard · circa 80 pagine</option><option value="120">Ampio · circa 120 pagine</option></select></label></div><button class="button">Crea il progetto gratuito</button></form></div></div></section>`, user);
+  const allChapters = await env.DB.prepare(`SELECT c.projectId,c.content FROM "BookChapter" c JOIN "BookProject" p ON p.id=c.projectId WHERE p.userId=?`).bind(user.id).all();
+  const chaptersByProject = new Map();
+  for (const chapter of allChapters.results) chaptersByProject.set(chapter.projectId, [...(chaptersByProject.get(chapter.projectId) || []), chapter]);
+  const cards = projects.results.map(p => { const metrics = bookMetrics(p, chaptersByProject.get(p.id) || []), unlocked = p.plan === "free" || p.statoCommerciale === "pagato"; return `<article class="card"><p class="kicker">${esc(PLAN_LABELS[p.plan] || p.plan)}</p><h3>${esc(p.title || "Libro senza titolo")}</h3><p class="muted">${esc(p.genre)} · ${metrics.structure.label}</p><div class="meter"><span style="width:${metrics.percent}%"></span></div><p class="small">${formatNumber(metrics.words)} parole · ${formatPages(metrics.currentPages)} di ${metrics.targetPages} pagine stimate · ${metrics.percent}%</p>${unlocked ? `<a class="button" href="/libro/${p.id}">Continua il libro</a>` : `<span class="badge">Pagamento in attesa</span><p class="small muted">Il contenuto sarà accessibile appena il pagamento sarà confermato.</p>`}</article>`; }).join("");
+  return page("Il tuo Studio", `<section class="studio alt"><div class="wrap"><div class="studiohead"><div><p class="eyebrow">Il tuo Studio</p><h1>Ciao, ${esc(user.nome || "autore")}</h1><p class="muted">Qui puoi creare, modificare e completare i tuoi libri in autonomia.</p></div></div><div class="grid three">${cards || `<article class="card"><h3>La tua storia comincia qui</h3><p>Imposta il libro in meno di due minuti. Potrai cambiare tutto in seguito.</p></article>`}</div><div class="card" style="margin-top:24px"><h3>Crea un nuovo libro</h3><form method="post" action="/nuovo-libro"><div class="grid three"><label class="field">Titolo provvisorio<input name="title" placeholder="La mia storia" required></label><label class="field">Genere<select name="genre"><option>Autobiografia</option><option>Memoriale</option><option>Romanzo</option><option>Storia di famiglia</option><option>Biografia aziendale</option></select></label><label class="field">Struttura del libro<select name="targetPages"><option value="84" selected>12 capitoli · circa 7 pagine ciascuno</option><option value="117">18 capitoli · circa 6–7 pagine ciascuno</option></select></label></div><p class="small muted">Entrambe le strutture producono un libro fra 80 e 120 pagine effettive, compresi frontespizio e indice.</p><button class="button">Crea il progetto gratuito</button></form></div></div></section>`, user);
 }
 
 async function newBook(request, user, env) {
   if (!user) return redirect("/area-clienti");
   const f = await form(request), id = crypto.randomUUID(), now = new Date().toISOString();
-  await env.DB.prepare('INSERT INTO "BookProject" (id,userId,title,genre,targetPages,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?)').bind(id, user.id, clean(f.title, 160), clean(f.genre, 60), [50,80,120].includes(Number(f.targetPages)) ? Number(f.targetPages) : 80, now, now).run();
+  const targetPages = normalizeTargetPages(f.targetPages);
+  await env.DB.prepare('INSERT INTO "BookProject" (id,userId,title,genre,targetPages,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?)').bind(id, user.id, clean(f.title, 160), clean(f.genre, 60), targetPages, now, now).run();
   return redirect(`/libro/${id}`);
 }
 
-async function bookEditor(id, user, env, notice = "") {
+async function bookEditorLegacy(id, user, env, notice = "") {
   if (!user) return redirect("/area-clienti");
   const project = await ownProject(id, user, env); if (!project) return redirect("/studio");
   const chapters = await env.DB.prepare('SELECT * FROM "BookChapter" WHERE projectId=? ORDER BY position').bind(id).all();
@@ -725,24 +815,28 @@ async function saveBook(request, id, user, env) {
   if (!user) return redirect("/area-clienti"); const p = await ownProject(id, user, env); if (!p) return redirect("/studio"); const f = await form(request);
   if (f.specialDataConsent !== "yes") return bookEditor(id, user, env, "Per salvare i ricordi devi confermare la liceità dei contenuti e l’eventuale consenso ai dati particolari.");
   const now = new Date().toISOString();
-  await env.DB.prepare('UPDATE "BookProject" SET title=?,tone=?,audience=?,story=?,people=?,events=?,message=?,specialDataConsentAt=COALESCE(specialDataConsentAt,?),updatedAt=? WHERE id=?').bind(clean(f.title,160),clean(f.tone,80),clean(f.audience,160),clean(f.story,7000),clean(f.people,4000),clean(f.events,4000),clean(f.message,3000),now,now,id).run();
+  await env.DB.prepare('UPDATE "BookProject" SET title=?,tone=?,audience=?,targetPages=?,story=?,people=?,events=?,message=?,specialDataConsentAt=COALESCE(specialDataConsentAt,?),updatedAt=? WHERE id=?').bind(clean(f.title,160),clean(f.tone,80),clean(f.audience,160),normalizeTargetPages(f.targetPages),clean(f.story,7000),clean(f.people,4000),clean(f.events,4000),clean(f.message,3000),now,now,id).run();
   return redirect(`/libro/${id}`);
 }
 
 async function generateOutline(id, user, env) {
   if (!user) return redirect("/area-clienti"); const p = await ownProject(id, user, env); if (!p) return redirect("/studio");
   if (!p.story.trim()) return bookEditor(id, user, env, "Prima racconta brevemente la storia e salva le informazioni.");
-  const count = p.targetPages <= 50 ? 7 : p.targetPages >= 120 ? 14 : 10;
+  const structure = bookStructure(p.targetPages), count = structure.chapters;
   let titles;
   try {
-    const prompt = `Crea un indice di ${count} capitoli per un libro in italiano. Titolo: ${p.title}. Genere: ${p.genre}. Tono: ${p.tone}. Pubblico: ${p.audience}. Storia: ${p.story}. Persone: ${p.people}. Eventi: ${p.events}. Messaggio: ${p.message}. Rispondi solo con i titoli, uno per riga, senza numerazione.`;
+    const prompt = `Crea un indice di esattamente ${count} capitoli per un libro in italiano di ${structure.targetPages} pagine effettive (${structure.label}). Titolo: ${p.title}. Genere: ${p.genre}. Tono: ${p.tone}. Pubblico: ${p.audience}. Storia: ${p.story}. Persone: ${p.people}. Eventi: ${p.events}. Messaggio: ${p.message}. Distribuisci la materia senza ripetizioni e senza inventare fatti. Rispondi solo con i titoli, uno per riga, senza numerazione.`;
     const ai = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, max_tokens: 500 });
     titles = String(ai.response || "").split(/\n/).map(x => x.replace(/^\s*\d+[.)-]?\s*/, "").trim()).filter(Boolean).slice(0, count);
   } catch { titles = fallbackTitles(count); }
-  if (titles.length < 4) titles = fallbackTitles(count);
+  if (titles.length < count) {
+    const fallbacks = fallbackTitles(count);
+    for (const fallback of fallbacks) if (titles.length < count && !titles.some(title => title.toLowerCase() === fallback.toLowerCase())) titles.push(fallback);
+  }
+  titles = titles.slice(0, count);
   const statements = [env.DB.prepare('DELETE FROM "BookChapter" WHERE projectId=?').bind(id)];
   titles.forEach((title, i) => statements.push(env.DB.prepare('INSERT INTO "BookChapter" (id,projectId,position,title,content,status,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,i+1,clean(title,180),"","da_generare",new Date().toISOString(),new Date().toISOString())));
-  statements.push(env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=?').bind("struttura_creata",new Date().toISOString(),id));
+  statements.push(env.DB.prepare('UPDATE "BookProject" SET targetPages=?,status=?,updatedAt=? WHERE id=?').bind(structure.targetPages,"struttura_creata",new Date().toISOString(),id));
   await env.DB.batch(statements); return redirect(`/libro/${id}`);
 }
 
@@ -811,6 +905,7 @@ function bookPrintStyles(){return `
 @media print{html,body{margin:0!important;padding:0!important;background:#fff!important;color:#111!important}.nav,.footer,.book-preview-toolbar,.admin-content-review,.cookie-banner{display:none!important}.book-preview-shell{padding:0!important;background:#fff!important}.book-volume{width:auto;min-height:0;margin:0;padding:0;box-shadow:none;font-family:Garamond,"EB Garamond","Adobe Garamond Pro",Georgia,"Times New Roman",serif}.book-title-page{min-height:194.362mm;break-after:right}.book-toc{padding-top:0;break-after:right}.book-chapter{padding-top:0;break-before:right}.book-chapter h2{font:700 18pt/1.12 Garamond,"EB Garamond","Adobe Garamond Pro",Georgia,serif;margin:0 0 9mm}.book-chapter p:not(.book-chapter-number){font-size:12pt;line-height:13.44pt;text-align:justify;text-align-last:left;text-indent:12.5mm;margin:0;hyphens:auto;orphans:3;widows:3}.book-chapter h2+p{text-indent:0}.book-toc h2{font:700 18pt/1.12 Garamond,"EB Garamond","Adobe Garamond Pro",Georgia,serif}.book-crop-marks{display:block;position:fixed;z-index:9999;inset:0;pointer-events:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}.crop-mark{position:absolute;width:8mm;height:8mm}.crop-mark:before,.crop-mark:after{content:"";position:absolute;background:#111}.crop-mark:before{width:4mm;height:.2mm}.crop-mark:after{width:.2mm;height:4mm}.crop-top-left{left:0;top:0}.crop-top-left:before{left:0;bottom:0}.crop-top-left:after{right:0;top:0}.crop-top-right{right:0;top:0}.crop-top-right:before{right:0;bottom:0}.crop-top-right:after{left:0;top:0}.crop-bottom-left{left:0;bottom:0}.crop-bottom-left:before{left:0;top:0}.crop-bottom-left:after{right:0;bottom:0}.crop-bottom-right{right:0;bottom:0}.crop-bottom-right:before{right:0;top:0}.crop-bottom-right:after{left:0;bottom:0}}
 @media print{.skip-link,.book-crop-marks{display:none!important}}
 @media(max-width:560px){.book-preview-shell{padding:24px 10px 55px}.book-preview-toolbar{display:block}.book-preview-toolbar>div{text-align:left;margin-top:18px}.book-volume{width:100%;min-height:0;padding:12vw 10vw}.book-title-page{min-height:120vw}}
+.book-volume{font-size:14pt}.book-imprint{font-size:11pt}.book-title-page h1{font-size:24.08pt}.book-author{font-size:14pt}.book-edition{font-size:11pt}.book-overline,.book-chapter-number{font-size:11pt}.book-toc h2,.book-chapter h2{font-size:20pt}.book-toc li{font-size:14pt;line-height:15.68pt}.book-toc li span{font-size:11pt}.book-chapter p:not(.book-chapter-number){font-size:14pt;line-height:15.68pt}
 `}
 
 function purchaseBox(id, plan) { if (plan !== "free") return `<div class="card"><h3>Formula attiva: ${esc(PLAN_LABELS[plan])}</h3><p>Puoi completare il libro e preparare l'anteprima digitale.</p></div>`; return `<section class="card" style="margin-top:30px"><p class="eyebrow">Completa il libro</p><h3>Sblocca tutte le generazioni</h3><form method="post" action="/libro/${id}/acquista"><div class="grid three">${Object.entries(PLANS).map(([k,p])=>`<label class="card"><input type="radio" name="plan" value="${k}" ${k==="digital"?"checked":""}> <b>${esc(p.label)} · ${p.price} €</b><p class="small">${esc(p.description)}</p></label>`).join("")}</div><label class="legal-check legal-check-panel"><input type="checkbox" name="termsAccepted" value="yes" required><span>Ho letto e accetto i <a href="/termini-condizioni" target="_blank" rel="noopener">Termini e condizioni</a>. Comprendo che l’invio costituisce una richiesta e che il progetto inizierà dopo la conferma scritta di Splendoria.</span></label><button class="button">Continua con la formula scelta</button></form></section>`; }
@@ -921,10 +1016,165 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function options(list,current){return list.map(x=>`<option value="${esc(x)}" ${x===current?"selected":""}>${esc(x.replaceAll("_"," "))}</option>`).join("")}
 function allowedState(value,list,fallback){const state=clean(value,50);return list.includes(state)?state:fallback}
 function sessionCookie(token){return `spl_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_DAYS*86400}`}
+async function improveProjectField(request, id, user, env) {
+  if (!user) return redirect("/area-clienti");
+  const project = await ownProject(id, user, env);
+  if (!project) return redirect("/studio");
+  const f = await form(request), field = clean(f.improveField, 30);
+  const limits = { story: 7000, people: 4000, events: 4000, message: 3000 };
+  if (!Object.hasOwn(limits, field)) return redirect(`/libro/${id}`);
+  const values = {
+    story: clean(f.story, limits.story),
+    people: clean(f.people, limits.people),
+    events: clean(f.events, limits.events),
+    message: clean(f.message, limits.message)
+  };
+  if (!values[field]) return bookEditor(id, user, env, "Scrivi prima qualche parola nel campo che vuoi migliorare.");
+  const chapters = await env.DB.prepare('SELECT content FROM "BookChapter" WHERE projectId=?').bind(id).all();
+  const metrics = bookMetrics({ ...project, targetPages: normalizeTargetPages(f.targetPages || project.targetPages) }, chapters.results);
+  values[field] = await improveNarrative(values[field], env, improvementTargetWords(values[field], metrics.remainingWords));
+  const now = new Date().toISOString(), consentAt = f.specialDataConsent === "yes" ? now : null;
+  await env.DB.prepare('UPDATE "BookProject" SET title=?,tone=?,audience=?,targetPages=?,story=?,people=?,events=?,message=?,specialDataConsentAt=COALESCE(specialDataConsentAt,?),updatedAt=? WHERE id=? AND userId=?').bind(clean(f.title,160)||project.title,clean(f.tone,80)||project.tone,clean(f.audience,160)||project.audience,normalizeTargetPages(f.targetPages||project.targetPages),values.story,values.people,values.events,values.message,consentAt,now,id,user.id).run();
+  return redirect(`/libro/${id}`);
+}
+
+async function improveInterviewAnswer(request, id, user, env) {
+  if (!user) return redirect("/area-clienti");
+  const project = await ownProject(id, user, env);
+  if (!project) return redirect("/studio");
+  const f = await form(request), interview = await env.DB.prepare('SELECT questions,answers FROM "BookInterview" WHERE projectId=?').bind(id).first();
+  const questions = String(interview?.questions || "").split("\n").filter(Boolean).map(q => q.replace(/^\d+[.)-]?\s*/, ""));
+  if (!questions.length) return redirect(`/libro/${id}`);
+  const answers = questions.map((_, i) => clean(f[`answer_${i}`], 6000));
+  const index = Number(f.improveAnswer);
+  if (!Number.isInteger(index) || index < 0 || index >= answers.length || !answers[index]) return bookEditor(id, user, env, "Scrivi prima una risposta da migliorare.");
+  const chapters = await env.DB.prepare('SELECT content FROM "BookChapter" WHERE projectId=?').bind(id).all();
+  const plan = interviewPlan(project, chapters.results);
+  answers[index] = await improveNarrative(answers[index], env, Math.max(plan.targetAnswerWords, improvementTargetWords(answers[index], bookMetrics(project, chapters.results).remainingWords)));
+  await env.DB.prepare('UPDATE "BookInterview" SET answers=?,updatedAt=? WHERE projectId=?').bind(serializeInterviewAnswers(questions, answers),new Date().toISOString(),id).run();
+  return redirect(`/libro/${id}`);
+}
+
+async function generateAdaptiveInterview(id, user, env) {
+  if (!user) return redirect("/area-clienti");
+  const project = await ownProject(id, user, env);
+  if (!project) return redirect("/studio");
+  if (!project.story.trim()) return bookEditor(id, user, env, "Racconta prima qualche riga della storia e salva.");
+  const chapters = await env.DB.prepare('SELECT content FROM "BookChapter" WHERE projectId=? ORDER BY position').bind(id).all();
+  const plan = interviewPlan(project, chapters.results);
+  let questions = [];
+  try {
+    const ai = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { messages: [
+      { role: "system", content: `Sei un intervistatore biografico empatico. Formula esattamente ${plan.count} domande in italiano, una per riga e senza numerazione. Devono far emergere scene, emozioni, dialoghi, dettagli sensoriali e significato presenti nei ricordi dell'autore. Non suggerire fatti, non riempire vuoti e non ripetere domande. Ogni risposta prevista è di circa ${plan.targetAnswerWords} parole.` },
+      { role: "user", content: `Storia: ${project.story}\nPersone: ${project.people}\nEventi: ${project.events}\nMessaggio: ${project.message}\nRestano circa ${formatPages(plan.remainingPages)} pagine da completare nella struttura ${plan.structure.label}.` }
+    ], temperature: 0.2, max_tokens: Math.min(1400, plan.count * 120) });
+    questions = String(ai.response || "").split(/\n/).map(q => q.replace(/^\s*\d+[.)-]?\s*/, "").trim()).filter(Boolean).slice(0, plan.count);
+  } catch {}
+  const fallback = fallbackQuestions();
+  for (const question of fallback) if (questions.length < plan.count && !questions.some(q => q.toLowerCase() === question.toLowerCase())) questions.push(question);
+  questions = questions.slice(0, plan.count);
+  await env.DB.prepare(`INSERT INTO "BookInterview" (projectId,questions,answers,updatedAt) VALUES (?,?,?,?) ON CONFLICT(projectId) DO UPDATE SET questions=excluded.questions,answers=excluded.answers,updatedAt=excluded.updatedAt`).bind(id,questions.join("\n"),"",new Date().toISOString()).run();
+  return redirect(`/libro/${id}`);
+}
+
+async function generateAdaptiveChapter(request, projectId, chapterId, user, env) {
+  if (!user) return redirect("/area-clienti");
+  const project = await ownProject(projectId, user, env);
+  if (!project) return redirect("/studio");
+  const submitted = await form(request);
+  const chapters = await env.DB.prepare('SELECT * FROM "BookChapter" WHERE projectId=? ORDER BY position').bind(projectId).all();
+  const chapter = chapters.results.find(item => item.id === chapterId);
+  if (!chapter) return redirect(`/libro/${projectId}`);
+  const chapterTitle = clean(submitted.title, 180) || chapter.title;
+  if (project.plan === "free") { const used = await todayUsage(user.id, env); if (used >= FREE_AI_LIMIT) return bookEditor(projectId, user, env, "Hai usato le generazioni gratuite. Scegli una formula per continuare."); }
+  const metrics = bookMetrics(project, chapters.results);
+  const wordsWithoutCurrent = metrics.words - wordCount(chapter.content);
+  const availableWords = Math.max(0, metrics.targetWords - wordsWithoutCurrent);
+  if (availableWords < 300) return bookEditor(projectId, user, env, "Il libro ha già raggiunto la lunghezza prevista: rivedi i capitoli esistenti prima di generarne altri.");
+  const unfinished = chapters.results.filter(item => item.id === chapterId || wordCount(item.content) < metrics.chapterTargetWords * .7).length || 1;
+  const targetWords = Math.max(300, Math.min(availableWords, Math.round(availableWords / unfinished), Math.round(metrics.chapterTargetWords * 1.12)));
+  const interview = await env.DB.prepare('SELECT answers FROM "BookInterview" WHERE projectId=?').bind(projectId).first();
+  const prompt = `Scrivi il capitolo ${chapter.position}, intitolato "${chapterTitle}", del libro "${project.title}". Genere: ${project.genre}. Tono: ${project.tone}. Pubblico: ${project.audience}. Obiettivo: circa ${targetWords} parole, senza superare ${Math.min(availableWords, Math.ceil(targetWords * 1.08))} parole. Storia: ${project.story}. Persone: ${project.people}. Eventi: ${project.events}. Messaggio: ${project.message}. Risposte dell'autore: ${interview?.answers || ""}. Indice: ${chapters.results.map(item => item.position + ". " + (item.id === chapterId ? chapterTitle : item.title)).join("; ")}. Conserva voce, fatti, nomi, relazioni, numeri, significato e punto di vista dell'autore. Costruisci una narrazione fluida usando soltanto il materiale fornito. Non inventare scene o dettagli, non ripetere concetti e non usare contenuti riempitivi. Se il materiale non basta per la lunghezza indicata, scrivi un capitolo più breve. Restituisci solo il capitolo.`;
+  let content = "";
+  try {
+    const ai = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { prompt, temperature: 0.25, max_tokens: Math.min(3200, Math.max(900, Math.ceil(targetWords * 1.65))) });
+    const candidate = clean(ai.response, 60000);
+    if (candidate && !hasRepeatedSentences(candidate)) content = limitToWords(candidate, Math.min(availableWords, Math.ceil(targetWords * 1.1)));
+  } catch {}
+  if (!content) return bookEditor(projectId, user, env, "La Musa non ha generato un testo affidabile. I tuoi contenuti sono intatti: riprova tra poco.");
+  await env.DB.batch([env.DB.prepare('UPDATE "BookChapter" SET title=?,content=?,status=?,updatedAt=? WHERE id=?').bind(chapterTitle,content,"generato",new Date().toISOString(),chapterId),env.DB.prepare(`INSERT INTO "AiUsage" (userId,date,requests,updatedAt) VALUES (?,?,1,?) ON CONFLICT(userId,date) DO UPDATE SET requests=requests+1,updatedAt=excluded.updatedAt`).bind(user.id,new Date().toISOString().slice(0,10),new Date().toISOString())]);
+  return redirect(`/libro/${projectId}#chapter-card-${chapterId}`);
+}
+
+async function refineChapterV2(request, projectId, chapterId, user, env) {
+  if (!user) return redirect("/area-clienti");
+  const project = await ownProject(projectId, user, env);
+  if (!project) return redirect("/studio");
+  const chapter = await env.DB.prepare('SELECT * FROM "BookChapter" WHERE id=? AND projectId=?').bind(chapterId,projectId).first();
+  if (!chapter) return redirect(`/libro/${projectId}#chapter-card-${chapterId}`);
+  const f = await form(request), title = clean(f.title,180) || chapter.title, action = instructionsAction(f.action), source = clean(f.content,60000) || chapter.content;
+  if (!source) return bookEditor(projectId, user, env, "Scrivi prima qualche parola nel capitolo.");
+  let content = source;
+  if (action === "improve") {
+    const chapters = await env.DB.prepare('SELECT content FROM "BookChapter" WHERE projectId=?').bind(projectId).all();
+    const metrics = bookMetrics(project, chapters.results);
+    content = await improveNarrative(source, env, improvementTargetWords(source, metrics.remainingWords + wordCount(source)));
+  } else {
+    const instructions = { grammar:"Correggi esclusivamente ortografia, grammatica, punteggiatura, concordanze e refusi. Non abbellire, non riassumere e non cambiare lessico, ritmo o voce dell'autore.",clarity:"Migliora chiarezza e scorrevolezza, sciogliendo frasi ambigue e ripetizioni, senza cambiare tono, fatti o personalità dell'autore.",emotional:"Rendi più leggibili le emozioni già espresse, senza aggiungerne o creare melodramma.",vivid:"Rendi più nitide le formulazioni usando soltanto dettagli già presenti.",elegant:"Rendi lo stile più elegante e fluido senza alterare contenuto o voce.",short:"Riduci il testo del 25%, elimina ripetizioni e mantieni tutti i passaggi essenziali." };
+    try {
+      const ai = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { messages:[{role:"system",content:`Sei un editor italiano rigoroso. ${instructions[action]} Mantieni nomi, fatti, numeri, relazioni, significato e punto di vista. Non inventare informazioni e non inserire ripetizioni. Restituisci soltanto il testo revisionato.`},{role:"user",content:source}],temperature:0.1,max_tokens:Math.min(2600,Math.max(160,Math.ceil(wordCount(source)*1.7))) });
+      const candidate = clean(ai.response,60000);
+      if (validRevision(source,candidate,action)) content = candidate;
+    } catch {}
+  }
+  const status = content === source ? "revisione_non_applicata" : `revisionato_${action}`;
+  await env.DB.prepare('UPDATE "BookChapter" SET title=?,content=?,status=?,updatedAt=? WHERE id=?').bind(title,content,status,new Date().toISOString(),chapterId).run();
+  return redirect(`/libro/${projectId}#chapter-card-${chapterId}`);
+}
+
+async function bookEditor(id, user, env, notice = "") {
+  if (!user) return redirect("/area-clienti");
+  const project = await ownProject(id, user, env);
+  if (!project) return redirect("/studio");
+  const structure = bookStructure(project.targetPages);
+  project.targetPages = structure.targetPages;
+  const chapters = await env.DB.prepare('SELECT * FROM "BookChapter" WHERE projectId=? ORDER BY position').bind(id).all();
+  const interview = await env.DB.prepare('SELECT * FROM "BookInterview" WHERE projectId=?').bind(id).first();
+  const metrics = bookMetrics(project, chapters.results);
+  const questionPlan = interviewPlan(project, chapters.results);
+  const questions = interview?.questions ? interview.questions.split("\n").filter(Boolean).map(q => q.replace(/^\d+[.)-]?\s*/, "")) : [];
+  const savedAnswers = parseInterviewAnswers(interview?.answers, questions.length);
+  const improveFieldButton = field => `<button class="improve-button" type="submit" name="improveField" value="${field}" formaction="/libro/${id}/migliora" formnovalidate>✦ Migliora</button>`;
+  const questionHtml = questions.map((q, i) => {
+    const target = `interview-${i}`;
+    return `<article class="interview-step"><p class="interview-number">Domanda ${i + 1} di ${questions.length}</p><h4>${esc(q)}</h4><label class="field"><span class="sr-only">La tua risposta</span><textarea id="${target}" data-word-count name="answer_${i}" placeholder="Racconta come se fossimo seduti davanti a un caffè…">${esc(savedAnswers[i] || "")}</textarea></label><div class="field-tools">${dictationControl(target)}<button class="improve-button" type="submit" name="improveAnswer" value="${i}" formaction="/libro/${id}/risposte/migliora" formnovalidate>✦ Migliora</button><span class="wordcount" data-count-for="${target}">0 parole</span></div><p class="small muted">Obiettivo suggerito: circa ${questionPlan.targetAnswerWords} parole, usando soltanto ricordi reali.</p></article>`;
+  }).join("");
+  const chapterHtml = chapters.results.map(c => {
+    const target = `chapter-${c.id}`;
+    const words = wordCount(c.content);
+    const pages = words / PRINT_WORDS_PER_PAGE;
+    const chapterPercent = Math.min(100, Math.round(pages / metrics.chapterTargetPages * 100));
+    return `<article class="card chapter-card" id="chapter-card-${c.id}"><div class="chapter-head"><div class="chapter-heading"><div><p class="kicker">Capitolo ${c.position}</p><h3>${esc(c.title)}</h3></div><span class="wordcount" data-count-for="${target}" data-show-pages>${formatNumber(words)} parole · ${formatPages(pages)} pagine stimate</span></div><div class="chapter-progress" aria-label="Avanzamento del capitolo"><span style="width:${chapterPercent}%"></span></div><p class="small muted">Obiettivo: circa ${formatPages(metrics.chapterTargetPages)} pagine · ${formatNumber(metrics.chapterTargetWords)} parole</p></div><div class="chapter-body"><form method="post" action="/libro/${id}/capitolo/${c.id}/salva" data-keep-writing-position data-book-path="/libro/${id}"><label class="field chapter-title-field">Titolo del capitolo<input name="title" value="${esc(c.title)}" maxlength="180" required></label><label class="field">La tua pagina<textarea id="${target}" data-word-count name="content" placeholder="Qui prenderà forma il capitolo…">${esc(c.content)}</textarea></label><div class="field-tools">${dictationControl(target, "Detta il capitolo")}<button class="improve-button" name="action" value="improve" formaction="/libro/${id}/capitolo/${c.id}/rifinisci" formnovalidate>✦ Migliora</button></div>${c.content ? `<p class="small muted"><b>Revisore Musa AI</b> · lavora sul testo visibile e conserva la tua voce:</p><div class="magic-tools"><button name="action" value="grammar" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✓ Correggi grammatica</button><button name="action" value="clarity" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">◇ Più chiaro e scorrevole</button><button name="action" value="emotional" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✦ Più emozionante</button><button name="action" value="vivid" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">◉ Più vivido</button><button name="action" value="elegant" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✎ Più elegante</button><button name="action" value="short" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">↘ Più essenziale</button></div>` : ""}<div class="actions"><button class="button">Salva le mie modifiche</button><button class="button secondary" formaction="/libro/${id}/capitolo/${c.id}/genera">${c.content ? "Crea una nuova versione" : "Scrivi questo capitolo con me"}</button></div></form></div></article>`;
+  }).join("");
+  const stage = chapters.results.length ? (chapters.results.some(c => c.content) ? 2 : 1) : project.story ? 1 : 0;
+  const progress = `<section class="book-progress-card" aria-labelledby="book-progress-title"><div><p class="eyebrow">Avanzamento del libro</p><h2 id="book-progress-title">${formatNumber(metrics.words)} parole · ${formatPages(metrics.currentPages)} di ${metrics.targetPages} pagine stimate</h2><p>${metrics.structure.label}. Restano circa ${formatPages(metrics.remainingPages)} pagine da completare.</p></div><div class="book-progress-value"><strong>${metrics.percent}%</strong><span>del libro</span></div><div class="book-progress-track"><span style="width:${metrics.percent}%"></span></div></section>`;
+  return page(project.title, `<section class="studio alt"><div class="wrap"><a href="/studio">← Tutti i libri</a><div class="studiohead"><div><p class="eyebrow">Il tuo viaggio di scrittura</p><h1>${esc(project.title)}</h1><p class="muted">La tua voce guida il libro. La Musa AI ti aiuta a trovare struttura, ritmo e parole.</p></div><a class="button secondary" href="/libro/${id}/anteprima">Sfoglia l'anteprima</a></div><div class="journey"><div class="journey-step done">La scintilla</div><i class="journey-line"></i><div class="journey-step ${stage >= 1 ? "done" : ""}">La trama</div><i class="journey-line"></i><div class="journey-step ${stage >= 2 ? "done" : ""}">I capitoli</div><i class="journey-line"></i><div class="journey-step">Il libro</div></div>${notice ? `<p class="success">${esc(notice)}</p>` : ""}${progress}<div class="writing-shell"><div class="writing-main"><form class="wow-panel" method="post" action="/libro/${id}/salva" data-keep-writing-position data-book-path="/libro/${id}"><p class="eyebrow">L'anima del libro</p><h2>Prima delle parole, ci sono i ricordi.</h2><div class="grid three"><label class="field">Titolo<input name="title" value="${esc(project.title)}" required></label><label class="field">Tono<select name="tone">${options(["Emozionante e autentico", "Intimo e riflessivo", "Leggero e brillante", "Professionale e autorevole"], project.tone)}</select></label><label class="field">Per chi è scritto?<input name="audience" value="${esc(project.audience)}"></label></div><label class="field">Struttura del libro<select name="targetPages"><option value="84"${structure.chapters === 12 ? " selected" : ""}>12 capitoli · circa 7 pagine ciascuno</option><option value="117"${structure.chapters === 18 ? " selected" : ""}>18 capitoli · circa 6–7 pagine ciascuno</option></select></label><label class="field">Racconta liberamente la storia<textarea id="story-${id}" data-word-count name="story" placeholder="Scrivi come parleresti a una persona cara. Non preoccuparti dello stile: a quello penseremo insieme.">${esc(project.story)}</textarea></label><div class="field-tools">${dictationControl(`story-${id}`, "Racconta a voce")}${improveFieldButton("story")}<span class="wordcount" data-count-for="story-${id}">0 parole</span></div><div class="grid three"><div><label class="field">I protagonisti<textarea id="people-${id}" data-word-count name="people" placeholder="Chi non può mancare?">${esc(project.people)}</textarea></label><div class="field-tools">${dictationControl(`people-${id}`)}${improveFieldButton("people")}<span class="wordcount" data-count-for="people-${id}">0 parole</span></div></div><div><label class="field">I momenti decisivi<textarea id="events-${id}" data-word-count name="events" placeholder="Gli incontri, le svolte, le partenze…">${esc(project.events)}</textarea></label><div class="field-tools">${dictationControl(`events-${id}`)}${improveFieldButton("events")}<span class="wordcount" data-count-for="events-${id}">0 parole</span></div></div><div><label class="field">Ciò che vuoi lasciare<textarea id="message-${id}" data-word-count name="message" placeholder="Che cosa vorresti restasse nel cuore?">${esc(project.message)}</textarea></label><div class="field-tools">${dictationControl(`message-${id}`)}${improveFieldButton("message")}<span class="wordcount" data-count-for="message-${id}">0 parole</span></div></div></div><label class="legal-check legal-check-panel"><input type="checkbox" name="specialDataConsent" value="yes" required${project.specialDataConsentAt ? " checked" : ""}><span>Confermo di poter condividere i contenuti inseriti e, se comprendono dati particolari che mi riguardano, presto il consenso esplicito al loro trattamento per realizzare il libro. Per eventuali dati di terzi dichiaro di averne titolo. <a href="/privacy-policy" target="_blank" rel="noopener">Approfondisci</a>.</span></label><button class="button">Custodisci questi ricordi</button></form>${questionHtml ? `<form class="card interview" method="post" action="/libro/${id}/risposte" style="margin-top:24px" data-keep-writing-position data-book-path="/libro/${id}"><p class="eyebrow">Intervista narrativa</p><h3>La Musa diventa la tua giornalista personale</h3><p class="muted">Le ${questions.length} domande e l’obiettivo di circa ${questionPlan.targetAnswerWords} parole per risposta sono calcolati sulle ${formatPages(metrics.remainingPages)} pagine ancora da completare.</p>${questionHtml}<button class="button">Affida queste risposte alla Musa</button></form>` : ""}<div class="actions"><form method="post" action="/libro/${id}/struttura" data-keep-writing-position data-book-path="/libro/${id}"><button class="button">${chapters.results.length ? "Reimmagina l'indice" : "Disegna la trama del mio libro"}</button></form></div><div class="grid chapter-list" style="margin-top:24px">${chapterHtml || `<article class="card center"><p class="eyebrow">Il prossimo incanto</p><h3>La tua storia sta per trovare una forma.</h3><p>Salva i ricordi, chiedi alla Musa le domande giuste e lascia che Splendoria disegni l'indice.</p></article>`}</div>${chapters.results.length ? purchaseBox(id, project.plan) : ""}</div><aside class="muse" aria-labelledby="muse-title"><div class="muse-head"><span class="muse-mark" aria-hidden="true">✦</span><div><p class="eyebrow">La tua Musa</p><p class="muse-role">Guida digitale, sensibilità umana</p></div></div><h3 id="muse-title">Racconta con la tua voce.</h3><p>La Musa trascrive fedelmente ciò che dici, correggendo soltanto grammatica, ortografia e punteggiatura. “Migliora” rende il testo più fluido e narrativo senza cambiarne il contenuto.</p><p class="muse-ai-note small"><strong>Trasparenza IA</strong><br>Gli output restano modificabili e saranno sottoposti alla supervisione umana prevista dal percorso. <a href="/trasparenza-ai" target="_blank" rel="noopener">Come funziona</a>.</p><ul class="muse-list"><li><span aria-hidden="true">01</span>Ti guida con ${questionPlan.count} domande calibrate sulle pagine mancanti</li><li><span aria-hidden="true">02</span>Calcola parole e pagine per capitolo e per il libro</li><li><span aria-hidden="true">03</span>Non aggiunge fatti, ripetizioni o testo riempitivo</li></ul><div class="muse-voice"><label for="voice-language-${id}">Lingua della dettatura</label><select id="voice-language-${id}" data-voice-language><option value="it-IT">Italiano</option><option value="de-DE">Deutsch</option><option value="en-GB">English</option></select><p class="small">La scelta vale per tutti i pulsanti del microfono e viene ricordata su questo dispositivo.</p></div><form method="post" action="/libro/${id}/intervista" data-keep-writing-position data-book-path="/libro/${id}"><button class="button">✦ Genera ${questionPlan.count} nuove domande</button></form><p class="muse-human small"><strong>Supervisione umana</strong><br>La tecnologia accompagna il percorso; la revisione professionale garantisce il risultato.</p></aside></div></div></section>`, user);
+}
+
 function dictationControl(target,label="Rispondi a voce"){return `<div class="voice-control"><button class="voice-button" type="button" data-voice-target="${esc(target)}" aria-pressed="false">● ${esc(label)}</button><span class="small muted" data-voice-status role="status" aria-live="polite">Premi e inizia a parlare</span></div>`}
-function parseInterviewAnswers(value,count){const answers=Array(count).fill(""),text=String(value||"");const matches=[...text.matchAll(/Domanda\s+\d+:.*?\nRisposta:\s*([\s\S]*?)(?=\n\nDomanda\s+\d+:|$)/g)];if(matches.length)matches.slice(0,count).forEach((m,i)=>answers[i]=m[1].trim());else if(text.trim())answers[0]=text.trim();return answers}
+function jsonResponse(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store","x-content-type-options":"nosniff"}})}
+function normalizeTargetPages(value){return Number(value)>100?BOOK_STRUCTURES[18].targetPages:BOOK_STRUCTURES[12].targetPages}
+function bookStructure(targetPages){return Number(targetPages)>100?BOOK_STRUCTURES[18]:BOOK_STRUCTURES[12]}
+function bookMetrics(project,chapters=[]){const structure=bookStructure(project?.targetPages),targetPages=structure.targetPages,targetWords=(targetPages-BOOK_FRONT_MATTER_PAGES)*PRINT_WORDS_PER_PAGE,words=chapters.reduce((sum,chapter)=>sum+wordCount(chapter?.content),0),currentPages=BOOK_FRONT_MATTER_PAGES+words/PRINT_WORDS_PER_PAGE,remainingPages=Math.max(0,targetPages-currentPages),remainingWords=Math.max(0,targetWords-words),chapterTargetPages=(targetPages-BOOK_FRONT_MATTER_PAGES)/structure.chapters,chapterTargetWords=Math.round(chapterTargetPages*PRINT_WORDS_PER_PAGE),percent=Math.min(100,Math.round(words/targetWords*100));return{structure,targetPages,targetWords,words,currentPages,remainingPages,remainingWords,chapterTargetPages,chapterTargetWords,percent}}
+function interviewPlan(project,chapters=[]){const metrics=bookMetrics(project,chapters),divisor=metrics.structure.chapters===12?10:12,count=Math.max(3,Math.min(10,Math.ceil(metrics.remainingPages/divisor))),targetAnswerWords=Math.max(160,Math.min(550,Math.round(metrics.remainingWords/Math.max(1,count*4))));return{...metrics,count,targetAnswerWords}}
+function improvementTargetWords(source,remainingWords){const words=wordCount(source);return Math.max(words,Math.min(Math.ceil(words*1.35),words+Math.min(320,Math.max(0,Number(remainingWords)||0))))}
+function formatNumber(value){return Math.round(Number(value)||0).toLocaleString("it-IT")}
+function formatPages(value){return (Math.max(0,Number(value)||0)).toLocaleString("it-IT",{minimumFractionDigits:1,maximumFractionDigits:1})}
+function parseInterviewAnswers(value,count){const answers=Array(count).fill(""),text=String(value||"");const matches=[...text.matchAll(/Domanda\s+(\d+):.*?\nRisposta:\s*([\s\S]*?)(?=\n\nDomanda\s+\d+:|$)/g)];if(matches.length)matches.forEach(match=>{const index=Number(match[1])-1;if(index>=0&&index<count)answers[index]=match[2].trim()});else if(text.trim())answers[0]=text.trim();return answers}
+function serializeInterviewAnswers(questions,answers){return clean(questions.map((question,index)=>answers[index]?`Domanda ${index+1}: ${question}\nRisposta: ${answers[index]}`:"").filter(Boolean).join("\n\n"),60000)}
 function paragraphs(v){return String(v).split(/\n{2,}/).map(p=>`<p>${esc(p).replace(/\n/g,"<br>")}</p>`).join("")}
-function fallbackTitles(n){const base=["Le radici","Il mondo di allora","Gli incontri che cambiano","La prima svolta","Strade inattese","Le prove","Ciò che resta","Una nuova stagione","La consapevolezza","Verso il futuro","L'eredità","Epilogo"];return base.slice(0,n)}
+function fallbackTitles(n){const base=["Le radici","Il mondo di allora","Gli incontri che cambiano","La prima svolta","Strade inattese","Le prove","Ciò che resta","Una nuova stagione","La consapevolezza","Verso il futuro","L'eredità","Epilogo","La casa interiore","Il coraggio di scegliere","Legami e distanze","La stagione del cambiamento","Quello che ho imparato","Uno sguardo avanti"];return base.slice(0,n)}
+function fallbackQuestions(){return["Qual è la prima immagine che ti torna alla mente pensando a quel periodo?","Quale persona ha cambiato il corso della storia senza saperlo?","Quale luogo rende ancora vivo quel ricordo?","Quale scelta sembrava piccola ma si è rivelata decisiva?","Quali parole furono dette in quel momento?","Che cosa provavi e che cosa non riuscivi a dire?","Quale profumo, suono o gesto ricordi con più precisione?","Che cosa è cambiato subito dopo?","Che cosa hai compreso soltanto molto tempo più tardi?","Che cosa vorresti che il lettore comprendesse davvero?"]}
 function randomToken(){const b=new Uint8Array(32);crypto.getRandomValues(b);return Array.from(b,x=>x.toString(16).padStart(2,"0")).join("")}
 async function sha256(v){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return Array.from(new Uint8Array(b),x=>x.toString(16).padStart(2,"0")).join("")}
 async function authRateKey(request,action,email){return sha256(`${action}|${request.headers.get("cf-connecting-ip")||"unknown"}|${email}`)}
@@ -933,8 +1183,15 @@ async function recordAuthFailure(key,env){const now=new Date(),row=await env.DB.
 async function clearAuthFailures(key,env){await env.DB.prepare('DELETE FROM "AuthThrottle" WHERE key=?').bind(key).run()}
 function csvCell(v){return `"${String(v??"").replaceAll('"','""')}"`}
 function wordCount(v){return String(v||"").trim()?String(v).trim().split(/\s+/).length:0}
-function instructionsAction(v){return ["grammar","clarity","emotional","vivid","elegant","short"].includes(v)?v:"grammar"}
-function validRevision(source,candidate,action){if(!candidate||candidate.length>60000)return false;const before=wordCount(source),after=wordCount(candidate);if(!before||!after)return false;const limits=action==="grammar"?[0.72,1.28]:action==="short"?[0.45,0.95]:[0.55,1.8];return after>=Math.floor(before*limits[0])&&after<=Math.ceil(before*limits[1])}
+function instructionsAction(v){return ["grammar","clarity","emotional","vivid","elegant","short","improve"].includes(v)?v:"grammar"}
+function normalizedTokens(value){return String(value||"").toLocaleLowerCase("it-IT").normalize("NFD").replace(/[\u0300-\u036f]/g,"").match(/[\p{L}\p{N}]+/gu)||[]}
+function lexicalOverlap(source,candidate){const sourceTokens=normalizedTokens(source).filter(token=>token.length>2),candidateTokens=new Set(normalizedTokens(candidate));if(!sourceTokens.length)return 1;return sourceTokens.filter(token=>candidateTokens.has(token)).length/sourceTokens.length}
+function preservesNumbers(source,candidate){const numbers=String(source||"").match(/\d+(?:[.,]\d+)*/g)||[],candidateNumbers=String(candidate||"").match(/\d+(?:[.,]\d+)*/g)||[];return JSON.stringify(numbers)===JSON.stringify(candidateNumbers)}
+function hasRepeatedSentences(value){const seen=new Set();for(const sentence of String(value||"").split(/(?<=[.!?])\s+/)){const normalized=normalizedTokens(sentence).join(" ");if(normalized.split(" ").filter(Boolean).length<6)continue;if(seen.has(normalized))return true;seen.add(normalized)}return false}
+function validFaithfulCorrection(source,candidate){if(!candidate||candidate.length>8000||!preservesNumbers(source,candidate)||hasRepeatedSentences(candidate))return false;const before=wordCount(source),after=wordCount(candidate);return before>0&&after>=Math.floor(before*.9)&&after<=Math.ceil(before*1.1)&&lexicalOverlap(source,candidate)>=.82}
+function validRevision(source,candidate,action){if(!candidate||candidate.length>60000||!preservesNumbers(source,candidate)||hasRepeatedSentences(candidate))return false;const before=wordCount(source),after=wordCount(candidate);if(!before||!after)return false;const limits=action==="grammar"?[.9,1.1]:action==="short"?[.45,.98]:[.65,1.65],overlap=action==="grammar"?.78:.55;return after>=Math.floor(before*limits[0])&&after<=Math.ceil(before*limits[1])&&lexicalOverlap(source,candidate)>=overlap}
+async function improveNarrative(source,env,targetWords){let content=source;try{const ai=await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages:[{role:"system",content:`Sei la Musa editoriale di Splendoria. Trasforma l'idea dell'autore in un testo italiano più fluido, elegante e narrativo, puntando a circa ${targetWords} parole soltanto quando il materiale lo consente. Conserva integralmente fatti, nomi, numeri, relazioni, significato, punto di vista, tono e ordine logico. Puoi rendere espliciti soltanto collegamenti già contenuti nelle parole dell'autore. Non inventare dettagli, scene, emozioni o dialoghi; non riassumere; non ripetere concetti e non usare frasi riempitive. Se il materiale è insufficiente, resta più breve. Restituisci soltanto il testo migliorato.`},{role:"user",content:source}],temperature:.15,max_tokens:Math.min(3000,Math.max(160,Math.ceil(targetWords*1.75)))}),candidate=clean(ai.response,60000);if(validRevision(source,candidate,"improve"))content=candidate}catch{}return content}
+function limitToWords(value,maxWords){if(wordCount(value)<=maxWords)return value;const sentences=String(value).split(/(?<=[.!?])\s+/),kept=[];let total=0;for(const sentence of sentences){const words=wordCount(sentence);if(kept.length&&total+words>maxWords)break;if(!kept.length&&words>maxWords)return sentence.split(/\s+/).slice(0,maxWords).join(" ").replace(/[,:;]$/,"")+"…";kept.push(sentence);total+=words}return kept.join(" ").trim()}
 async function hashPassword(password){const iterations=PASSWORD_PBKDF2_ITERATIONS,salt=randomToken().slice(0,32),key=await pbkdf2(password,salt,iterations);return `pbkdf2$${iterations}$${salt}$${key}`}
 async function verifyPassword(password,stored){const [kind,it,salt,expected]=String(stored||"").split("$");if(kind!=="pbkdf2"||!it||!salt||!expected)return false;const actual=await pbkdf2(password,salt,Number(it));return timingSafe(actual,expected)}
 async function pbkdf2(password,salt,iterations){const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);const bits=await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:new TextEncoder().encode(salt),iterations},material,256);return Array.from(new Uint8Array(bits),x=>x.toString(16).padStart(2,"0")).join("")}
