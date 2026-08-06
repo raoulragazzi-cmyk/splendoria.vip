@@ -43,7 +43,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette Retaggio non applicate");
-if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("Una storia destinata a restare") || !showcaseTypography.includes("Inizia il tuo Retaggio")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
+if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("La tua storia destinata a vivere centinaia di anni") || !showcaseTypography.includes("Inizia il tuo libro")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
 if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-5"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (!publicNavigation.includes("Studio di Scrittura") || ["Area clienti", "Inizia gratis", "Area amministratore", "Come funziona", "Listino", "Contattaci"].some(label => publicNavigation.includes(label))) throw new Error("Navigazione: header pubblico non è minimale o espone collegamenti indesiderati");
@@ -62,7 +62,9 @@ const requiredSections = ["hero", "advantages", "comparison", "paths", "method",
 if (requiredSections.some(section => !showcaseSections.includes(section)) || new Set(showcaseSections).size !== 10) throw new Error("Vetrina: architettura in dieci sezioni incompleta");
 if (!showcaseTypography.includes('data-legacy-slider') || !showcaseTypography.includes('data-legacy-range') || !showcaseTypography.includes("La stanza della domenica") || !showcaseTypography.includes("L’Opera Splendoria")) throw new Error("Vetrina: trasmutazione letteraria interattiva incompleta");
 if (!showcaseTypography.includes('data-editorial-assessment') || !showcaseTypography.includes("Dimensione del Retaggio") || !showcaseTypography.includes("Nodi cruciali") || !showcaseTypography.includes("Estrazione Muse") || !showcaseTypography.includes("Scheda Tecnica del Progetto Editoriale") || !showcaseTypography.includes("Stampa o salva in PDF")) throw new Error("Vetrina: Assessment Editoriale o Scheda Tecnica incompleti");
-if (!showcaseTypography.includes("Governance operativa 7Agent") || !showcaseTypography.includes("non una certificazione di terza parte") || !showcaseTypography.includes("Quattro livelli di controllo")) throw new Error("Vetrina: governance o precisazione sulla certificazione incomplete");
+if (!showcaseTypography.includes("Le Muse ti guidano") || !showcaseTypography.includes("Quattro livelli di controllo") || !showcaseTypography.includes("I tuoi racconti rimangono segreti")) throw new Error("Vetrina: guida delle Muse o livelli di controllo incompleti");
+if (["Casa editoriale della memoria", "Una storia destinata a restare", "Inizia il tuo Retaggio", "Governance operativa 7Agent", "“7Agent” identifica", "Protezione del dato", "Splendoria o il precipizio del testo indistinto", "La memoria non chiede di essere celebrata"].some(text => showcaseTypography.includes(text))) throw new Error("Vetrina: una o più formulazioni precedenti sono ancora pubblicate");
+if (!showcaseTypography.includes("Dati custoditi nell’infrastruttura Splendoria") || !showcaseTypography.includes("Progetto conservato su Splendoria D1 con accessi separati") || !showcaseTypography.includes("Account, progetti, capitoli e interviste sono conservati nell’infrastruttura Splendoria") || !showcaseTypography.includes("La bellezza di poter finalmente trasmettere una visione")) throw new Error("Vetrina: riferimenti a Splendoria o chiusura finale incompleti");
 if (showcaseTypography.includes("Retaggio Editoriale Certificato") || showcaseTypography.includes("scritta dai maestri") || showcaseTypography.includes("ROI Storico")) throw new Error("Vetrina: promessa commerciale non dimostrabile ancora pubblicata");
 console.log("/vetrina: dieci sezioni, Hero, slider, governance e Assessment disponibili");
 
@@ -98,7 +100,7 @@ if (!pricingHtml.includes('data-cookie-banner') || !pricingHtml.includes("Ho cap
 console.log("/formule: listino coerente e selezione Assessment disponibili");
 
 const legalChecks = [
-  ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)", "Cloudflare Workers AI", "Diritti dell’interessato"]],
+  ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)", "infrastruttura Splendoria", "Diritti dell’interessato"]],
   ["/cookie-policy", ["Via Settala 22–24, Milano (MI)", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v1", "non installa cookie pubblicitari"]],
   ["/termini-condizioni", ["Diritto di recesso", "Termini e condizioni", "conferma scritta di Splendoria"]],
   ["/note-legali", ["Note legali", "Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)"]],
