@@ -354,7 +354,7 @@ function aiTransparencyPage(user) {
 function page(title, body, user, status = 200, extra = "", bodyClass = "") {
   const account = user ? `${user.isAdmin ? `<a href="/admin">Dashboard</a>` : `<a href="/studio">Il mio Studio</a>`}<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : `<a href="/area-clienti">Area clienti</a><a class="pill" href="/registrati">Inizia gratis</a>`;
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1f1c"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo.">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-1" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1f1c"><title>${esc(title)} — Splendoria</title><meta name="description" content="Il servizio di ghostwriting che trasforma la tua storia in un libro vero, scritto da professionisti. Scrivi gratis il tuo primo capitolo.">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-2" defer></script></head><body class="${esc(bodyClass)}"><a class="skip-link" href="#main-content">Vai al contenuto</a><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks"><a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -515,10 +515,29 @@ function studioScript() {
     let activeTarget = null;
     let baseText = '';
     let endedWithError = false;
-    const finalSegments = new Map();
-    const interimSegments = new Map();
-    const orderedText = segments => [...segments.entries()].sort((a,b) => a[0] - b[0]).map(entry => entry[1].trim()).filter(Boolean).join(' ');
+    let finalTranscript = '';
+    let interimTranscript = '';
     const joinText = (...parts) => parts.map(part => String(part || '').trim()).filter(Boolean).join(' ');
+    const speechWords = value => String(value || '').trim().split(/\\s+/).filter(Boolean);
+    const normalizeSpeechWord = value => String(value || '').toLocaleLowerCase('it-IT').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^\\p{L}\\p{N}]/gu, '');
+    const mergeRecognitionText = (current, incoming) => {
+      const currentWords = speechWords(current);
+      const incomingWords = speechWords(incoming);
+      if (!currentWords.length) return incomingWords.join(' ');
+      if (!incomingWords.length) return currentWords.join(' ');
+      const currentKeys = currentWords.map(normalizeSpeechWord);
+      const incomingKeys = incomingWords.map(normalizeSpeechWord);
+      if (currentKeys.length === incomingKeys.length && currentKeys.every((word, index) => word === incomingKeys[index])) return currentWords.join(' ');
+      if (incomingKeys.length >= currentKeys.length && currentKeys.every((word, index) => word === incomingKeys[index])) return incomingWords.join(' ');
+      if (currentKeys.length >= incomingKeys.length && incomingKeys.every((word, index) => word === currentKeys[index])) return currentWords.join(' ');
+      let overlap = Math.min(currentKeys.length, incomingKeys.length);
+      while (overlap > 0) {
+        const start = currentKeys.length - overlap;
+        if (incomingKeys.slice(0, overlap).every((word, index) => word === currentKeys[start + index])) break;
+        overlap--;
+      }
+      return [...currentWords, ...incomingWords.slice(overlap)].join(' ');
+    };
     const setStatus = (button, text, live = false) => {
       button.classList.toggle('listening', live);
       button.setAttribute('aria-pressed', live ? 'true' : 'false');
@@ -545,14 +564,17 @@ function studioScript() {
       };
       recognition.onresult = event => {
         if (!activeTarget) return;
+        let nextFinal = finalTranscript;
+        let nextInterim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = String(event.results[i][0]?.transcript || '').trim();
-          if (event.results[i].isFinal) {
-            finalSegments.set(i, transcript);
-            interimSegments.delete(i);
-          } else interimSegments.set(i, transcript);
+          if (!transcript) continue;
+          if (event.results[i].isFinal) nextFinal = mergeRecognitionText(nextFinal, transcript);
+          else nextInterim = mergeRecognitionText(nextInterim, transcript);
         }
-        activeTarget.value = joinText(baseText, orderedText(finalSegments), orderedText(interimSegments));
+        finalTranscript = nextFinal;
+        interimTranscript = nextInterim;
+        activeTarget.value = joinText(baseText, mergeRecognitionText(finalTranscript, interimTranscript));
         activeTarget.dispatchEvent(new Event('input', { bubbles: true }));
       };
       recognition.onerror = event => {
@@ -562,7 +584,7 @@ function studioScript() {
       recognition.onend = async () => {
         const button = activeButton;
         const target = activeTarget;
-        const rawFinal = orderedText(finalSegments);
+        const rawFinal = mergeRecognitionText(finalTranscript, interimTranscript);
         const committed = joinText(baseText, rawFinal);
         if (target) {
           target.value = committed;
@@ -570,7 +592,7 @@ function studioScript() {
         }
         activeButton = null;
         activeTarget = null;
-        interimSegments.clear();
+        interimTranscript = '';
         if (button && !endedWithError && rawFinal && target) {
           setStatus(button, message('correcting'));
           try {
@@ -605,8 +627,8 @@ function studioScript() {
         activeTarget = target;
         baseText = target.value.trim();
         endedWithError = false;
-        finalSegments.clear();
-        interimSegments.clear();
+        finalTranscript = '';
+        interimTranscript = '';
         recognition.lang = selectedLanguage();
         recognition.start();
       });
@@ -647,20 +669,20 @@ async function correctDictation(request, user, env) {
   if (!user) return jsonResponse({ error: "Accesso richiesto" }, 401);
   let data;
   try { data = await request.json(); } catch { return jsonResponse({ error: "Richiesta non valida" }, 400); }
-  const source = clean(data?.text, 8000);
+  const source = collapseAccidentalRepetitions(clean(data?.text, 8000), 8000);
   if (!source) return jsonResponse({ text: "" });
   const language = { "it-IT": "italiano", "de-DE": "tedesco", "en-GB": "inglese britannico" }[clean(data?.language, 10)] || "italiano";
-  let text = source;
+  let text = basicWrittenForm(source);
   try {
     const ai = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
-        { role: "system", content: `Trascrivi fedelmente in ${language}. Correggi esclusivamente grammatica, ortografia, maiuscole e punteggiatura. Non riassumere, non ampliare, non sostituire concetti, nomi, date, numeri o dettagli, non cambiare significato, tono o ordine delle idee. Restituisci soltanto il testo corretto.` },
+        { role: "system", content: `Trascrivi fedelmente in ${language}. Correggi esclusivamente grammatica, ortografia, maiuscole e punteggiatura ed elimina soltanto eventuali duplicazioni testuali accidentali prodotte dalla dettatura. Non riassumere, non ampliare, non sostituire concetti, nomi, date, numeri o dettagli, non cambiare significato, tono o ordine delle idee. Restituisci soltanto il testo corretto.` },
         { role: "user", content: source }
       ],
       temperature: 0,
       max_tokens: Math.min(1800, Math.max(96, Math.ceil(wordCount(source) * 1.7)))
     });
-    const candidate = clean(ai.response, 8000);
+    const candidate = basicWrittenForm(collapseAccidentalRepetitions(clean(ai.response, 8000), 8000));
     if (validFaithfulCorrection(source, candidate)) text = candidate;
   } catch {}
   return jsonResponse({ text });
@@ -1187,10 +1209,23 @@ function instructionsAction(v){return ["grammar","clarity","emotional","vivid","
 function normalizedTokens(value){return String(value||"").toLocaleLowerCase("it-IT").normalize("NFD").replace(/[\u0300-\u036f]/g,"").match(/[\p{L}\p{N}]+/gu)||[]}
 function lexicalOverlap(source,candidate){const sourceTokens=normalizedTokens(source).filter(token=>token.length>2),candidateTokens=new Set(normalizedTokens(candidate));if(!sourceTokens.length)return 1;return sourceTokens.filter(token=>candidateTokens.has(token)).length/sourceTokens.length}
 function preservesNumbers(source,candidate){const numbers=String(source||"").match(/\d+(?:[.,]\d+)*/g)||[],candidateNumbers=String(candidate||"").match(/\d+(?:[.,]\d+)*/g)||[];return JSON.stringify(numbers)===JSON.stringify(candidateNumbers)}
-function hasRepeatedSentences(value){const seen=new Set();for(const sentence of String(value||"").split(/(?<=[.!?])\s+/)){const normalized=normalizedTokens(sentence).join(" ");if(normalized.split(" ").filter(Boolean).length<6)continue;if(seen.has(normalized))return true;seen.add(normalized)}return false}
+function collapseAccidentalRepetitions(value,max=60000){
+  const source=clean(value,max).replace(/\s+/g," ").trim();
+  if(!source)return "";
+  const sentenceParts=source.match(/[^.!?]+(?:[.!?]+|$)/g)||[source],sentences=[];
+  for(const part of sentenceParts){const raw=part.trim(),key=normalizedTokens(raw).join(" ");if(!key)continue;if(sentences.length&&sentences[sentences.length-1].key===key)continue;sentences.push({raw,key})}
+  const sentenceClean=sentences.map(item=>item.raw).join(" "),words=sentenceClean.split(/\s+/).filter(Boolean),keys=words.map(word=>normalizedTokens(word).join(""));
+  const sameBlock=(first,second,length)=>{for(let offset=0;offset<length;offset++)if(keys[first+offset]!==keys[second+offset])return false;return true};
+  for(let unitLength=2;unitLength<=Math.floor(words.length/2);unitLength++){if(words.length%unitLength)continue;let repeated=true;for(let index=unitLength;index<words.length;index++)if(keys[index]!==keys[index%unitLength]){repeated=false;break}if(repeated)return words.slice(0,unitLength).join(" ")}
+  const output=[];
+  for(let index=0;index<words.length;){let duplicateLength=0,copies=1;for(let length=Math.floor((words.length-index)/2);length>=2;length--){if(!sameBlock(index,index+length,length))continue;duplicateLength=length;while(index+(copies+1)*length<=words.length&&sameBlock(index,index+copies*length,length))copies++;break}if(duplicateLength){output.push(...words.slice(index,index+duplicateLength));index+=duplicateLength*copies}else output.push(words[index++])}
+  return output.join(" ").trim();
+}
+function basicWrittenForm(value){let text=String(value||"").replace(/\s+([,.;:!?])/g,"$1").replace(/([,.;:!?])(?=\p{L})/gu,"$1 ").trim();text=text.replace(/(^|[.!?]\s+)(\p{Ll})/gu,(_,prefix,letter)=>prefix+letter.toLocaleUpperCase("it-IT"));if(text&&!/[.!?…]$/.test(text))text+=".";return text}
+function hasRepeatedSentences(value){const seen=new Set();for(const sentence of String(value||"").split(/(?<=[.!?])\s+/)){const normalized=normalizedTokens(sentence).join(" ");if(normalized.split(" ").filter(Boolean).length<3)continue;if(seen.has(normalized))return true;seen.add(normalized)}return false}
 function validFaithfulCorrection(source,candidate){if(!candidate||candidate.length>8000||!preservesNumbers(source,candidate)||hasRepeatedSentences(candidate))return false;const before=wordCount(source),after=wordCount(candidate);return before>0&&after>=Math.floor(before*.9)&&after<=Math.ceil(before*1.1)&&lexicalOverlap(source,candidate)>=.82}
 function validRevision(source,candidate,action){if(!candidate||candidate.length>60000||!preservesNumbers(source,candidate)||hasRepeatedSentences(candidate))return false;const before=wordCount(source),after=wordCount(candidate);if(!before||!after)return false;const limits=action==="grammar"?[.9,1.1]:action==="short"?[.45,.98]:[.65,1.65],overlap=action==="grammar"?.78:.55;return after>=Math.floor(before*limits[0])&&after<=Math.ceil(before*limits[1])&&lexicalOverlap(source,candidate)>=overlap}
-async function improveNarrative(source,env,targetWords){let content=source;try{const ai=await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages:[{role:"system",content:`Sei la Musa editoriale di Splendoria. Trasforma l'idea dell'autore in un testo italiano più fluido, elegante e narrativo, puntando a circa ${targetWords} parole soltanto quando il materiale lo consente. Conserva integralmente fatti, nomi, numeri, relazioni, significato, punto di vista, tono e ordine logico. Puoi rendere espliciti soltanto collegamenti già contenuti nelle parole dell'autore. Non inventare dettagli, scene, emozioni o dialoghi; non riassumere; non ripetere concetti e non usare frasi riempitive. Se il materiale è insufficiente, resta più breve. Restituisci soltanto il testo migliorato.`},{role:"user",content:source}],temperature:.15,max_tokens:Math.min(3000,Math.max(160,Math.ceil(targetWords*1.75)))}),candidate=clean(ai.response,60000);if(validRevision(source,candidate,"improve"))content=candidate}catch{}return content}
+async function improveNarrative(source,env,targetWords){const faithfulSource=collapseAccidentalRepetitions(source);if(!faithfulSource)return "";const sourceWords=wordCount(faithfulSource),safeTargetWords=Math.max(sourceWords,Math.min(Math.ceil(sourceWords*1.35),Number(targetWords)||sourceWords));let content=basicWrittenForm(faithfulSource);try{const ai=await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages:[{role:"system",content:`Sei la Musa editoriale di Splendoria. Correggi grammatica, ortografia e punteggiatura ed elimina soltanto eventuali duplicazioni accidentali della dettatura. Poi trasforma l'idea dell'autore in un testo italiano più fluido, elegante e narrativo, puntando a circa ${safeTargetWords} parole soltanto quando il materiale lo consente. Conserva integralmente fatti, nomi, numeri, relazioni, significato, punto di vista, tono e ordine logico. Puoi rendere espliciti soltanto collegamenti già contenuti nelle parole dell'autore. Non inventare dettagli, scene, emozioni o dialoghi; non riassumere; non ripetere concetti e non usare frasi riempitive. Se il materiale è insufficiente, resta più breve. Restituisci soltanto il testo migliorato.`},{role:"user",content:faithfulSource}],temperature:.1,max_tokens:Math.min(3000,Math.max(160,Math.ceil(safeTargetWords*1.75)))}),candidate=basicWrittenForm(collapseAccidentalRepetitions(clean(ai.response,60000)));if(validRevision(faithfulSource,candidate,"improve"))content=candidate}catch{}return content}
 function limitToWords(value,maxWords){if(wordCount(value)<=maxWords)return value;const sentences=String(value).split(/(?<=[.!?])\s+/),kept=[];let total=0;for(const sentence of sentences){const words=wordCount(sentence);if(kept.length&&total+words>maxWords)break;if(!kept.length&&words>maxWords)return sentence.split(/\s+/).slice(0,maxWords).join(" ").replace(/[,:;]$/,"")+"…";kept.push(sentence);total+=words}return kept.join(" ").trim()}
 async function hashPassword(password){const iterations=PASSWORD_PBKDF2_ITERATIONS,salt=randomToken().slice(0,32),key=await pbkdf2(password,salt,iterations);return `pbkdf2$${iterations}$${salt}$${key}`}
 async function verifyPassword(password,stored){const [kind,it,salt,expected]=String(stored||"").split("$");if(kind!=="pbkdf2"||!it||!salt||!expected)return false;const actual=await pbkdf2(password,salt,Number(it));return timingSafe(actual,expected)}
