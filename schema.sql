@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS "BookProject" (
   "tone" TEXT NOT NULL DEFAULT 'Emozionante e autentico',
   "audience" TEXT NOT NULL DEFAULT 'Famiglia e amici',
   "targetPages" INTEGER NOT NULL DEFAULT 80,
+  "sourceMaterial" TEXT NOT NULL DEFAULT '',
   "story" TEXT NOT NULL DEFAULT '',
   "people" TEXT NOT NULL DEFAULT '',
   "events" TEXT NOT NULL DEFAULT '',
@@ -98,6 +99,7 @@ CREATE TABLE IF NOT EXISTS "BookProject" (
 -- ALTER TABLE "User" ADD COLUMN "privacyAcceptedAt" TEXT;
 -- ALTER TABLE "Ordine" ADD COLUMN "termsAcceptedAt" TEXT;
 -- ALTER TABLE "BookProject" ADD COLUMN "specialDataConsentAt" TEXT;
+-- ALTER TABLE "BookProject" ADD COLUMN "sourceMaterial" TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS "BookProject_userId_idx" ON "BookProject"("userId");
 CREATE INDEX IF NOT EXISTS "BookProject_status_idx" ON "BookProject"("status");
