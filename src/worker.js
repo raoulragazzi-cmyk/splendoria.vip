@@ -1082,19 +1082,20 @@ async function register(request, env) {
   const rateKey = await authRateKey(request, "register", email);
   if (await authRateLimited(rateKey, env)) return authPage("register", null, "Troppi tentativi. Attendi 15 minuti e riprova.", email, nome);
   if (await env.DB.prepare('SELECT id FROM "User" WHERE lower(trim(email))=? LIMIT 1').bind(email).first()) return authPage("register", null, "Esiste già un account con questa email. Accedi dall’Area clienti.", email, nome);
-  const id = crypto.randomUUID(), hash = await hashPassword(password), now = new Date(), token = randomToken(), tokenHash = await sha256(token), expires = new Date(now.getTime() + SESSION_DAYS * 86400000);
+  const id = crypto.randomUUID(), hash = await hashPassword(password), now = new Date(), nowIso = now.toISOString(), token = randomToken(), tokenHash = await sha256(token), expires = new Date(now.getTime() + SESSION_DAYS * 86400000);
   try {
     // D1 esegue batch() in transazione: account e prima sessione vengono
     // creati insieme, evitando account incompleti se la sessione fallisce.
     await env.DB.batch([
-      env.DB.prepare('INSERT INTO "User" (id,email,passwordHash,nome,privacyAcceptedAt,createdAt) VALUES (?,?,?,?,?,?)').bind(id, email, hash, nome, now.toISOString(), now.toISOString()),
-      env.DB.prepare('INSERT INTO "Session" (id,userId,tokenHash,expiresAt,createdAt) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(), id, tokenHash, expires.toISOString(), now.toISOString())
+      env.DB.prepare('INSERT INTO "User" (id,email,passwordHash,nome,privacyAcceptedAt,createdAt) VALUES (?,?,?,?,?,?)').bind(id, email, hash, nome, nowIso, nowIso),
+      env.DB.prepare('INSERT INTO "Session" (id,userId,tokenHash,expiresAt,createdAt) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(), id, tokenHash, expires.toISOString(), nowIso)
     ]);
   } catch (error) {
     if (/unique|constraint/i.test(String(error?.message || ""))) return authPage("register", null, "Esiste già un account con questa email. Accedi dall’Area clienti.", email, nome);
     throw error;
   }
   await clearAuthFailures(rateKey, env);
+  await sendRegistrationNotification(env, { id, email, nome, createdAt: nowIso }).catch(error => console.error("Registration notification email failed", error));
   return redirect("/studio", sessionCookie(token));
 }
 
@@ -1443,6 +1444,25 @@ async function createSessionResponse(userId,env,path){const token=randomToken(),
 async function ownedProject(id,user,env){if(!user||user.isAdmin)return null;return env.DB.prepare('SELECT * FROM "BookProject" WHERE id=? AND userId=?').bind(id,user.id).first()}
 async function ownProject(id,user,env){if(!user||user.isAdmin)return null;return env.DB.prepare(`SELECT p.* FROM "BookProject" p LEFT JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE p.id=? AND p.userId=? AND (p.plan='free' OR a.statoCommerciale='pagato')`).bind(id,user.id).first()}
 async function todayUsage(userId,env){const r=await env.DB.prepare('SELECT requests FROM "AiUsage" WHERE userId=? AND date=?').bind(userId,new Date().toISOString().slice(0,10)).first();return Number(r?.requests||0)}
+
+async function sendRegistrationNotification(env, user) {
+  if (!env.CONTACT_EMAIL?.send) {
+    const error = new Error("Il binding per l’invio email non è configurato.");
+    error.code = "EMAIL_BINDING_MISSING";
+    throw error;
+  }
+  const adminUrl = `${String(env.APP_URL || "https://www.splendoria.vip").replace(/\/+$/, "")}/area-amministratore`;
+  const name = clean(user.nome, 100) || "Senza nome";
+  const email = normalizeEmail(user.email);
+  const registeredAt = new Date(user.createdAt).toLocaleString("it-IT", { timeZone: "Europe/Rome" });
+  return env.CONTACT_EMAIL.send({
+    to: env.ADMIN_EMAIL,
+    from: { email: env.EMAIL_FROM, name: "Splendoria" },
+    subject: `Nuova iscrizione a Splendoria · ${name}`.slice(0, 200),
+    text: `Nuovo cliente registrato su Splendoria\n\nNome: ${name}\nEmail: ${email}\nRegistrato: ${registeredAt}\n\nApri l’area amministratore: ${adminUrl}`,
+    html: `<h2>Nuovo cliente registrato su Splendoria</h2><p><strong>Nome:</strong> ${esc(name)}<br><strong>Email:</strong> <a href="mailto:${esc(email)}">${esc(email)}</a><br><strong>Registrato:</strong> ${esc(registeredAt)}</p><p><a href="${esc(adminUrl)}">Apri l’area amministratore</a></p>`
+  });
+}
 
 async function sendResetEmail(env, user, token) {
   if (!env.CONTACT_EMAIL?.send) {
