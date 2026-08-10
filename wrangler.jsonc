@@ -24,8 +24,15 @@
   "send_email": [
     {
       "name": "CONTACT_EMAIL"
+    },
+    {
+      "name": "ADMIN_EMAIL_NOTIFICATION",
+      "destination_address": "raoulragazzi@gmail.com"
     }
   ],
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
   "vars": {
     "APP_URL": "https://www.splendoria.vip",
     "ADMIN_EMAIL": "raoulragazzi@gmail.com",

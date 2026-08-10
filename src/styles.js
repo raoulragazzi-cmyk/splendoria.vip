@@ -275,7 +275,19 @@ h1,h2,h3,h4,.brand,.price,.editor-paper,.interview-step h4,.interview-step texta
 .legacy-commercial-note{max-width:880px;margin:42px auto 0;color:#6b716b;font-size:13px!important;text-align:center}
 
 .legacy-method{background:#eee7da;overflow:hidden}
-.legacy-slider{--legacy-position:50%;position:relative;min-height:930px;border:1px solid var(--satin-gold);background:var(--imperial);overflow:hidden;box-shadow:0 36px 80px rgba(37,31,19,.18)}
+.legacy-slider-experience{--legacy-position:50%}
+.legacy-slider-top-control{position:relative;padding:46px 7% 24px;border:1px solid var(--satin-gold);border-bottom:0;background:#f8f3e8}
+.legacy-slider-top-control input[type="range"]{display:block;width:100%;height:28px;margin:0;appearance:none;background:transparent;cursor:ew-resize;accent-color:var(--satin-gold)}
+.legacy-slider-top-control input[type="range"]::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:linear-gradient(90deg,var(--imperial) 0 var(--legacy-position),#d7ccb6 var(--legacy-position) 100%)}
+.legacy-slider-top-control input[type="range"]::-moz-range-track{height:4px;border-radius:99px;background:#d7ccb6}.legacy-slider-top-control input[type="range"]::-moz-range-progress{height:4px;border-radius:99px;background:var(--imperial)}
+.legacy-slider-top-control input[type="range"]::-webkit-slider-thumb{width:24px;height:24px;margin-top:-10px;appearance:none;border:2px solid var(--satin-gold);border-radius:50%;background:var(--imperial-deep);box-shadow:0 5px 15px rgba(0,47,27,.25)}
+.legacy-slider-top-control input[type="range"]::-moz-range-thumb{width:22px;height:22px;border:2px solid var(--satin-gold);border-radius:50%;background:var(--imperial-deep);box-shadow:0 5px 15px rgba(0,47,27,.25)}
+.legacy-slider-hint{position:absolute;top:7px;left:50%;display:flex;align-items:center;gap:13px;transform:translate(-50%,-4px);opacity:0;color:var(--imperial);font:800 14px/1.2 var(--font-ui);letter-spacing:.06em;text-transform:uppercase;pointer-events:none;transition:opacity .35s ease,transform .35s ease}
+.legacy-slider-experience:hover .legacy-slider-hint,.legacy-slider-experience:focus-within .legacy-slider-hint{transform:translate(-50%,0);opacity:1}
+.legacy-hint-arrow{display:inline-block;color:#9b762d;font-size:21px;animation:legacy-hint-left 2.2s ease-in-out infinite}.legacy-hint-arrow-right{animation-name:legacy-hint-right}
+@keyframes legacy-hint-left{0%,100%{opacity:.38;transform:translateX(3px)}50%{opacity:1;transform:translateX(-5px)}}
+@keyframes legacy-hint-right{0%,100%{opacity:.38;transform:translateX(-3px)}50%{opacity:1;transform:translateX(5px)}}
+.legacy-slider{position:relative;min-height:930px;border:1px solid var(--satin-gold);background:var(--imperial);overflow:hidden;box-shadow:0 36px 80px rgba(37,31,19,.18)}
 .legacy-slider-layer{position:absolute;inset:0;padding:68px 8% 100px;background:linear-gradient(135deg,var(--imperial-deep),var(--imperial));color:#fff}
 .legacy-slider-after{z-index:2;background:radial-gradient(circle at 80% 20%,rgba(197,160,89,.2),transparent 34%),var(--imperial);clip-path:inset(0 calc(100% - var(--legacy-position)) 0 0)}
 .legacy-slider-label{margin:0 0 40px;color:var(--satin-gold-light);font-size:11px!important;font-weight:850!important;letter-spacing:.18em;text-transform:uppercase}
@@ -325,6 +337,16 @@ h1,h2,h3,h4,.brand,.price,.editor-paper,.interview-step h4,.interview-step texta
 @media(max-width:520px){.legacy-slider{min-height:1550px}}
 @media(max-width:420px){.legacy-slider{min-height:1850px}}
 
+/* Aumento uniforme di 2 px per i corpi minuti della sola vetrina. */
+.legacy-credentials dt,.legacy-sheet-grid dt{font-size:12px!important}
+.legacy-path-tone,.legacy-slider-label,.legacy-slider output,.legacy-market-label,.legacy-assessment legend span,.legacy-sheet-header{font-size:13px!important}
+.legacy-kicker,.legacy-credentials dd,.legacy-showcase main .legacy-hero-book figcaption,.legacy-comparison-table thead th,.legacy-path-pages,.legacy-market-grid article>span,.legacy-control-list li>span,.legacy-choice-grid label>small,.legacy-assessment-actions p{font-size:14px!important}
+.legacy-showcase .legacy-studio-access,.legacy-button,.legacy-path-number,.legacy-commercial-note,.legacy-slider-note,.legacy-check-grid span,.legacy-field-wide,.legacy-contact-grid label,.legacy-privacy-check,.legacy-value-index small,.legacy-value-index p{font-size:15px!important}
+.legacy-text-link,.legacy-value-card>span,.legacy-showcase main .legacy-path-card li,.legacy-field-help,.legacy-choice-grid label>span,.legacy-sheet-next,.legacy-showcase .footer p,.legacy-showcase .footer a{font-size:16px!important}
+.legacy-comparison-table td,.legacy-control-list p,.legacy-sheet-grid dd,.legacy-faq-list details p{font-size:17px!important}
+.legacy-showcase main .legacy-value-card p,.legacy-showcase main .legacy-path-card>p:not(.legacy-path-number):not(.legacy-path-tone):not(.legacy-price):not(.legacy-path-pages),.legacy-market-grid article p:last-child,.legacy-field-wide input,.legacy-field-wide select,.legacy-contact-grid input,.legacy-faq-grid>div:first-child>p:not(.legacy-kicker){font-size:18px!important}
+@media(max-width:760px){.legacy-showcase .navin{align-items:flex-start;flex-wrap:wrap;padding:10px 0}.legacy-showcase .navlinks{width:100%;justify-content:space-between;gap:8px 15px}.legacy-showcase .navlinks>a{white-space:nowrap;font-size:14px}.legacy-showcase .legacy-studio-access{max-width:none!important;font-size:13px!important;text-align:left!important}.legacy-slider-hint{font-size:13px}}
+
 @media print{
   @page{size:A4;margin:15mm}
   .legacy-showcase{background:#fff!important}
@@ -338,5 +360,5 @@ h1,h2,h3,h4,.brand,.price,.editor-paper,.interview-step h4,.interview-step texta
   .legacy-showcase .legacy-sheet-actions{display:none!important}
   .legacy-showcase .legacy-value-index{background:#004225!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.button,.pill,.showcase-card,.showcase-price,.showcase-quote,.book-spread,.reveal-item{transition:none!important;animation:none!important}.button:hover,.pill:hover,.showcase-card:hover,.showcase-price:hover,.showcase-quote:hover{transform:none}.js .showcase-page .reveal-item{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.button,.pill,.showcase-card,.showcase-price,.showcase-quote,.book-spread,.reveal-item,.legacy-hint-arrow{transition:none!important;animation:none!important}.button:hover,.pill:hover,.showcase-card:hover,.showcase-price:hover,.showcase-quote:hover{transform:none}.js .showcase-page .reveal-item{opacity:1;transform:none}}
 `;

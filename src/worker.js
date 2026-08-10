@@ -40,6 +40,7 @@ export default {
     }
     try {
       await ensureSchema(env.DB);
+      await ensureRegistrationNotificationSchema(env.DB);
       await ensureColumn(env.DB, "PasswordReset", "usedAt", "TEXT");
       return await route(request, env);
     } catch (error) {
@@ -51,6 +52,11 @@ export default {
     const destination = normalizeEmail(env.ADMIN_EMAIL);
     if (!validEmail(destination)) throw new Error("Destinazione dell’inoltro email non configurata.");
     await message.forward(destination);
+  },
+  async scheduled(_controller, env) {
+    await ensureSchema(env.DB);
+    await ensureRegistrationNotificationSchema(env.DB);
+    await retryRegistrationNotifications(env);
   }
 };
 
@@ -228,24 +234,31 @@ function editorialHome(user, url) {
           <h2 id="method-title">La trasmutazione letteraria: dall’aneddoto all’Opera.</h2>
           <p>Muovi il cursore. I fatti restano gli stessi; cambiano ritmo, precisione e forza narrativa.</p>
         </div>
-        <div class="legacy-slider" data-legacy-slider style="--legacy-position:50%">
-          <article class="legacy-slider-layer legacy-slider-before">
-            <p class="legacy-slider-label">Il Grezzo</p>
-            <blockquote>«La cucina di mia nonna era piccola, c’era profumo di ragù.»</blockquote>
-          </article>
-          <article class="legacy-slider-layer legacy-slider-after" data-legacy-after>
-            <p class="legacy-slider-label">L’Opera Splendoria</p>
-            <blockquote>
-              <p>«La cucina di mia nonna non era stata pensata per contenere una famiglia intera. Era una stanza piccola, raccolta, con pochi mobili e un’unica finestra dalla quale entrava una luce chiara, soprattutto nelle mattine d’inverno. Eppure, ogni domenica, accadeva qualcosa di misterioso: le pareti sembravano arretrare di qualche passo per lasciarci entrare tutti.</p>
-              <p>Il tavolo occupava quasi tutto lo spazio. Durante la settimana sembrava un tavolo qualunque, ma la domenica diventava il centro del nostro mondo. Veniva allungato con assi che comparivano da qualche angolo della casa e ricoperto con la tovaglia migliore, quella bianca, un po’ ruvida, che mia nonna conservava piegata con cura in un cassetto. Intorno si sistemavano sedie diverse tra loro, prese dalla cucina, dal soggiorno e perfino dalle camere. Per i più piccoli c’erano gli sgabelli, oppure qualche cuscino aggiunto per farli arrivare all’altezza del piatto.</p>
-              <p>Non ricordo di aver mai sentito qualcuno lamentarsi della mancanza di spazio. Ci stringevamo, spostavamo i gomiti, passavamo i piatti sopra le teste e ci alzavamo ogni volta che qualcuno doveva raggiungere il proprio posto. Tutto avveniva in una confusione allegra e perfettamente organizzata. Mia nonna sembrava conoscere una geometria segreta: sapeva dove far sedere ciascuno, come riempire ogni angolo e come aggiungere un posto anche quando sembrava davvero impossibile.</p>
-              <p>Lei era già ai fornelli da ore. Quando arrivavamo, la casa era piena di profumi: il sugo che sobbolliva lentamente, la carne...»</p>
-            </blockquote>
-          </article>
-          <div class="legacy-slider-divider" aria-hidden="true"><span>↔</span></div>
-          <label class="sr-only" for="legacy-transform-range">Mostra il testo grezzo o l’opera trasformata</label>
-          <input id="legacy-transform-range" data-legacy-range type="range" min="0" max="100" value="50" aria-describedby="legacy-transform-value">
-          <output id="legacy-transform-value" data-legacy-value for="legacy-transform-range">50% Opera</output>
+        <div class="legacy-slider-experience" data-legacy-slider style="--legacy-position:50%">
+          <div class="legacy-slider-top-control">
+            <div class="legacy-slider-hint" aria-hidden="true"><span class="legacy-hint-arrow legacy-hint-arrow-left">←</span><strong>Sposta il cursore</strong><span class="legacy-hint-arrow legacy-hint-arrow-right">→</span></div>
+            <label class="sr-only" for="legacy-transform-range-top">Mostra il testo grezzo o l’opera trasformata</label>
+            <input id="legacy-transform-range-top" data-legacy-range type="range" min="0" max="100" value="50" title="Sposta il cursore" aria-describedby="legacy-transform-value">
+          </div>
+          <div class="legacy-slider">
+            <article class="legacy-slider-layer legacy-slider-before">
+              <p class="legacy-slider-label">Il Grezzo</p>
+              <blockquote>«La cucina di mia nonna era piccola, c’era profumo di ragù.»</blockquote>
+            </article>
+            <article class="legacy-slider-layer legacy-slider-after" data-legacy-after>
+              <p class="legacy-slider-label">L’Opera Splendoria</p>
+              <blockquote>
+                <p>«La cucina di mia nonna non era stata pensata per contenere una famiglia intera. Era una stanza piccola, raccolta, con pochi mobili e un’unica finestra dalla quale entrava una luce chiara, soprattutto nelle mattine d’inverno. Eppure, ogni domenica, accadeva qualcosa di misterioso: le pareti sembravano arretrare di qualche passo per lasciarci entrare tutti.</p>
+                <p>Il tavolo occupava quasi tutto lo spazio. Durante la settimana sembrava un tavolo qualunque, ma la domenica diventava il centro del nostro mondo. Veniva allungato con assi che comparivano da qualche angolo della casa e ricoperto con la tovaglia migliore, quella bianca, un po’ ruvida, che mia nonna conservava piegata con cura in un cassetto. Intorno si sistemavano sedie diverse tra loro, prese dalla cucina, dal soggiorno e perfino dalle camere. Per i più piccoli c’erano gli sgabelli, oppure qualche cuscino aggiunto per farli arrivare all’altezza del piatto.</p>
+                <p>Non ricordo di aver mai sentito qualcuno lamentarsi della mancanza di spazio. Ci stringevamo, spostavamo i gomiti, passavamo i piatti sopra le teste e ci alzavamo ogni volta che qualcuno doveva raggiungere il proprio posto. Tutto avveniva in una confusione allegra e perfettamente organizzata. Mia nonna sembrava conoscere una geometria segreta: sapeva dove far sedere ciascuno, come riempire ogni angolo e come aggiungere un posto anche quando sembrava davvero impossibile.</p>
+                <p>Lei era già ai fornelli da ore. Quando arrivavamo, la casa era piena di profumi: il sugo che sobbolliva lentamente, la carne...»</p>
+              </blockquote>
+            </article>
+            <div class="legacy-slider-divider" aria-hidden="true"><span>↔</span></div>
+            <label class="sr-only" for="legacy-transform-range">Mostra il testo grezzo o l’opera trasformata</label>
+            <input id="legacy-transform-range" data-legacy-range type="range" min="0" max="100" value="50" title="Sposta il cursore" aria-describedby="legacy-transform-value">
+            <output id="legacy-transform-value" data-legacy-value for="legacy-transform-range-top legacy-transform-range">50% Opera</output>
+          </div>
         </div>
         <p class="legacy-slider-note">Esempio dimostrativo. Splendoria non inventa fatti: l’autore verifica e approva ogni passaggio.</p>
       </div>
@@ -615,15 +628,15 @@ function aiTransparencyPage(user) {
 
 function page(title, body, user, status = 200, extra = "", bodyClass = "") {
   const isEditorialShowcase = bodyClass.includes("legacy-showcase");
-  const account = isEditorialShowcase
-    ? `<a class="legacy-studio-access" href="${user ? (user.isAdmin ? "/admin" : "/studio") : "/area-clienti"}">Studio di Scrittura <span aria-hidden="true">↗</span></a>`
-    : user ? `${user.isAdmin ? `<a href="/admin">Dashboard</a>` : `<a href="/studio">Il mio Studio</a>`}<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : `<a href="/area-clienti">Area clienti</a><a class="pill" href="/registrati">Inizia gratis</a>`;
-  const navigationLinks = isEditorialShowcase ? account : `<a class="hide-mobile" href="/#come-funziona">Come funziona</a><a class="hide-mobile" href="/#formule">Listino</a><a class="hide-mobile" href="/#contatti">Contattaci</a>${account}`;
+  const publicLinks = `<a href="/#metodo">Come funziona</a><a href="/#formule">Listino</a><a href="/#contatti">Contattaci</a>`;
+  const studioLink = `<a${isEditorialShowcase ? ` class="legacy-studio-access"` : ""} href="${user ? (user.isAdmin ? "/admin" : "/studio") : "/area-clienti"}">${user && !user.isAdmin ? "Il mio Studio" : user?.isAdmin ? "Dashboard" : "Il mio Studio"}${isEditorialShowcase ? ` <span aria-hidden="true">↗</span>` : ""}</a>`;
+  const logout = user ? `<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : "";
+  const navigationLinks = `${publicLinks}${studioLink}${logout}`;
   const description = isEditorialShowcase
     ? "Splendoria trasforma memorie di famiglia e storie d’impresa in opere editoriali curate, con Muse digitali, controllo dell’autore e supervisione umana."
     : "Splendoria trasforma la tua storia in un libro, con Muse digitali, controllo dell’autore e supervisione umana.";
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260810-2" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260810-3" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -740,16 +753,17 @@ function studioScript() {
       });
     });
     document.querySelectorAll('[data-legacy-slider]').forEach(slider => {
-      const range = slider.querySelector('[data-legacy-range]');
+      const ranges = Array.from(slider.querySelectorAll('[data-legacy-range]'));
       const output = slider.querySelector('[data-legacy-value]');
-      if (!range) return;
-      const update = () => {
-        const value = Math.max(8, Math.min(92, Number(range.value) || 50));
+      if (!ranges.length) return;
+      const update = source => {
+        const value = Math.max(8, Math.min(92, Number(source?.value) || 50));
         slider.style.setProperty('--legacy-position', value + '%');
+        ranges.forEach(range => { if (range !== source) range.value = String(value); });
         if (output) output.textContent = value + '% Opera';
       };
-      range.addEventListener('input', update);
-      update();
+      ranges.forEach(range => range.addEventListener('input', () => update(range)));
+      update(ranges[0]);
     });
     document.querySelectorAll('[data-editorial-assessment]').forEach(assessment => {
       const output = assessment.querySelector('[data-assessment-output]');
@@ -1415,7 +1429,7 @@ async function register(request, env) {
     throw error;
   }
   await clearAuthFailures(rateKey, env);
-  await sendRegistrationNotification(env, { id, email, nome, createdAt: nowIso }).catch(error => console.error("Registration notification email failed", error));
+  await queueRegistrationNotification(env, { id, email, nome, createdAt: nowIso }).catch(error => console.error("Registration notification email failed", error));
   return redirect("/studio", sessionCookie(token));
 }
 
@@ -1683,6 +1697,7 @@ async function adminDashboard(user, env, url) {
 
   const counts = await env.DB.prepare(`SELECT (SELECT COUNT(*) FROM "User" WHERE lower(trim(email))<>lower(trim(?))) users,(SELECT COUNT(*) FROM "BookProject")+(SELECT COUNT(DISTINCT c.userId) FROM "Capitolo" c WHERE NOT EXISTS (SELECT 1 FROM "BookProject" p WHERE p.userId=c.userId)) books,(SELECT COUNT(*) FROM "BookProject" WHERE status='completato')+(SELECT COUNT(DISTINCT c.userId) FROM "Capitolo" c JOIN "ProjectAdmin" a ON a.userId=c.userId WHERE a.statoEditoriale='completato' AND NOT EXISTS (SELECT 1 FROM "BookProject" p WHERE p.userId=c.userId)) completed,(SELECT COUNT(*) FROM "Ordine") orders`).bind(env.ADMIN_EMAIL).first();
   const clients = await env.DB.prepare(`SELECT u.id,u.nome,u.email,u.createdAt,(SELECT COUNT(*) FROM "BookProject" p WHERE p.userId=u.id) books,(SELECT COUNT(*) FROM "Ordine" o WHERE o.userId=u.id) orders,(SELECT COUNT(*) FROM "Capitolo" lc WHERE lc.userId=u.id) legacyChapters,(SELECT COUNT(*) FROM "Capitolo" lc WHERE lc.userId=u.id AND length(lc.testo)>200) legacyCompletedChapters,(SELECT p.id FROM "BookProject" p WHERE p.userId=u.id ORDER BY p.updatedAt DESC LIMIT 1) latestProjectId,(SELECT p.status FROM "BookProject" p WHERE p.userId=u.id ORDER BY p.updatedAt DESC LIMIT 1) latestStatus,(SELECT COUNT(*) FROM "BookChapter" bc WHERE bc.projectId=(SELECT p.id FROM "BookProject" p WHERE p.userId=u.id ORDER BY p.updatedAt DESC LIMIT 1)) chapters,(SELECT COUNT(*) FROM "BookChapter" bc WHERE bc.projectId=(SELECT p.id FROM "BookProject" p WHERE p.userId=u.id ORDER BY p.updatedAt DESC LIMIT 1) AND length(bc.content)>200) completedChapters FROM "User" u WHERE lower(trim(u.email))<>lower(trim(?)) ORDER BY u.createdAt DESC`).bind(env.ADMIN_EMAIL).all();
+  const registrationNotifications = await env.DB.prepare(`SELECT nome,email,deliveryStatus,deliveryError,attempts,lastAttemptAt,acceptedAt,messageId,createdAt FROM "RegistrationNotification" ORDER BY createdAt DESC LIMIT 20`).all();
   const resets = await env.DB.prepare(`SELECT pr.createdAt,pr.deliveryStatus,pr.deliveryError,pr.deliveredAt,pr.messageId,u.email FROM "PasswordReset" pr JOIN "User" u ON u.id=pr.userId ORDER BY pr.createdAt DESC LIMIT 10`).all();
 
   const projectTable = rows.results.map(r => { const pct = r.chapters ? Math.round(Number(r.completed || 0) / Number(r.chapters) * 100) : 0; return `<tr><td><b>${esc(r.title)}</b><br><span class="small muted">${esc(r.genre)}</span></td><td><b>${esc(r.nome || "Senza nome")}</b><br><a href="mailto:${esc(r.email)}">${esc(r.email)}</a></td><td><div class="meter"><span style="width:${pct}%"></span></div><span class="small">${pct}% · ${r.completed || 0}/${r.chapters || 0} capitoli</span></td><td><span class="badge">${esc(r.statoEditoriale)}</span></td><td>${esc(r.statoCommerciale)}</td><td>${new Date(r.updatedAt).toLocaleDateString("it-IT")}</td><td><div class="table-actions"><a class="button secondary" href="/admin/progetto/${r.id}">Gestisci e sblocca</a><a class="button" href="/admin/progetto/${r.id}/anteprima" target="_blank" rel="noopener">Vedi PDF</a></div></td></tr>`; }).join("");
@@ -1690,8 +1705,9 @@ async function adminDashboard(user, env, url) {
   const table = projectTable + legacyTable;
   const emptyProjects = `<tr><td colspan="7">Nessun progetto corrisponde ai filtri selezionati.${q || status ? ` <a href="/admin">Azzera i filtri</a>.` : ""}</td></tr>`;
   const clientTable = clients.results.map(c => { const hasLegacy = Number(c.legacyChapters || 0) > 0 && Number(c.books || 0) === 0, chapters = hasLegacy ? Number(c.legacyChapters || 0) : Number(c.chapters || 0), completed = hasLegacy ? Number(c.legacyCompletedChapters || 0) : Number(c.completedChapters || 0), pct = chapters ? Math.round(completed / chapters * 100) : 0, books = Number(c.books || 0) + (hasLegacy ? 1 : 0), state = c.latestStatus || (hasLegacy ? "bozza storica" : "registrato · nessun libro"), pdf = c.latestProjectId ? `/admin/progetto/${c.latestProjectId}/anteprima` : hasLegacy ? `/admin/cliente/${c.id}/anteprima-storica` : "", manage = c.latestProjectId ? `/admin/progetto/${c.latestProjectId}` : hasLegacy ? `/admin/cliente/${c.id}` : ""; return `<tr><td><b>${esc(c.nome || "Senza nome")}</b><br><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></td><td><span class="badge">${esc(state)}</span></td><td>${chapters ? `<div class="meter"><span style="width:${pct}%"></span></div><span class="small">${pct}% · ${completed}/${chapters}</span>` : "—"}</td><td>${books}</td><td>${c.orders}</td><td>${pdf ? `<a class="button" href="${pdf}" target="_blank" rel="noopener">Vedi PDF</a>` : `<span class="small muted">Nessun contenuto</span>`}</td><td>${new Date(c.createdAt).toLocaleDateString("it-IT")}</td><td>${manage ? `<a class="button secondary" href="${manage}">Gestisci e sblocca</a>` : "—"}</td></tr>`; }).join("");
+  const registrationNotificationTable = registrationNotifications.results.map(r => `<tr><td><b>${esc(r.nome || "Senza nome")}</b><br><a href="mailto:${esc(r.email)}">${esc(r.email)}</a></td><td>${new Date(r.createdAt).toLocaleString("it-IT")}</td><td><span class="badge reset-${esc(r.deliveryStatus || "pending")}">${esc(r.deliveryStatus || "pending")}</span></td><td>${Number(r.attempts || 0)}</td><td>${r.acceptedAt ? new Date(r.acceptedAt).toLocaleString("it-IT") : "—"}</td><td class="small">${esc(r.deliveryError || r.messageId || "—")}</td></tr>`).join("");
   const resetTable = resets.results.map(r => `<tr><td><a href="mailto:${esc(r.email)}">${esc(r.email)}</a></td><td>${new Date(r.createdAt).toLocaleString("it-IT")}</td><td><span class="badge reset-${esc(r.deliveryStatus || "pending")}">${esc(r.deliveryStatus || "pending")}</span></td><td>${r.deliveredAt ? new Date(r.deliveredAt).toLocaleString("it-IT") : "—"}</td><td class="small">${esc(r.deliveryError || r.messageId || "—")}</td></tr>`).join("");
-  return page("Amministrazione", `<section class="studio alt"><div class="wrap"><div class="studiohead"><div><p class="eyebrow">Area amministratore</p><h1>Controllo completo</h1><p class="muted">Clienti, libri, avanzamento, ordini, pagamenti e controllo riservato dei contenuti.</p></div><a class="button secondary" href="/admin/esporta.csv">Esporta CSV</a></div><div class="stats"><div class="stat"><span>Clienti</span><b>${counts.users}</b></div><div class="stat"><span>Libri iniziati</span><b>${counts.books}</b></div><div class="stat"><span>Completati</span><b>${counts.completed}</b></div><div class="stat"><span>Ordini</span><b>${counts.orders}</b></div></div><h2>Progetti e contenuti</h2><p class="muted">Ogni riga mostra l’utente, l’avanzamento e l’accesso diretto al PDF. Con “Gestisci e sblocca” puoi impostare il singolo libro come gratuito, da pagare, pagato o rimborsato.</p><form class="filters"><input class="input" name="q" value="${esc(q)}" placeholder="Cerca nome, email o libro"><select class="input" name="stato"><option value="">Tutti gli stati</option>${options(["bozza", "struttura_creata", "in_lavorazione", "in_revisione", "approvato", "completato"], status)}</select><button class="button">Filtra</button>${q || status ? `<a class="button secondary" href="/admin">Azzera filtri</a>` : ""}</form><div class="tablebox"><table class="table"><thead><tr><th>Libro</th><th>Cliente</th><th>Avanzamento</th><th>Stato editoriale</th><th>Stato commerciale</th><th>Aggiornato</th><th>Azioni</th></tr></thead><tbody>${table || emptyProjects}</tbody></table></div><h2 style="margin-top:42px">Clienti</h2><div class="tablebox"><table class="table"><thead><tr><th>Cliente</th><th>Stato</th><th>Avanzamento</th><th>Libri</th><th>Ordini</th><th>Contenuti</th><th>Registrato</th><th>Azioni</th></tr></thead><tbody>${clientTable || `<tr><td colspan="8">Nessun cliente.</td></tr>`}</tbody></table></div><h2 style="margin-top:42px">Recupero password</h2><p class="muted">Ultimi tentativi di invio: lo stato e l’eventuale diagnostica sono visibili solo all’amministratore.</p><div class="tablebox"><table class="table"><thead><tr><th>Email</th><th>Richiesto</th><th>Stato invio</th><th>Consegnato al servizio</th><th>Diagnostica</th></tr></thead><tbody>${resetTable || `<tr><td colspan="5">Nessuna richiesta recente.</td></tr>`}</tbody></table></div></div></section>`, user);
+  return page("Amministrazione", `<section class="studio alt"><div class="wrap"><div class="studiohead"><div><p class="eyebrow">Area amministratore</p><h1>Controllo completo</h1><p class="muted">Clienti, libri, avanzamento, ordini, pagamenti e controllo riservato dei contenuti.</p></div><a class="button secondary" href="/admin/esporta.csv">Esporta CSV</a></div><div class="stats"><div class="stat"><span>Clienti</span><b>${counts.users}</b></div><div class="stat"><span>Libri iniziati</span><b>${counts.books}</b></div><div class="stat"><span>Completati</span><b>${counts.completed}</b></div><div class="stat"><span>Ordini</span><b>${counts.orders}</b></div></div><h2>Progetti e contenuti</h2><p class="muted">Ogni riga mostra l’utente, l’avanzamento e l’accesso diretto al PDF. Con “Gestisci e sblocca” puoi impostare il singolo libro come gratuito, da pagare, pagato o rimborsato.</p><form class="filters"><input class="input" name="q" value="${esc(q)}" placeholder="Cerca nome, email o libro"><select class="input" name="stato"><option value="">Tutti gli stati</option>${options(["bozza", "struttura_creata", "in_lavorazione", "in_revisione", "approvato", "completato"], status)}</select><button class="button">Filtra</button>${q || status ? `<a class="button secondary" href="/admin">Azzera filtri</a>` : ""}</form><div class="tablebox"><table class="table"><thead><tr><th>Libro</th><th>Cliente</th><th>Avanzamento</th><th>Stato editoriale</th><th>Stato commerciale</th><th>Aggiornato</th><th>Azioni</th></tr></thead><tbody>${table || emptyProjects}</tbody></table></div><h2 style="margin-top:42px">Clienti</h2><div class="tablebox"><table class="table"><thead><tr><th>Cliente</th><th>Stato</th><th>Avanzamento</th><th>Libri</th><th>Ordini</th><th>Contenuti</th><th>Registrato</th><th>Azioni</th></tr></thead><tbody>${clientTable || `<tr><td colspan="8">Nessun cliente.</td></tr>`}</tbody></table></div><h2 style="margin-top:42px">Notifiche nuove iscrizioni</h2><p class="muted">Ogni registrazione genera un invio reale a ${esc(env.ADMIN_EMAIL)}. Se l’invio fallisce temporaneamente, Splendoria ritenta automaticamente fino a cinque volte.</p><div class="tablebox"><table class="table"><thead><tr><th>Nuovo cliente</th><th>Registrato</th><th>Stato invio</th><th>Tentativi</th><th>Accettato dal servizio</th><th>Diagnostica</th></tr></thead><tbody>${registrationNotificationTable || `<tr><td colspan="6">Nessuna iscrizione notificata.</td></tr>`}</tbody></table></div><h2 style="margin-top:42px">Recupero password</h2><p class="muted">Ultimi tentativi di invio: lo stato e l’eventuale diagnostica sono visibili solo all’amministratore.</p><div class="tablebox"><table class="table"><thead><tr><th>Email</th><th>Richiesto</th><th>Stato invio</th><th>Consegnato al servizio</th><th>Diagnostica</th></tr></thead><tbody>${resetTable || `<tr><td colspan="5">Nessuna richiesta recente.</td></tr>`}</tbody></table></div></div></section>`, user);
 }
 
 async function adminProject(id,user,env,message=""){if(!user?.isAdmin)return redirect("/area-amministratore");const p=await env.DB.prepare(`SELECT p.*,u.nome,u.email,a.statoEditoriale,a.statoCommerciale,a.tutor,a.note FROM "BookProject" p JOIN "User" u ON u.id=p.userId LEFT JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE p.id=?`).bind(id).first();if(!p)return redirect("/admin");const chapters=await env.DB.prepare('SELECT position,title,length(content) chars,status FROM "BookChapter" WHERE projectId=? ORDER BY position').bind(id).all();const orders=await env.DB.prepare('SELECT * FROM "Ordine" WHERE projectId=? ORDER BY createdAt DESC').bind(id).all();return page("Gestione progetto",`<section class="studio alt"><div class="wrap"><a href="/admin">← Dashboard</a><h1>${esc(p.title)}</h1><p>${esc(p.nome)} · <a href="mailto:${esc(p.email)}">${esc(p.email)}</a></p>${message?`<p class="success">${esc(message)}</p>`:""}<div class="grid three"><article class="card"><h3>Libro</h3><p>${esc(p.genre)} · ${p.targetPages} pagine</p><p>Piano: ${esc(PLAN_LABELS[p.plan]||p.plan)}</p><a href="/admin/progetto/${p.id}/anteprima" class="button secondary">Anteprima amministratore</a></article><article class="card"><h3>Capitoli</h3><ol>${chapters.results.map(c=>`<li>${esc(c.title)} <span class="muted">(${c.chars} caratteri)</span></li>`).join("")||"<li>Nessun capitolo</li>"}</ol></article><article class="card"><h3>Ordini del libro</h3>${orders.results.map(o=>`<p>${esc(o.formula)} · ${o.prezzo} € · ${esc(o.stato)}</p>`).join("")||"<p>Nessun ordine</p>"}</article></div><form class="card" method="post"><h3>Gestione interna e sblocco</h3><p class="muted">Lo stato commerciale viene applicato esclusivamente a questo libro. “Pagato” ne abilita l’accesso completo al cliente.</p><div class="adminform"><label class="field">Stato editoriale<select name="statoEditoriale">${options(EDITORIAL_STATES,p.statoEditoriale||p.status)}</select></label><label class="field">Stato commerciale<select name="statoCommerciale">${options(COMMERCIAL_STATES,p.statoCommerciale||"gratuito")}</select></label><label class="field">Tutor<input name="tutor" value="${esc(p.tutor||"")}"></label><label class="field full">Note interne<textarea name="note">${esc(p.note||"")}</textarea></label></div><button class="button">Salva e applica lo stato</button></form></div></section>`,user);}
@@ -1753,12 +1769,13 @@ async function contact(request, env) {
   await env.DB.prepare('INSERT INTO "ContactMessage" (id,fullName,phone,email,subject,message,lang,ipHash,deliveryStatus,deliveryError,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(id, fullName, phone, email, subject, message, "it", await sha256(request.headers.get("cf-connecting-ip") || "unknown"), "pending", "", now).run();
 
   try {
-    if (!env.CONTACT_EMAIL?.send) {
+    const emailBinding = adminEmailBinding(env);
+    if (!emailBinding?.send) {
       const error = new Error("Il binding per l’invio email non è configurato.");
       error.code = "EMAIL_BINDING_MISSING";
       throw error;
     }
-    await env.CONTACT_EMAIL.send({
+    await emailBinding.send({
       to: env.ADMIN_EMAIL,
       from: { email: env.EMAIL_FROM, name: "Splendoria" },
       subject: `Nuova richiesta · ${subject}`.slice(0, 200),
@@ -1780,8 +1797,50 @@ async function ownedProject(id,user,env){if(!user||user.isAdmin)return null;retu
 async function ownProject(id,user,env){if(!user||user.isAdmin)return null;return env.DB.prepare(`SELECT p.* FROM "BookProject" p LEFT JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE p.id=? AND p.userId=? AND (p.plan='free' OR a.statoCommerciale='pagato')`).bind(id,user.id).first()}
 async function todayUsage(userId,env){const r=await env.DB.prepare('SELECT requests FROM "AiUsage" WHERE userId=? AND date=?').bind(userId,new Date().toISOString().slice(0,10)).first();return Number(r?.requests||0)}
 
+function adminEmailBinding(env) {
+  return env.ADMIN_EMAIL_NOTIFICATION || env.CONTACT_EMAIL;
+}
+
+async function queueRegistrationNotification(env, user) {
+  const notification = {
+    id: crypto.randomUUID(),
+    userId: user.id,
+    nome: clean(user.nome, 100),
+    email: normalizeEmail(user.email),
+    deliveryStatus: "pending",
+    lastAttemptAt: "",
+    createdAt: user.createdAt || new Date().toISOString()
+  };
+  await env.DB.prepare('INSERT INTO "RegistrationNotification" (id,userId,nome,email,deliveryStatus,deliveryError,attempts,lastAttemptAt,acceptedAt,messageId,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)').bind(notification.id, notification.userId, notification.nome, notification.email, "pending", "", 0, null, null, "", notification.createdAt).run();
+  return deliverRegistrationNotification(env, notification);
+}
+
+async function deliverRegistrationNotification(env, notification) {
+  const attemptedAt = new Date().toISOString();
+  const claim = await env.DB.prepare(`UPDATE "RegistrationNotification" SET deliveryStatus='sending',attempts=attempts+1,lastAttemptAt=? WHERE id=? AND deliveryStatus=? AND COALESCE(lastAttemptAt,'')=?`).bind(attemptedAt, notification.id, notification.deliveryStatus || "pending", notification.lastAttemptAt || "").run();
+  if (Number(claim?.meta?.changes) === 0) return null;
+  try {
+    const result = await sendRegistrationNotification(env, notification);
+    const acceptedAt = new Date().toISOString();
+    await env.DB.prepare('UPDATE "RegistrationNotification" SET deliveryStatus=?,deliveryError=?,acceptedAt=?,messageId=? WHERE id=?').bind("sent", "", acceptedAt, clean(result?.messageId, 200), notification.id).run();
+    return result;
+  } catch (error) {
+    await env.DB.prepare('UPDATE "RegistrationNotification" SET deliveryStatus=?,deliveryError=? WHERE id=?').bind("failed", emailDeliveryError(error), notification.id).run();
+    throw error;
+  }
+}
+
+async function retryRegistrationNotifications(env) {
+  const staleAttempt = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const pending = await env.DB.prepare(`SELECT id,userId,nome,email,deliveryStatus,lastAttemptAt,createdAt FROM "RegistrationNotification" WHERE attempts<5 AND (deliveryStatus IN ('pending','failed') OR (deliveryStatus='sending' AND (lastAttemptAt IS NULL OR lastAttemptAt<?))) ORDER BY createdAt LIMIT 20`).bind(staleAttempt).all();
+  for (const notification of pending.results || []) {
+    await deliverRegistrationNotification(env, notification).catch(error => console.error("Registration notification retry failed", error));
+  }
+}
+
 async function sendRegistrationNotification(env, user) {
-  if (!env.CONTACT_EMAIL?.send) {
+  const emailBinding = adminEmailBinding(env);
+  if (!emailBinding?.send) {
     const error = new Error("Il binding per l’invio email non è configurato.");
     error.code = "EMAIL_BINDING_MISSING";
     throw error;
@@ -1790,7 +1849,7 @@ async function sendRegistrationNotification(env, user) {
   const name = clean(user.nome, 100) || "Senza nome";
   const email = normalizeEmail(user.email);
   const registeredAt = new Date(user.createdAt).toLocaleString("it-IT", { timeZone: "Europe/Rome" });
-  return env.CONTACT_EMAIL.send({
+  return emailBinding.send({
     to: env.ADMIN_EMAIL,
     from: { email: env.EMAIL_FROM, name: "Splendoria" },
     subject: `Nuova iscrizione a Splendoria · ${name}`.slice(0, 200),
@@ -1820,6 +1879,15 @@ async function sendResetEmail(env, user, token) {
 function emailDeliveryError(error) {
   const code = error?.code ? `${error.code}: ` : "";
   return clean(`${code}${error?.message || "Errore di invio sconosciuto"}`, 500);
+}
+
+async function ensureRegistrationNotificationSchema(db) {
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS "RegistrationNotification" (id TEXT PRIMARY KEY,userId TEXT NOT NULL,nome TEXT NOT NULL DEFAULT '',email TEXT NOT NULL,deliveryStatus TEXT NOT NULL DEFAULT 'pending',deliveryError TEXT NOT NULL DEFAULT '',attempts INTEGER NOT NULL DEFAULT 0,lastAttemptAt TEXT,acceptedAt TEXT,messageId TEXT,createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE INDEX IF NOT EXISTS "RegistrationNotification_userId_idx" ON "RegistrationNotification"(userId)`,
+    `CREATE INDEX IF NOT EXISTS "RegistrationNotification_status_idx" ON "RegistrationNotification"(deliveryStatus,attempts)`
+  ];
+  for (const statement of statements) await db.prepare(statement).run();
 }
 
 async function ensureSchema(db){const sql=[`CREATE TABLE IF NOT EXISTS "User" (id TEXT PRIMARY KEY,email TEXT NOT NULL,passwordHash TEXT NOT NULL,nome TEXT NOT NULL DEFAULT '',privacyAcceptedAt TEXT,createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"(email)`,`CREATE TABLE IF NOT EXISTS "Capitolo" (id TEXT PRIMARY KEY,userId TEXT NOT NULL,titolo TEXT NOT NULL DEFAULT '',genere TEXT NOT NULL DEFAULT 'Autobiografia',testo TEXT NOT NULL DEFAULT '',createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE TABLE IF NOT EXISTS "Ordine" (id TEXT PRIMARY KEY,userId TEXT NOT NULL,projectId TEXT,formula TEXT NOT NULL,prezzo INTEGER NOT NULL,stato TEXT NOT NULL DEFAULT 'richiesta',termsAcceptedAt TEXT,createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE TABLE IF NOT EXISTS "AiUsage" (userId TEXT NOT NULL,date TEXT NOT NULL,requests INTEGER NOT NULL DEFAULT 0,updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(userId,date))`,`CREATE TABLE IF NOT EXISTS "ContactMessage" (id TEXT PRIMARY KEY,fullName TEXT NOT NULL,phone TEXT NOT NULL,email TEXT NOT NULL,subject TEXT NOT NULL,message TEXT NOT NULL,lang TEXT NOT NULL,ipHash TEXT NOT NULL,deliveryStatus TEXT NOT NULL DEFAULT 'pending',deliveryError TEXT NOT NULL DEFAULT '',createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE TABLE IF NOT EXISTS "Session" (id TEXT PRIMARY KEY,userId TEXT NOT NULL,tokenHash TEXT NOT NULL UNIQUE,expiresAt TEXT NOT NULL,createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE TABLE IF NOT EXISTS "PasswordReset" (id TEXT PRIMARY KEY,userId TEXT NOT NULL,tokenHash TEXT NOT NULL UNIQUE,expiresAt TEXT NOT NULL,usedAt TEXT,deliveryStatus TEXT NOT NULL DEFAULT 'pending',deliveryError TEXT NOT NULL DEFAULT '',deliveredAt TEXT,messageId TEXT,createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE TABLE IF NOT EXISTS "AuthThrottle" (key TEXT PRIMARY KEY,attempts INTEGER NOT NULL DEFAULT 0,windowStart TEXT NOT NULL,blockedUntil TEXT,updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE TABLE IF NOT EXISTS "ProjectAdmin" (userId TEXT PRIMARY KEY,statoEditoriale TEXT NOT NULL DEFAULT 'iniziato',statoCommerciale TEXT NOT NULL DEFAULT 'gratuito',tutor TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE TABLE IF NOT EXISTS "BookProject" (id TEXT PRIMARY KEY,userId TEXT NOT NULL,title TEXT NOT NULL DEFAULT '',genre TEXT NOT NULL DEFAULT 'Autobiografia',tone TEXT NOT NULL DEFAULT 'Emozionante e autentico',audience TEXT NOT NULL DEFAULT 'Famiglia e amici',targetPages INTEGER NOT NULL DEFAULT 80,sourceMaterial TEXT NOT NULL DEFAULT '',story TEXT NOT NULL DEFAULT '',people TEXT NOT NULL DEFAULT '',events TEXT NOT NULL DEFAULT '',message TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'bozza',plan TEXT NOT NULL DEFAULT 'free',specialDataConsentAt TEXT,createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE TABLE IF NOT EXISTS "BookProjectAdmin" (projectId TEXT PRIMARY KEY,userId TEXT NOT NULL,statoEditoriale TEXT NOT NULL DEFAULT 'iniziato',statoCommerciale TEXT NOT NULL DEFAULT 'gratuito',tutor TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,`CREATE INDEX IF NOT EXISTS "BookProjectAdmin_userId_idx" ON "BookProjectAdmin"(userId)`,`CREATE TABLE IF NOT EXISTS "BookChapter" (id TEXT PRIMARY KEY,projectId TEXT NOT NULL,position INTEGER NOT NULL,title TEXT NOT NULL DEFAULT '',content TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'da_generare',createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(projectId,position))`,`CREATE TABLE IF NOT EXISTS "BookInterview" (projectId TEXT PRIMARY KEY,questions TEXT NOT NULL DEFAULT '',answers TEXT NOT NULL DEFAULT '',updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`];for(const q of sql)await db.prepare(q).run();await ensureColumn(db,"Ordine","projectId","TEXT");await ensureColumn(db,"Ordine","termsAcceptedAt","TEXT");await ensureColumn(db,"User","privacyAcceptedAt","TEXT");await ensureColumn(db,"BookProject","specialDataConsentAt","TEXT");await ensureColumn(db,"BookProject","sourceMaterial","TEXT NOT NULL DEFAULT ''");await ensureColumn(db,"PasswordReset","deliveryStatus","TEXT NOT NULL DEFAULT 'pending'");await ensureColumn(db,"PasswordReset","deliveryError","TEXT NOT NULL DEFAULT ''");await ensureColumn(db,"PasswordReset","deliveredAt","TEXT");await ensureColumn(db,"PasswordReset","messageId","TEXT")}
