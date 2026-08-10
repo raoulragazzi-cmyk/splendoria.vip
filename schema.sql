@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS "BookProjectAdmin" (
   "projectId" TEXT NOT NULL PRIMARY KEY,
   "userId" TEXT NOT NULL,
   "statoEditoriale" TEXT NOT NULL DEFAULT 'iniziato',
-  "statoCommerciale" TEXT NOT NULL DEFAULT 'gratuito',
+  "statoCommerciale" TEXT NOT NULL DEFAULT 'prova_gratuita',
   "tutor" TEXT NOT NULL DEFAULT '',
   "note" TEXT NOT NULL DEFAULT '',
   "updatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

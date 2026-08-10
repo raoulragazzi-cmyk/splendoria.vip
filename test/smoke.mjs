@@ -44,7 +44,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette non applicate");
 if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("La tua storia destinata a vivere centinaia di anni") || !showcaseTypography.includes("Inizia il tuo libro")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260810-3"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260810-4"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (["Come funziona", "Listino", "Contattaci", "Il mio Studio"].some(label => !publicNavigation.includes(label)) || !publicNavigation.includes('href="/#metodo"') || !publicNavigation.includes('href="/#formule"') || !publicNavigation.includes('href="/#contatti"') || publicNavigation.includes("Area amministratore")) throw new Error("Navigazione: menu completo della vetrina assente, destinazioni errate o collegamento amministratore esposto");
 for (const weight of [400, 700]) {
@@ -69,6 +69,7 @@ if (!showcaseTypography.includes("Dati custoditi nell’infrastruttura Splendori
 if (!showcaseTypography.includes("La forza della tradizione") || !showcaseTypography.includes("gesti, fallimenti, errori e visioni") || !showcaseTypography.includes("Tre possibilità, una grande cura editoriale") || !showcaseTypography.includes("Fino a 80 pagine") || !showcaseTypography.includes("Fino a 120 pagine") || !showcaseTypography.includes("La prima architettura del tuo libro")) throw new Error("Vetrina: copy editoriale o pagine dei percorsi non aggiornati");
 if (showcaseTypography.includes("Vai al contenuto") || showcaseTypography.includes('class="skip-link"') || showcaseTypography.includes("Retaggio") || showcaseTypography.includes("Fino a 100 pagine") || showcaseTypography.includes("Fino a 250 pagine") || showcaseTypography.includes("Non un preventivo")) throw new Error("Vetrina: copy precedente o collegamento al contenuto ancora presente");
 if (showcaseTypography.includes("Retaggio Editoriale Certificato") || showcaseTypography.includes("scritta dai maestri") || showcaseTypography.includes("ROI Storico")) throw new Error("Vetrina: promessa commerciale non dimostrabile ancora pubblicata");
+if (showcaseTypography.includes("IT05Z0538758590000049304579")) throw new Error("Vetrina: coordinate bancarie esposte fuori dall’area riservata");
 console.log("/vetrina: dieci sezioni, Hero, slider, governance e Assessment disponibili");
 
 const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
@@ -83,6 +84,7 @@ for (const table of ["User", "BookProject", "BookChapter", "BookInterview", "Ses
 }
 if (!schemaSource.includes('CREATE TABLE IF NOT EXISTS "RegistrationNotification"') || !workerSource.includes("retryRegistrationNotifications") || !workerSource.includes("async scheduled")) throw new Error("Registrazione: tracciamento D1 o ritento automatico della notifica incompleto");
 if (!schemaSource.includes('"sourceMaterial" TEXT NOT NULL DEFAULT') || !workerSource.includes('ensureColumn(db,"BookProject","sourceMaterial"') || !workerSource.includes("hasRepeatedPassages") || !workerSource.includes("reviewMuseDraft")) throw new Error("Muse: fonti aggiuntive, migrazione D1 o controllo qualità automatico incompleti");
+if (!schemaSource.includes('"statoCommerciale" TEXT NOT NULL DEFAULT \'prova_gratuita\'') || !workerSource.includes('"prova_gratuita"') || !workerSource.includes("IT05Z0538758590000049304579")) throw new Error("Prova gratuita: stato commerciale o coordinate di pagamento mancanti");
 const localStorageKeys = [...workerSource.matchAll(/localStorage\.(?:getItem|setItem)\(['"]([^'"]+)/g)].map(match => match[1]);
 const unexpectedLocalStorage = localStorageKeys.filter(key => !["splendoria-cookie-notice-v1", "splendoria-voice-language"].includes(key));
 if (unexpectedLocalStorage.length || !workerSource.includes("HttpOnly; Secure; SameSite=Lax")) throw new Error("Persistenza: dati utente o libro esposti nel dispositivo locale");
@@ -362,6 +364,74 @@ const outlineResponse = await worker.fetch(new Request("https://www.splendoria.v
 if (outlineResponse.status !== 303 || !museBatches.includes(14)) throw new Error("Muse: struttura da 12 capitoli non generata integralmente");
 console.log("/libro/libro-muse: sezione Muse e selettore trilingue disponibili");
 
+const trialUser = { id: "cliente-prova", email: "prova@example.com", nome: "Cliente Prova", createdAt: "2026-08-10T09:00:00.000Z" };
+const trialProject = { ...museProject, id: "libro-prova", userId: trialUser.id, title: "Il libro della prova", targetPages: 84, createdAt: trialUser.createdAt, plan: "free" };
+const trialChapters = [
+  { id: "capitolo-prova-1", projectId: trialProject.id, position: 1, title: "La prima soglia", content: "CONTENUTO VISIBILE DEL PRIMO CAPITOLO", status: "generato" },
+  { id: "capitolo-prova-2", projectId: trialProject.id, position: 2, title: "La seconda soglia", content: "CONTENUTO RISERVATO DEL SECONDO CAPITOLO", status: "generato" }
+];
+let trialCommercialState = "prova_gratuita";
+const trialChapterUpdates = [];
+const trialDb = {
+  prepare(sql) {
+    return {
+      sql,
+      values: [],
+      bind(...values) { this.values = values; return this; },
+      async run() {
+        if (sql.includes('UPDATE "BookChapter" SET title=?,content=?')) trialChapterUpdates.push(this.values);
+        return { success: true };
+      },
+      async all() {
+        if (sql.startsWith("PRAGMA table_info")) return { results: ["projectId", "termsAcceptedAt", "privacyAcceptedAt", "specialDataConsentAt", "sourceMaterial", "usedAt", "deliveryStatus", "deliveryError", "deliveredAt", "messageId"].map(name => ({ name })) };
+        if (sql.includes('FROM "BookChapter"')) return { results: trialChapters };
+        return { results: [] };
+      },
+      async first() {
+        if (sql.includes('FROM "Session" s JOIN "User" u')) return trialUser;
+        if (sql.includes('SELECT p.* FROM "BookProject" p LEFT JOIN "BookProjectAdmin"')) return trialProject;
+        if (sql.includes('SELECT statoCommerciale FROM "BookProjectAdmin"')) return { statoCommerciale: trialCommercialState };
+        if (sql.includes('FROM "BookChapter"')) return trialChapters.find(chapter => chapter.id === this.values[0]) || null;
+        if (sql.includes('FROM "BookInterview"')) return null;
+        if (sql.includes('FROM "AiUsage"')) return { requests: 0 };
+        return null;
+      }
+    };
+  },
+  async batch(statements) { const results = []; for (const statement of statements) results.push(await statement.run()); return results; }
+};
+const trialEditorResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
+const trialEditorHtml = await trialEditorResponse.text();
+if (trialEditorResponse.status !== 200 || !trialEditorHtml.includes('id="chapter-card-capitolo-prova-1"') || !trialEditorHtml.includes("CONTENUTO VISIBILE DEL PRIMO CAPITOLO") || !trialEditorHtml.includes('id="chapter-lock-capitolo-prova-2"') || !trialEditorHtml.includes("La seconda soglia") || trialEditorHtml.includes("CONTENUTO RISERVATO DEL SECONDO CAPITOLO") || !trialEditorHtml.includes('data-total-chapters="2"')) throw new Error("Prova gratuita: il primo capitolo non è operativo o il secondo espone contenuti riservati");
+for (const required of ["Prova gratuita di 14 giorni", "Raoul Ragazzi Fisar", "IT05Z0538758590000049304579", "BPER Filiale Merano", "Pagato", "Gratuito"]) if (!trialEditorHtml.includes(required)) throw new Error(`Prova gratuita: informazione riservata mancante (${required})`);
+const blockedSaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-2/salva", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "Titolo forzato", content: "Testo forzato" }) }), { ...env, DB: trialDb });
+if (blockedSaveResponse.status !== 200 || !(await blockedSaveResponse.text()).includes("Questo capitolo è riservato al libro completo") || trialChapterUpdates.some(values => values.includes("Testo forzato"))) throw new Error("Prova gratuita: salvataggio diretto del secondo capitolo non bloccato");
+const blockedAutosaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-2/autosalva", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/json" }, body: JSON.stringify({ title: "Titolo forzato", content: "Testo forzato" }) }), { ...env, DB: trialDb });
+if (blockedAutosaveResponse.status !== 403 || !(await blockedAutosaveResponse.json()).error?.includes("Capitolo bloccato")) throw new Error("Prova gratuita: autosalvataggio diretto del secondo capitolo non bloccato");
+let blockedAiCalls = 0;
+const blockedAi = { async run() { blockedAiCalls += 1; return { response: "Non deve essere usato" }; } };
+const blockedGenerateResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-2/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La seconda soglia", content: "" }) }), { ...env, DB: trialDb, AI: blockedAi });
+const blockedRefineResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-2/rifinisci", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La seconda soglia", content: "Testo", action: "improve" }) }), { ...env, DB: trialDb, AI: blockedAi });
+if (blockedGenerateResponse.status !== 200 || blockedRefineResponse.status !== 200 || blockedAiCalls !== 0) throw new Error("Prova gratuita: Musa o Migliora aggirano il blocco del secondo capitolo");
+const trialPreviewResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/anteprima", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
+const trialPreviewHtml = await trialPreviewResponse.text();
+if (trialPreviewResponse.status !== 200 || !trialPreviewHtml.includes("CONTENUTO VISIBILE DEL PRIMO CAPITOLO") || trialPreviewHtml.includes("CONTENUTO RISERVATO DEL SECONDO CAPITOLO") || trialPreviewHtml.includes("La seconda soglia")) throw new Error("Prova gratuita: il PDF cliente include capitoli bloccati");
+for (const unlockedState of ["pagato", "gratuito"]) {
+  trialCommercialState = unlockedState;
+  const unlockedResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
+  const unlockedHtml = await unlockedResponse.text();
+  if (unlockedResponse.status !== 200 || !unlockedHtml.includes('id="chapter-card-capitolo-prova-2"') || !unlockedHtml.includes("CONTENUTO RISERVATO DEL SECONDO CAPITOLO") || unlockedHtml.includes('id="chapter-lock-capitolo-prova-2"')) throw new Error(`Sblocco amministrativo: stato ${unlockedState} non apre tutti i capitoli`);
+}
+trialCommercialState = "prova_gratuita";
+let newBookBatch = [];
+const newBookDb = {
+  prepare(sql) { return { sql, values: [], bind(...values) { this.values = values; return this; }, async run() { return { success: true }; }, async all() { return { results: [] }; }, async first() { if (sql.includes('FROM "Session" s JOIN "User" u')) return trialUser; return null; } }; },
+  async batch(statements) { newBookBatch = statements; return statements.map(() => ({ success: true })); }
+};
+const newBookResponse = await worker.fetch(new Request("https://www.splendoria.vip/nuovo-libro", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "Il mio primo libro", genre: "Autobiografia", targetPages: "84" }) }), { ...env, DB: newBookDb });
+if (newBookResponse.status !== 303 || newBookBatch.length !== 2 || !newBookBatch[1].sql.includes('INSERT INTO "BookProjectAdmin"') || newBookBatch[1].values[3] !== "prova_gratuita") throw new Error("Nuovo libro: progetto e stato di prova gratuita non vengono creati atomicamente");
+console.log("/prova-gratuita: primo capitolo, PDF e sblocco Pagato/Gratuito verificati");
+
 const previewUser = { id: "admin-pdf", email: "raoulragazzi@gmail.com", nome: "Raoul" };
 const previewProject = { id: "libro-pdf", userId: "cliente-pdf", title: "La mia vita", authorName: "Ulli" };
 const previewChapters = [
@@ -490,7 +560,7 @@ const legacyManagementDb = {
 };
 const legacyManagementResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin/cliente/cliente-storico", { headers: { cookie: "spl_session=test" } }), { ...env, DB: legacyManagementDb });
 const legacyManagementHtml = await legacyManagementResponse.text();
-if (legacyManagementResponse.status !== 200 || !legacyManagementHtml.includes("Gestione interna e sblocco") || !legacyManagementHtml.includes('value="pagato"') || !legacyManagementHtml.includes('value="rimborsato"')) throw new Error("Admin: gestione commerciale del libro storico non disponibile");
+if (legacyManagementResponse.status !== 200 || !legacyManagementHtml.includes("Gestione interna e sblocco") || !legacyManagementHtml.includes('value="prova_gratuita"') || !legacyManagementHtml.includes('value="gratuito"') || !legacyManagementHtml.includes('value="pagato"') || !legacyManagementHtml.includes('value="rimborsato"')) throw new Error("Admin: gestione commerciale del libro storico non disponibile");
 const legacyManagementPost = await worker.fetch(new Request("https://www.splendoria.vip/admin/cliente/cliente-storico", { method: "POST", headers: { cookie: "spl_session=test" }, body: new URLSearchParams({ statoEditoriale: "approvato", statoCommerciale: "pagato", tutor: "Tutor", note: "Pagamento verificato" }) }), { ...env, DB: legacyManagementDb });
 const legacyManagementPostHtml = await legacyManagementPost.text();
 if (legacyManagementPost.status !== 200 || !legacyManagementPostHtml.includes("Stato del libro storico aggiornato") || legacyManagementState.projectAdmin?.[1] !== "approvato" || legacyManagementState.projectAdmin?.[2] !== "pagato" || legacyManagementState.orderStatus !== "pagato") throw new Error("Admin: salvataggio o sblocco del libro storico non riuscito");
