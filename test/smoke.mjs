@@ -44,7 +44,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette non applicate");
 if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("La tua storia destinata a vivere centinaia di anni") || !showcaseTypography.includes("Inizia il tuo libro")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260810-1"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260810-2"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (!publicNavigation.includes("Studio di Scrittura") || ["Area clienti", "Inizia gratis", "Area amministratore", "Come funziona", "Listino", "Contattaci"].some(label => publicNavigation.includes(label))) throw new Error("Navigazione: header pubblico non è minimale o espone collegamenti indesiderati");
 for (const weight of [400, 700]) {
@@ -138,6 +138,8 @@ if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
 if (!studioJsBody.includes("data-legacy-range") || !studioJsBody.includes("data-editorial-assessment") || !studioJsBody.includes("renderAssessment") || !studioJsBody.includes("Indice editoriale orientativo")) throw new Error("Asset JavaScript: slider o generazione della Scheda Tecnica mancanti");
 if (!studioJsBody.includes("paginateLiveChapter") || !studioJsBody.includes("livePageForCursor") || !studioJsBody.includes("data-live-chapter") || !studioJsBody.includes("data-live-content") || !studioJsBody.includes("renderLiveChapter(true)")) throw new Error("Studio: anteprima del capitolo non si aggiorna in tempo reale");
+if (!studioJsBody.includes("muse-horizontal") || !studioJsBody.includes("chapter-navigator") || !studioJsBody.includes("renderActiveChapter") || !studioJsBody.includes("Salva e passa al capitolo successivo") || !studioJsBody.includes("Altri interventi editoriali")) throw new Error("Studio: Musa orizzontale, capitolo singolo o navigazione editoriale non disponibili");
+if (!studioJsBody.includes("/autosalva") || !studioJsBody.includes("Le tue parole sono al sicuro") || !studioJsBody.includes("Sto custodendo le tue parole") || !studioJsBody.includes("8000")) throw new Error("Studio: salvataggio automatico del capitolo non disponibile");
 const livePreviewHelperStart = studioJsBody.indexOf("const livePreviewWordsPerPage =");
 const livePreviewHelperEnd = studioJsBody.indexOf("document.querySelectorAll('[data-live-chapter]')", livePreviewHelperStart);
 if (livePreviewHelperStart < 0 || livePreviewHelperEnd < 0) throw new Error("Studio: paginatore dell’anteprima Royal non trovato");
@@ -179,6 +181,7 @@ const museDb = {
       async first() {
         if (sql.includes('FROM "Session" s JOIN "User" u')) return museUser;
         if (sql.includes('SELECT p.* FROM "BookProject" p LEFT JOIN "BookProjectAdmin"')) return museProject;
+        if (sql.includes('FROM "BookChapter"')) return museChapter;
         if (sql.includes('FROM "BookInterview"')) return museInterview;
         return null;
       }
@@ -209,6 +212,14 @@ const chapterSaveResponse = await worker.fetch(new Request("https://www.splendor
 }), { ...env, DB: museDb });
 if (chapterSaveResponse.status !== 303 || chapterSaveResponse.headers.get("location") !== "/libro/libro-muse#chapter-card-capitolo-muse") throw new Error("Studio: ritorno al capitolo modificato non valido");
 if (!museChapterUpdates.some(values => values[0] === "Il titolo aggiornato" && values[1] === "Il testo aggiornato del capitolo.")) throw new Error("Studio: nuovo titolo del capitolo non salvato in Cloudflare D1");
+const chapterAutosaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/capitolo/capitolo-muse/autosalva", {
+  method: "POST",
+  headers: { cookie: "spl_session=test", "content-type": "application/json" },
+  body: JSON.stringify({ title: "Titolo custodito automaticamente", content: "Queste parole sono state salvate senza interrompere la scrittura." })
+}), { ...env, DB: museDb });
+const chapterAutosave = await chapterAutosaveResponse.json();
+if (chapterAutosaveResponse.status !== 200 || !chapterAutosave.ok || chapterAutosave.words !== 9 || !chapterAutosave.savedAt) throw new Error(`Studio: risposta dell’autosalvataggio non valida (${chapterAutosaveResponse.status}: ${JSON.stringify(chapterAutosave)})`);
+if (!museChapterUpdates.some(values => values[0] === "Titolo custodito automaticamente" && values[1] === "Queste parole sono state salvate senza interrompere la scrittura." && values[4] === "capitolo-muse" && values[5] === "libro-muse")) throw new Error("Studio: autosalvataggio non scritto in D1 sul capitolo corretto");
 const dictationResponse = await worker.fetch(new Request("https://www.splendoria.vip/api/musa/trascrizione", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/json" },
