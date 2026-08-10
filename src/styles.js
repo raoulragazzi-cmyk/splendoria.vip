@@ -134,6 +134,68 @@ h1,h2,h3,h4,.brand,.price,.editor-paper,.interview-step h4,.interview-step texta
 @media(max-width:950px){.studio-editor-page .writing-shell{grid-template-columns:1fr}.studio-editor-page .muse{position:static;order:-1}}
 @media(max-width:700px){.studio-editor-page .studio>.wrap{width:calc(100% - 24px)}.studio-editor-page .studio .chapter-body{padding:4px 18px 28px}.studio-editor-page .studio .chapter-writing-field textarea{min-height:520px}.studio-editor-page .live-chapter-preview{padding:16px;border-radius:21px}.studio-editor-page .live-preview-heading{display:block}.studio-editor-page .live-preview-format{display:inline-block;margin-top:10px}.studio-editor-page .live-page-stage{padding:12px}.studio-editor-page .live-preview-meta{display:grid}.studio-editor-page .studio .field textarea{font-size:20px}}
 
+/* Studio di scrittura: Musa orizzontale, un capitolo alla volta e
+   salvataggio continuo senza interrompere il flusso dell'autore. */
+.studio-editor-page .writing-shell{display:grid;grid-template-columns:minmax(0,1fr);gap:26px}
+.studio-editor-page .muse-horizontal{position:static;top:auto;order:-1;display:grid;grid-template-columns:minmax(0,1.28fr) minmax(0,1fr) minmax(260px,.72fr);gap:28px;align-items:start;width:100%;padding:30px 34px}
+.studio-editor-page .muse-horizontal .muse-head{margin:0 0 15px}
+.studio-editor-page .muse-horizontal h3{margin:0 0 10px;font-size:34px}
+.studio-editor-page .muse-horizontal .muse-introduction>p:last-child{margin:0;max-width:64ch}
+.studio-editor-page .muse-horizontal .muse-list{margin:0}
+.studio-editor-page .muse-horizontal .muse-list li:first-child{border-top:0;padding-top:0}
+.studio-editor-page .muse-horizontal .muse-disclosure{margin-top:13px;border-top:1px solid rgba(255,255,255,.13);padding-top:13px}
+.studio-editor-page .muse-horizontal .muse-disclosure summary{color:#fff;font:800 var(--studio-type-body)/1.35 var(--font-ui);cursor:pointer}
+.studio-editor-page .muse-horizontal .muse-disclosure summary::marker{color:#e0bd7e}
+.studio-editor-page .muse-horizontal .muse-ai-note{margin:12px 0 0;padding:13px;border-radius:13px;background:rgba(255,255,255,.07)}
+.studio-editor-page .muse-horizontal .muse-voice{margin:0}
+.studio-editor-page .muse-horizontal .muse-human{margin-top:15px}
+.studio-editor-page .interview-question-generator{display:flex;justify-content:flex-end;margin:12px 0 26px}
+.studio-editor-page .interview-question-generator .button{min-height:50px}
+.studio-editor-page .chapter-navigator{position:sticky;top:78px;z-index:7;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:22px;margin:32px 0 16px;padding:17px 20px;border:1px solid rgba(11,116,107,.22);border-radius:20px;background:rgba(248,251,249,.96);box-shadow:0 14px 34px rgba(16,45,41,.12);backdrop-filter:blur(14px)}
+.studio-editor-page .chapter-navigator-copy .eyebrow{margin:0 0 3px}
+.studio-editor-page .chapter-navigator-copy h2{margin:0;font-size:26px;line-height:1.15}
+.studio-editor-page .chapter-navigator-copy>p:last-child{margin:5px 0 0;color:var(--muted);font-size:var(--studio-type-small)}
+.studio-editor-page .chapter-navigator-controls{display:grid;grid-template-columns:44px minmax(230px,330px) 44px;align-items:center;gap:9px}
+.studio-editor-page .chapter-navigator-controls select{width:100%;min-height:46px;border:1px solid #b9d2ca;border-radius:12px;padding:9px 38px 9px 13px;background:#fff;color:var(--ink);font:750 var(--studio-type-small)/1.25 var(--font-ui)}
+.studio-editor-page .chapter-navigator-arrow{display:grid;width:44px;height:44px;place-items:center;border:1px solid #aac9bf;border-radius:50%;background:#fff;color:var(--teal-dark);font-size:21px;cursor:pointer}
+.studio-editor-page .chapter-navigator-arrow:hover:not(:disabled){border-color:var(--gold);background:#fff9ed}
+.studio-editor-page .chapter-navigator-arrow:disabled{opacity:.35;cursor:not-allowed}
+.studio-editor-page .chapter-list{display:grid;grid-template-columns:minmax(0,1fr)!important;gap:15px}
+.studio-editor-page .chapter-card{scroll-margin-top:190px;transition:border-color .2s ease,box-shadow .2s ease}
+.studio-editor-page .chapter-card.is-active{border-color:rgba(11,116,107,.42);box-shadow:0 24px 65px rgba(16,45,41,.14)}
+.js .studio-editor-page .chapter-card:not(.is-active) .chapter-body{display:none}
+.studio-editor-page .chapter-card:not(.is-active) .chapter-head{padding:18px 24px;background:linear-gradient(120deg,#fff,#f5f9f7)}
+.studio-editor-page .chapter-card:not(.is-active) .chapter-progress{margin-top:10px}
+.studio-editor-page .chapter-head{position:relative}
+.studio-editor-page .chapter-open-button{margin-top:12px;border:1px solid #a9cbc0;border-radius:999px;padding:9px 14px;background:#fff;color:#086d64;font:800 var(--studio-type-small)/1.2 var(--font-ui);cursor:pointer}
+.studio-editor-page .chapter-open-button:hover:not(:disabled){border-color:var(--gold);background:#fff9ed}
+.studio-editor-page .chapter-open-button:disabled{border-color:rgba(11,116,107,.18);background:#e9f5f1;color:#54716a;cursor:default}
+.studio-editor-page .chapter-encouragement{margin:9px 0 0;color:#08796d;font:700 var(--studio-type-small)/1.4 var(--font-ui)}
+.studio-editor-page .chapter-compose-form{grid-template-columns:minmax(0,1.62fr) minmax(360px,1fr);column-gap:34px}
+.studio-editor-page .live-chapter-preview{grid-row:1/span 10}
+.studio-editor-page .advanced-editor-tools{grid-column:1;margin:8px 0 17px;border:1px solid #d4e2dd;border-radius:16px;background:#f7faf8}
+.studio-editor-page .advanced-editor-tools summary{padding:14px 16px;color:#355c53;font:800 var(--studio-type-small)/1.35 var(--font-ui);cursor:pointer}
+.studio-editor-page .advanced-editor-tools summary::marker{color:var(--gold)}
+.studio-editor-page .advanced-editor-tools-body{padding:0 16px 16px}
+.studio-editor-page .advanced-editor-tools .chapter-review-label{margin-top:3px}
+.studio-editor-page .advanced-editor-tools .magic-tools{margin-bottom:14px}
+.studio-editor-page .advanced-editor-tools .button.secondary{margin-top:2px}
+.studio-editor-page .chapter-save-status{grid-column:1;min-height:25px;margin:4px 0 9px;padding-left:27px;color:#60766f;font:700 var(--studio-type-small)/1.4 var(--font-ui);position:relative}
+.studio-editor-page .chapter-save-status:before{content:"";position:absolute;left:1px;top:.22em;width:14px;height:14px;border:2px solid #9bb7ae;border-radius:50%}
+.studio-editor-page .chapter-save-status.is-saving:before{border-color:#d6ad63;border-right-color:transparent;animation:studio-save-spin .8s linear infinite}
+.studio-editor-page .chapter-save-status.is-saved{color:#08796d}
+.studio-editor-page .chapter-save-status.is-saved:before{content:"✓";display:grid;place-items:center;border-color:#08796d;background:#08796d;color:#fff;font-size:9px}
+.studio-editor-page .chapter-save-status.has-error{color:#9a3b2f}
+.studio-editor-page .chapter-save-status.has-error:before{border-color:#b94c3e;background:#b94c3e}
+.studio-editor-page .chapter-compose-form>.actions{grid-column:1;align-items:center}
+.studio-editor-page .chapter-compose-form>.actions .chapter-next-button{margin-left:auto}
+.studio-editor-page .chapter-compose-form>.actions button:disabled{opacity:.45;cursor:not-allowed}
+@keyframes studio-save-spin{to{transform:rotate(360deg)}}
+@media(max-width:1180px){.studio-editor-page .muse-horizontal{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}.studio-editor-page .muse-horizontal .muse-settings{grid-column:1/-1;display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,1fr);gap:20px;align-items:start}.studio-editor-page .muse-horizontal .muse-human{margin:0;padding:12px 0 0}.studio-editor-page .chapter-compose-form{grid-template-columns:1fr}.studio-editor-page .chapter-navigator{top:74px}}
+@media(max-width:820px){.studio-editor-page .muse-horizontal{grid-template-columns:1fr;padding:25px}.studio-editor-page .muse-horizontal .muse-settings{grid-column:auto;grid-template-columns:1fr}.studio-editor-page .chapter-navigator{position:static;grid-template-columns:1fr;gap:14px}.studio-editor-page .chapter-navigator-controls{grid-template-columns:44px minmax(0,1fr) 44px}.studio-editor-page .chapter-navigator-copy h2{font-size:23px}.studio-editor-page .chapter-card{scroll-margin-top:88px}}
+@media(max-width:700px){.studio-editor-page .chapter-card:not(.is-active) .chapter-head{padding:16px 18px}.studio-editor-page .chapter-compose-form>.actions{display:grid;grid-template-columns:1fr}.studio-editor-page .chapter-compose-form>.actions .button{width:100%;margin:0}.studio-editor-page .chapter-navigator{padding:15px}.studio-editor-page .chapter-navigator-copy>p:last-child{display:none}.studio-editor-page .chapter-navigator-controls{grid-template-columns:40px minmax(0,1fr) 40px}.studio-editor-page .chapter-navigator-arrow{width:40px;height:40px}.studio-editor-page .interview-question-generator{justify-content:stretch}.studio-editor-page .interview-question-generator .button{width:100%}}
+@media(prefers-reduced-motion:reduce){.studio-editor-page .chapter-card{transition:none}.studio-editor-page .chapter-save-status.is-saving:before{animation:none}}
+
 /* Splendoria — vetrina editoriale. Tutte le regole sono isolate
    dalla piattaforma di scrittura per non modificare Studio, Musa e PDF. */
 .legacy-showcase{--imperial:#004225;--imperial-deep:#002f1b;--satin-gold:#c5a059;--satin-gold-light:#e3ca94;--night:#1a1b26;--ivory:#f4f0e7;--paper-light:#fbf8f1;--legacy-ink:#18231e;background:var(--ivory);color:var(--legacy-ink)}
