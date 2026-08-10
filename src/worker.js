@@ -622,7 +622,7 @@ function page(title, body, user, status = 200, extra = "", bodyClass = "") {
     ? "Splendoria trasforma memorie di famiglia e storie d’impresa in opere editoriali curate, con Muse digitali, controllo dell’autore e supervisione umana."
     : "Splendoria trasforma la tua storia in un libro, con Muse digitali, controllo dell’autore e supervisione umana.";
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260806-5" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260810-1" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -637,6 +637,7 @@ function fontAsset(base64) {
 function studioScript() {
   const source = `(() => {
     document.documentElement.classList.add('js');
+    if (/^\\/libro\\/[^/]+$/.test(window.location.pathname)) document.body.classList.add('studio-editor-page');
     const writingPositionKey = 'splendoria-writing-position';
     document.querySelectorAll('[data-keep-writing-position]').forEach(form => {
       form.addEventListener('submit', () => {
@@ -998,6 +999,85 @@ function studioScript() {
         output.textContent = words + ' parole' + (output.hasAttribute('data-show-pages') ? ' · ' + pages.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' pagine stimate' : '');
       };
       area.addEventListener('input', update); update();
+    });
+    const livePreviewWordsPerPage = ${PRINT_WORDS_PER_PAGE};
+    const livePreviewFirstPageWords = Math.max(80, livePreviewWordsPerPage - 50);
+    const paginateLiveChapter = value => {
+      const paragraphs = String(value || '').replace(/\\r/g, '').split(/\\n{2,}/).map(paragraph => paragraph.trim()).filter(Boolean);
+      const pages = [[]];
+      let pageIndex = 0;
+      let usedWords = 0;
+      let capacity = livePreviewFirstPageWords;
+      paragraphs.forEach(paragraph => {
+        const words = paragraph.split(/\\s+/).filter(Boolean);
+        let offset = 0;
+        while (offset < words.length) {
+          if (usedWords >= capacity) {
+            pages.push([]);
+            pageIndex += 1;
+            usedWords = 0;
+            capacity = livePreviewWordsPerPage;
+          }
+          const take = Math.min(capacity - usedWords, words.length - offset);
+          pages[pageIndex].push(words.slice(offset, offset + take).join(' '));
+          offset += take;
+          usedWords += take;
+        }
+      });
+      return pages;
+    };
+    const livePageForCursor = (value, cursor, pageCount) => {
+      const wordsBeforeCursor = (String(value || '').slice(0, Math.max(0, Number(cursor) || 0)).trim().match(/\\S+/g) || []).length;
+      if (wordsBeforeCursor <= livePreviewFirstPageWords) return 0;
+      return Math.min(pageCount - 1, 1 + Math.floor((wordsBeforeCursor - livePreviewFirstPageWords - 1) / livePreviewWordsPerPage));
+    };
+    document.querySelectorAll('[data-live-chapter]').forEach(chapter => {
+      const titleInput = chapter.querySelector('input[name="title"]');
+      const writingField = chapter.querySelector('textarea[name="content"]');
+      const titleOutput = chapter.querySelector('[data-live-title]');
+      const overline = chapter.querySelector('[data-live-overline]');
+      const contentOutput = chapter.querySelector('[data-live-content]');
+      const pageStatus = chapter.querySelector('[data-live-page-status]');
+      const wordStatus = chapter.querySelector('[data-live-word-status]');
+      const folio = chapter.querySelector('[data-live-folio]');
+      const previous = chapter.querySelector('[data-live-prev]');
+      const next = chapter.querySelector('[data-live-next]');
+      if (!titleInput || !writingField || !titleOutput || !contentOutput) return;
+      let activePage = 0;
+      const renderLiveChapter = followCursor => {
+        const pages = paginateLiveChapter(writingField.value);
+        if (followCursor) activePage = livePageForCursor(writingField.value, writingField.selectionStart, pages.length);
+        activePage = Math.max(0, Math.min(activePage, pages.length - 1));
+        titleOutput.textContent = titleInput.value.trim() || 'Titolo del capitolo';
+        const firstPage = activePage === 0;
+        titleOutput.hidden = !firstPage;
+        if (overline) overline.hidden = !firstPage;
+        contentOutput.replaceChildren();
+        const pageParagraphs = pages[activePage];
+        if (!pageParagraphs.length) {
+          const placeholder = document.createElement('p');
+          placeholder.className = 'live-preview-placeholder';
+          placeholder.textContent = 'Le tue parole appariranno qui mentre scrivi o detti il capitolo.';
+          contentOutput.append(placeholder);
+        } else pageParagraphs.forEach(text => {
+          const paragraph = document.createElement('p');
+          paragraph.textContent = text;
+          contentOutput.append(paragraph);
+        });
+        const totalWords = (writingField.value.trim().match(/\\S+/g) || []).length;
+        if (pageStatus) pageStatus.textContent = 'Pagina ' + (activePage + 1) + ' di ' + pages.length;
+        if (wordStatus) wordStatus.textContent = totalWords + ' parole · ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate');
+        if (folio) folio.textContent = '— ' + (activePage + 1) + ' —';
+        if (previous) previous.disabled = activePage === 0;
+        if (next) next.disabled = activePage === pages.length - 1;
+      };
+      titleInput.addEventListener('input', () => renderLiveChapter(false));
+      writingField.addEventListener('input', () => renderLiveChapter(true));
+      writingField.addEventListener('click', () => renderLiveChapter(true));
+      writingField.addEventListener('keyup', () => renderLiveChapter(true));
+      previous?.addEventListener('click', () => { activePage -= 1; renderLiveChapter(false); });
+      next?.addEventListener('click', () => { activePage += 1; renderLiveChapter(false); });
+      renderLiveChapter(false);
     });
     const planSelect = document.querySelector('[data-plan-select]');
     if (planSelect) {
@@ -1835,7 +1915,10 @@ async function bookEditor(id, user, env, notice = "") {
     const words = wordCount(c.content);
     const pages = words / PRINT_WORDS_PER_PAGE;
     const chapterPercent = Math.min(100, Math.round(pages / metrics.chapterTargetPages * 100));
-    return `<article class="card chapter-card" id="chapter-card-${c.id}"><div class="chapter-head"><div class="chapter-heading"><div><p class="kicker">Capitolo ${c.position}</p><h3>${esc(c.title)}</h3></div><span class="wordcount" data-count-for="${target}" data-show-pages>${formatNumber(words)} parole · ${formatPages(pages)} pagine stimate</span></div><div class="chapter-progress" aria-label="Avanzamento del capitolo"><span style="width:${chapterPercent}%"></span></div><p class="small muted">Obiettivo: circa ${formatPages(metrics.chapterTargetPages)} pagine · ${formatNumber(metrics.chapterTargetWords)} parole</p></div><div class="chapter-body"><form method="post" action="/libro/${id}/capitolo/${c.id}/salva" data-keep-writing-position data-book-path="/libro/${id}"><label class="field chapter-title-field">Titolo del capitolo<input name="title" value="${esc(c.title)}" maxlength="180" required></label><label class="field">La tua pagina<textarea id="${target}" data-word-count name="content" placeholder="Qui prenderà forma il capitolo…">${esc(c.content)}</textarea></label><div class="field-tools">${dictationControl(target, "Detta il capitolo")}<button class="improve-button" name="action" value="improve" formaction="/libro/${id}/capitolo/${c.id}/rifinisci" formnovalidate>✦ Migliora</button><button class="muse-draft-button" formaction="/libro/${id}/capitolo/${c.id}/genera" formnovalidate>Affidati alla Musa</button></div>${c.content ? `<p class="small muted"><b>Revisore Musa AI</b> · lavora sul testo visibile e conserva la tua voce:</p><div class="magic-tools"><button name="action" value="grammar" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✓ Correggi grammatica</button><button name="action" value="clarity" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">◇ Più chiaro e scorrevole</button><button name="action" value="emotional" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✦ Più emozionante</button><button name="action" value="vivid" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">◉ Più vivido</button><button name="action" value="elegant" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✎ Più elegante</button><button name="action" value="short" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">↘ Più essenziale</button></div>` : ""}<div class="actions"><button class="button">Salva le mie modifiche</button><button class="button secondary" formaction="/libro/${id}/capitolo/${c.id}/genera">${c.content ? "Crea una nuova versione" : "Scrivi questo capitolo con me"}</button></div></form></div></article>`;
+    const initialPreview = limitToWords(c.content, Math.max(80, PRINT_WORDS_PER_PAGE - 50));
+    const initialPreviewBody = initialPreview ? paragraphs(initialPreview) : `<p class="live-preview-placeholder">Le tue parole appariranno qui mentre scrivi o detti il capitolo.</p>`;
+    const livePreview = `<aside class="live-chapter-preview" aria-labelledby="live-preview-title-${c.id}"><div class="live-preview-heading"><div><p class="live-preview-kicker">Anteprima PDF in tempo reale</p><h4 id="live-preview-title-${c.id}">Il capitolo mentre prende forma</h4></div><span class="live-preview-format">Royal · Garamond</span></div><div class="live-page-stage"><article class="live-royal-page"><p class="live-chapter-number" data-live-overline>Capitolo ${c.position}</p><h5 data-live-title>${esc(c.title)}</h5><div class="live-page-copy" data-live-content>${initialPreviewBody}</div><p class="live-folio" data-live-folio>— 1 —</p></article></div><div class="live-preview-navigation"><button type="button" data-live-prev aria-label="Pagina precedente del capitolo">←</button><span data-live-page-status role="status" aria-live="polite">Pagina 1 di ${Math.max(1, Math.ceil(words / PRINT_WORDS_PER_PAGE))}</span><button type="button" data-live-next aria-label="Pagina successiva del capitolo">→</button></div><div class="live-preview-meta"><span data-live-word-status>${formatNumber(words)} parole · ${Math.max(1, Math.ceil(words / PRINT_WORDS_PER_PAGE))} ${Math.max(1, Math.ceil(words / PRINT_WORDS_PER_PAGE)) === 1 ? "pagina stimata" : "pagine stimate"}</span><a href="/libro/${id}/anteprima" target="_blank" rel="noopener">Apri l’anteprima completa ↗</a></div><p class="live-preview-note">La resa si aggiorna mentre scrivi o detti. L’impaginazione definitiva viene ricalcolata nel PDF completo dopo il salvataggio.</p></aside>`;
+    return `<article class="card chapter-card" id="chapter-card-${c.id}"><div class="chapter-head"><div class="chapter-heading"><div><p class="kicker">Capitolo ${c.position}</p><h3>${esc(c.title)}</h3></div><span class="wordcount" data-count-for="${target}" data-show-pages>${formatNumber(words)} parole · ${formatPages(pages)} pagine stimate</span></div><div class="chapter-progress" aria-label="Avanzamento del capitolo"><span style="width:${chapterPercent}%"></span></div><p class="small muted">Obiettivo: circa ${formatPages(metrics.chapterTargetPages)} pagine · ${formatNumber(metrics.chapterTargetWords)} parole</p></div><div class="chapter-body"><form class="chapter-compose-form" method="post" action="/libro/${id}/capitolo/${c.id}/salva" data-live-chapter data-keep-writing-position data-book-path="/libro/${id}"><label class="field chapter-title-field">Titolo del capitolo<input name="title" value="${esc(c.title)}" maxlength="180" required></label><label class="field chapter-writing-field">La tua pagina<textarea id="${target}" data-word-count name="content" placeholder="Qui prenderà forma il capitolo…">${esc(c.content)}</textarea></label><div class="field-tools">${dictationControl(target, "Detta il capitolo")}<button class="improve-button" name="action" value="improve" formaction="/libro/${id}/capitolo/${c.id}/rifinisci" formnovalidate>✦ Migliora</button><button class="muse-draft-button" formaction="/libro/${id}/capitolo/${c.id}/genera" formnovalidate>Affidati alla Musa</button></div>${livePreview}${c.content ? `<p class="small muted chapter-review-label"><b>Revisore Musa AI</b> · lavora sul testo visibile e conserva la tua voce:</p><div class="magic-tools"><button name="action" value="grammar" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✓ Correggi grammatica</button><button name="action" value="clarity" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">◇ Più chiaro e scorrevole</button><button name="action" value="emotional" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✦ Più emozionante</button><button name="action" value="vivid" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">◉ Più vivido</button><button name="action" value="elegant" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">✎ Più elegante</button><button name="action" value="short" formaction="/libro/${id}/capitolo/${c.id}/rifinisci">↘ Più essenziale</button></div>` : ""}<div class="actions"><button class="button">Salva le mie modifiche</button><button class="button secondary" formaction="/libro/${id}/capitolo/${c.id}/genera">${c.content ? "Crea una nuova versione" : "Scrivi questo capitolo con me"}</button></div></form></div></article>`;
   }).join("");
   const stage = chapters.results.length ? (chapters.results.some(c => c.content) ? 2 : 1) : project.story ? 1 : 0;
   const progress = `<section class="book-progress-card" aria-labelledby="book-progress-title"><div><p class="eyebrow">Avanzamento del libro</p><h2 id="book-progress-title">${formatNumber(metrics.words)} parole · ${formatPages(metrics.currentPages)} di ${metrics.targetPages} pagine stimate</h2><p>${metrics.structure.label}. Restano circa ${formatPages(metrics.remainingPages)} pagine da completare.</p></div><div class="book-progress-value"><strong>${metrics.percent}%</strong><span>del libro</span></div><div class="book-progress-track"><span style="width:${metrics.percent}%"></span></div></section>`;
