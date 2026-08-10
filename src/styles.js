@@ -89,6 +89,51 @@ h1,h2,h3,h4,.brand,.price,.editor-paper,.interview-step h4,.interview-step texta
 .studio .muse-draft-button,.studio .interview>button.button{text-transform:uppercase}
 @media(max-width:700px){.studio .book-progress-card{grid-template-columns:1fr;padding:22px}.studio .book-progress-value{text-align:left}.studio .book-progress-track{grid-column:1}.studio .chapter-heading{display:block}.studio .chapter-heading .wordcount{display:block;max-width:none;margin:8px 0 0;text-align:left}.studio .field-tools .wordcount{width:100%;margin-left:0}.studio .improve-button,.studio .muse-draft-button,.studio .voice-button{min-height:44px}}
 
+/* Studio di scrittura: campi più ampi, tre livelli tipografici operativi
+   e anteprima Royal del capitolo aggiornata in tempo reale. */
+@font-face{font-family:"Splendoria Garamond";font-style:normal;font-display:swap;font-weight:400;src:url("/assets/eb-garamond-400.woff2") format("woff2")}@font-face{font-family:"Splendoria Garamond";font-style:normal;font-display:swap;font-weight:700;src:url("/assets/eb-garamond-700.woff2") format("woff2")}
+.studio-editor-page{--studio-type-small:16px;--studio-type-body:18px;--studio-type-reading:22px}
+.studio-editor-page .studio>.wrap{width:min(1440px,calc(100% - 48px))}
+.studio-editor-page .writing-shell{grid-template-columns:minmax(0,1fr) 300px;gap:30px}
+.studio-editor-page .studio :where(.eyebrow,.kicker,.interview-number,.wordcount,.muse-role,.book-progress-value span){font-size:var(--studio-type-small)!important}
+.studio-editor-page .studio :where(.small,.journey-step,.field,.button,.voice-button,.improve-button,.muse-draft-button,.magic-tools button,.legal-check,.muse p,.muse-list li,.muse-voice label,.muse-voice select,.book-progress-card p,.source-material-panel>p.muted,.interview>p){font-size:var(--studio-type-body)!important}
+.studio-editor-page .studio .muse-list li span{font-size:var(--studio-type-small)!important}
+.studio-editor-page .studio .field input,.studio-editor-page .studio .field select{min-height:54px;padding:14px 17px;font-size:var(--studio-type-body)}
+.studio-editor-page .studio .field textarea{padding:18px 20px;font-size:var(--studio-type-reading);line-height:1.65}
+.studio-editor-page .studio .wow-panel textarea{min-height:280px}
+.studio-editor-page .studio .wow-panel textarea[name="sourceMaterial"]{min-height:320px}
+.studio-editor-page .studio .wow-panel textarea[name="story"]{min-height:380px}
+.studio-editor-page .studio .interview-step textarea{min-height:260px;font-size:var(--studio-type-reading);line-height:1.65}
+.studio-editor-page .studio .chapter-title-field input{font-size:var(--studio-type-reading)}
+.studio-editor-page .studio .chapter-writing-field textarea{min-height:680px;font:400 var(--studio-type-reading)/1.72 var(--font-editorial)}
+.studio-editor-page .studio .chapter-body{padding:8px 32px 36px}
+.studio-editor-page .chapter-compose-form{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(340px,.82fr);column-gap:30px;align-items:start}
+.studio-editor-page .chapter-compose-form>:not(.live-chapter-preview){grid-column:1}
+.studio-editor-page .live-chapter-preview{grid-column:2;grid-row:1/span 8;position:sticky;top:90px;min-width:0;padding:22px;border:1px solid rgba(214,173,99,.48);border-radius:26px;background:radial-gradient(circle at 90% 0,rgba(214,173,99,.2),transparent 34%),#102d29;color:#fff;box-shadow:0 24px 58px rgba(16,45,41,.22)}
+.studio-editor-page .live-preview-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:17px}
+.studio-editor-page .live-preview-heading h4{margin:4px 0 0;color:#fff;font:700 var(--studio-type-reading)/1.15 var(--font-editorial)}
+.studio-editor-page .live-preview-kicker{margin:0;color:#e0bd7e;font:850 var(--studio-type-small)/1.25 var(--font-ui);letter-spacing:.08em;text-transform:uppercase}
+.studio-editor-page .live-preview-format{flex:0 0 auto;padding:7px 9px;border:1px solid rgba(255,255,255,.2);border-radius:999px;color:#d9e7e2;font:750 var(--studio-type-small)/1.2 var(--font-ui)}
+.studio-editor-page .live-page-stage{padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:19px;background:linear-gradient(145deg,#071b18,#1b453d);box-shadow:inset 0 0 38px rgba(0,0,0,.18)}
+.studio-editor-page .live-royal-page{position:relative;width:100%;aspect-ratio:155.575/233.892;overflow:hidden;padding:9% 16% 12% 13%;background:linear-gradient(90deg,#fffdf8,#f8f3e8);color:#171d1b;box-shadow:0 18px 40px rgba(0,0,0,.34),inset 0 0 32px rgba(115,86,44,.055);font-family:"Splendoria Garamond",Garamond,Georgia,serif}
+.studio-editor-page .live-chapter-number{margin:0 0 4%;color:#0b746b;font:700 clamp(8px,.75vw,10px)/1.2 var(--font-ui)!important;letter-spacing:.13em;text-transform:uppercase}
+.studio-editor-page .live-royal-page h5{margin:0 0 7%;font:700 clamp(17px,1.45vw,21px)/1.12 "Splendoria Garamond",Garamond,Georgia,serif}
+.studio-editor-page .live-page-copy p{margin:0;font:400 clamp(11px,.93vw,13.3px)/1.12 "Splendoria Garamond",Garamond,Georgia,serif;text-align:justify;text-indent:9%;hyphens:auto}
+.studio-editor-page .live-page-copy p:first-child{text-indent:0}
+.studio-editor-page .live-page-copy .live-preview-placeholder{color:#72807b;font-style:italic;text-align:left;text-indent:0}
+.studio-editor-page .live-folio{position:absolute;right:13%;bottom:4%;margin:0;color:#63736e;font:400 clamp(8px,.75vw,10px)/1 "Splendoria Garamond",Garamond,Georgia,serif!important}
+.studio-editor-page .live-preview-navigation{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:10px;margin-top:16px}
+.studio-editor-page .live-preview-navigation button{display:grid;width:44px;height:44px;place-items:center;border:1px solid rgba(255,255,255,.24);border-radius:50%;background:rgba(255,255,255,.08);color:#fff;font-size:20px;cursor:pointer}
+.studio-editor-page .live-preview-navigation button:hover:not(:disabled){border-color:#d6ad63;background:rgba(214,173,99,.16)}
+.studio-editor-page .live-preview-navigation button:disabled{opacity:.34;cursor:not-allowed}
+.studio-editor-page .live-preview-navigation span{text-align:center;color:#fff;font:800 var(--studio-type-body)/1.2 var(--font-ui)}
+.studio-editor-page .live-preview-meta{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:14px;color:#d7e5e0;font:650 var(--studio-type-small)/1.4 var(--font-ui)}
+.studio-editor-page .live-preview-meta a{color:#e0bd7e;font-weight:800}
+.studio-editor-page .live-preview-note{margin:12px 0 0;color:#bcd0c9;font:500 var(--studio-type-small)/1.45 var(--font-ui)!important}
+@media(max-width:1180px){.studio-editor-page .chapter-compose-form{grid-template-columns:1fr}.studio-editor-page .chapter-compose-form>:not(.live-chapter-preview),.studio-editor-page .live-chapter-preview{grid-column:1}.studio-editor-page .live-chapter-preview{grid-row:auto;position:static;width:min(480px,100%);margin:12px auto 28px}.studio-editor-page .studio .chapter-writing-field textarea{min-height:580px}}
+@media(max-width:950px){.studio-editor-page .writing-shell{grid-template-columns:1fr}.studio-editor-page .muse{position:static;order:-1}}
+@media(max-width:700px){.studio-editor-page .studio>.wrap{width:calc(100% - 24px)}.studio-editor-page .studio .chapter-body{padding:4px 18px 28px}.studio-editor-page .studio .chapter-writing-field textarea{min-height:520px}.studio-editor-page .live-chapter-preview{padding:16px;border-radius:21px}.studio-editor-page .live-preview-heading{display:block}.studio-editor-page .live-preview-format{display:inline-block;margin-top:10px}.studio-editor-page .live-page-stage{padding:12px}.studio-editor-page .live-preview-meta{display:grid}.studio-editor-page .studio .field textarea{font-size:20px}}
+
 /* Splendoria — vetrina editoriale. Tutte le regole sono isolate
    dalla piattaforma di scrittura per non modificare Studio, Musa e PDF. */
 .legacy-showcase{--imperial:#004225;--imperial-deep:#002f1b;--satin-gold:#c5a059;--satin-gold-light:#e3ca94;--night:#1a1b26;--ivory:#f4f0e7;--paper-light:#fbf8f1;--legacy-ink:#18231e;background:var(--ivory);color:var(--legacy-ink)}
