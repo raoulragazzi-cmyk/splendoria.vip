@@ -99,6 +99,7 @@ async function route(request, env) {
   if (method === "POST" && path === "/api/musa/trascrizione") return correctDictation(request, user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/genera$/.test(path)) return generateAdaptiveChapter(request, path.split("/")[2], path.split("/")[4], user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/rifinisci$/.test(path)) return refineChapterV2(request, path.split("/")[2], path.split("/")[4], user, env);
+  if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/autosalva$/.test(path)) return autosaveChapter(request, path.split("/")[2], path.split("/")[4], user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/capitolo\/[^/]+\/salva$/.test(path)) return saveChapter(request, path.split("/")[2], path.split("/")[4], user, env);
   if (method === "GET" && /^\/libro\/[^/]+\/anteprima$/.test(path)) return previewBook(path.split("/")[2], user, env);
   if (method === "POST" && /^\/libro\/[^/]+\/acquista$/.test(path)) return purchase(request, path.split("/")[2], user, env);
@@ -622,7 +623,7 @@ function page(title, body, user, status = 200, extra = "", bodyClass = "") {
     ? "Splendoria trasforma memorie di famiglia e storie d’impresa in opere editoriali curate, con Muse digitali, controllo dell’autore e supervisione umana."
     : "Splendoria trasforma la tua storia in un libro, con Muse digitali, controllo dell’autore e supervisione umana.";
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260810-1" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260810-2" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
@@ -1079,6 +1080,245 @@ function studioScript() {
       next?.addEventListener('click', () => { activePage += 1; renderLiveChapter(false); });
       renderLiveChapter(false);
     });
+    const writingShell = document.querySelector('.studio-editor-page .writing-shell');
+    const studioMuse = writingShell?.querySelector('.muse');
+    if (writingShell && studioMuse) {
+      const museHead = studioMuse.querySelector('.muse-head');
+      const museTitle = studioMuse.querySelector('#muse-title');
+      const museCopy = museTitle?.nextElementSibling;
+      const museNote = studioMuse.querySelector('.muse-ai-note');
+      const museList = studioMuse.querySelector('.muse-list');
+      const museVoice = studioMuse.querySelector('.muse-voice');
+      const museQuestionForm = studioMuse.querySelector('form[action$="/intervista"]');
+      const museHuman = studioMuse.querySelector('.muse-human');
+      const museIntroduction = document.createElement('div');
+      const museGuidance = document.createElement('div');
+      const museSettings = document.createElement('div');
+      museIntroduction.className = 'muse-introduction';
+      museGuidance.className = 'muse-guidance';
+      museSettings.className = 'muse-settings';
+      [museHead, museTitle, museCopy].filter(Boolean).forEach(node => museIntroduction.append(node));
+      if (museList) museGuidance.append(museList);
+      if (museNote) {
+        const disclosure = document.createElement('details');
+        const summary = document.createElement('summary');
+        const disclosureBody = document.createElement('div');
+        disclosure.className = 'muse-disclosure';
+        summary.textContent = 'Come lavora la Musa';
+        disclosureBody.append(museNote);
+        disclosure.append(summary, disclosureBody);
+        museGuidance.append(disclosure);
+      }
+      if (museVoice) museSettings.append(museVoice);
+      const interview = document.getElementById('intervista-narrativa');
+      if (museQuestionForm && interview) {
+        museQuestionForm.classList.add('interview-question-generator');
+        interview.insertAdjacentElement('afterend', museQuestionForm);
+      } else if (museQuestionForm) museSettings.append(museQuestionForm);
+      if (museHuman) museSettings.append(museHuman);
+      studioMuse.replaceChildren(museIntroduction, museGuidance, museSettings);
+      studioMuse.classList.add('muse-horizontal');
+      writingShell.prepend(studioMuse);
+    }
+    const chapterList = document.querySelector('.studio-editor-page .chapter-list');
+    const chapterCards = chapterList ? [...chapterList.querySelectorAll('.chapter-card')] : [];
+    if (chapterList && chapterCards.length) {
+      const chapterNavigator = document.createElement('section');
+      chapterNavigator.className = 'chapter-navigator';
+      chapterNavigator.setAttribute('aria-label', 'Navigazione tra i capitoli');
+      chapterNavigator.innerHTML = '<div class="chapter-navigator-copy"><p class="eyebrow">Il tuo posto nella storia</p><h2 data-chapter-navigator-title></h2><p data-chapter-navigator-message>Riprendiamo da dove avevi lasciato.</p></div><div class="chapter-navigator-controls"><button type="button" class="chapter-navigator-arrow" data-chapter-previous aria-label="Capitolo precedente">←</button><label><span class="sr-only">Scegli il capitolo</span><select data-chapter-select></select></label><button type="button" class="chapter-navigator-arrow" data-chapter-next aria-label="Capitolo successivo">→</button></div>';
+      chapterList.before(chapterNavigator);
+      const navigatorTitle = chapterNavigator.querySelector('[data-chapter-navigator-title]');
+      const navigatorMessage = chapterNavigator.querySelector('[data-chapter-navigator-message]');
+      const chapterSelect = chapterNavigator.querySelector('[data-chapter-select]');
+      const navigatorPrevious = chapterNavigator.querySelector('[data-chapter-previous]');
+      const navigatorNext = chapterNavigator.querySelector('[data-chapter-next]');
+      const chapterWordCount = value => (String(value || '').trim().match(/\\S+/g) || []).length;
+      const chapterDetails = chapterCards.map((card, index) => {
+        const form = card.querySelector('.chapter-compose-form');
+        const head = card.querySelector('.chapter-head');
+        const heading = head?.querySelector('h3');
+        const titleInput = form?.querySelector('input[name="title"]');
+        const writingField = form?.querySelector('textarea[name="content"]');
+        const objective = head?.querySelector('p.small');
+        const targetText = objective?.textContent.match(/([\\d.]+)\\s+parole/iu)?.[1] || '0';
+        const targetWords = Number(targetText.replace(/\\./g, '')) || 1;
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = 'Capitolo ' + (index + 1) + ' · ' + (heading?.textContent?.trim() || 'Senza titolo');
+        chapterSelect.append(option);
+        const encouragement = document.createElement('p');
+        encouragement.className = 'chapter-encouragement';
+        encouragement.setAttribute('aria-live', 'polite');
+        if (objective) objective.insertAdjacentElement('afterend', encouragement);
+        const expander = document.createElement('button');
+        expander.type = 'button';
+        expander.className = 'chapter-open-button';
+        expander.setAttribute('aria-controls', card.id + '-body');
+        const body = card.querySelector('.chapter-body');
+        if (body) body.id = card.id + '-body';
+        head?.append(expander);
+        const actions = form?.querySelector('.actions');
+        const reviewLabel = form?.querySelector('.chapter-review-label');
+        const magicTools = form?.querySelector('.magic-tools');
+        const alternateGenerator = actions?.querySelector('.button.secondary');
+        if (form && actions && (reviewLabel || magicTools || alternateGenerator)) {
+          const advanced = document.createElement('details');
+          const advancedSummary = document.createElement('summary');
+          const advancedBody = document.createElement('div');
+          advanced.className = 'advanced-editor-tools';
+          advancedSummary.textContent = 'Altri interventi editoriali';
+          advancedBody.className = 'advanced-editor-tools-body';
+          [reviewLabel, magicTools, alternateGenerator].filter(Boolean).forEach(node => advancedBody.append(node));
+          advanced.append(advancedSummary, advancedBody);
+          actions.before(advanced);
+        }
+        const saveStatus = document.createElement('p');
+        saveStatus.className = 'chapter-save-status';
+        saveStatus.setAttribute('role', 'status');
+        saveStatus.setAttribute('aria-live', 'polite');
+        saveStatus.textContent = 'Salvataggio automatico attivo';
+        if (actions) actions.before(saveStatus);
+        const previousButton = document.createElement('button');
+        previousButton.type = 'button';
+        previousButton.className = 'button secondary chapter-previous-button';
+        previousButton.textContent = '← Capitolo precedente';
+        const nextButton = document.createElement('button');
+        nextButton.type = 'button';
+        nextButton.className = 'button chapter-next-button';
+        nextButton.textContent = index === chapterCards.length - 1 ? 'Ultimo capitolo' : 'Salva e passa al capitolo successivo →';
+        previousButton.disabled = index === 0;
+        nextButton.disabled = index === chapterCards.length - 1;
+        if (actions) actions.append(previousButton, nextButton);
+        const updateChapterProgress = () => {
+          const words = chapterWordCount(writingField?.value);
+          const percent = Math.min(100, Math.round(words / targetWords * 100));
+          const progressBar = card.querySelector('.chapter-progress span');
+          if (progressBar) progressBar.style.width = percent + '%';
+          encouragement.textContent = words === 0 ? 'Ogni capitolo comincia da una prima frase.' : percent < 25 ? 'Il capitolo sta prendendo forma.' : percent < 75 ? 'La storia si sta facendo più nitida.' : percent < 100 ? 'Sei vicino alla lunghezza prevista.' : 'Il capitolo ha raggiunto la lunghezza prevista.';
+        };
+        let saveTimer = null;
+        let lastSaved = JSON.stringify([titleInput?.value || '', writingField?.value || '']);
+        let saveQueue = Promise.resolve(true);
+        const signature = () => JSON.stringify([titleInput?.value || '', writingField?.value || '']);
+        const setPendingStatus = () => {
+          saveStatus.classList.remove('is-saved', 'is-saving', 'has-error');
+          saveStatus.textContent = 'Le tue nuove parole saranno salvate tra pochi secondi…';
+        };
+        const scheduleSave = () => {
+          window.clearTimeout(saveTimer);
+          setPendingStatus();
+          saveTimer = window.setTimeout(() => { void saveNow(); }, 8000);
+        };
+        const saveNow = () => {
+          window.clearTimeout(saveTimer);
+          saveQueue = saveQueue.then(async () => {
+            const currentSignature = signature();
+            if (currentSignature === lastSaved) return true;
+            saveStatus.classList.remove('is-saved', 'has-error');
+            saveStatus.classList.add('is-saving');
+            saveStatus.textContent = 'Sto custodendo le tue parole…';
+            try {
+              const response = await fetch(String(form.getAttribute('action') || '').replace('/salva', '/autosalva'), {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ title: titleInput?.value || '', content: writingField?.value || '' })
+              });
+              const result = response.ok ? await response.json() : null;
+              if (!result?.ok) throw new Error('Salvataggio non riuscito');
+              lastSaved = currentSignature;
+              saveStatus.classList.remove('is-saving', 'has-error');
+              if (signature() === currentSignature) {
+                saveStatus.classList.add('is-saved');
+                const time = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(new Date(result.savedAt || Date.now()));
+                saveStatus.textContent = 'Le tue parole sono al sicuro · Salvato alle ' + time;
+              } else scheduleSave();
+              return true;
+            } catch {
+              saveStatus.classList.remove('is-saving', 'is-saved');
+              saveStatus.classList.add('has-error');
+              saveStatus.textContent = 'Salvataggio automatico non riuscito. Usa “Salva le mie modifiche”.';
+              return false;
+            }
+          });
+          return saveQueue;
+        };
+        [titleInput, writingField].filter(Boolean).forEach(field => {
+          field.addEventListener('input', () => {
+            scheduleSave();
+            if (field === titleInput) {
+              const title = titleInput.value.trim() || 'Senza titolo';
+              if (heading) heading.textContent = title;
+              option.textContent = 'Capitolo ' + (index + 1) + ' · ' + title;
+              if (card.classList.contains('is-active') && navigatorTitle) navigatorTitle.textContent = 'Capitolo ' + (index + 1) + ' di ' + chapterCards.length + ' · ' + title;
+            }
+            updateChapterProgress();
+          });
+          field.addEventListener('blur', () => { if (signature() !== lastSaved) void saveNow(); });
+        });
+        let resubmitting = false;
+        form?.addEventListener('submit', event => {
+          window.clearTimeout(saveTimer);
+          if (resubmitting || signature() === lastSaved) return;
+          event.preventDefault();
+          const submitter = event.submitter;
+          void saveNow().then(() => {
+            resubmitting = true;
+            if (submitter && form.contains(submitter)) form.requestSubmit(submitter);
+            else form.requestSubmit();
+          });
+        });
+        updateChapterProgress();
+        const controller = { saveNow, expander, previousButton, nextButton, titleInput, writingField, heading, targetWords };
+        return controller;
+      });
+      let activeIndex = (() => {
+        const hashIndex = chapterCards.findIndex(card => '#' + card.id === window.location.hash);
+        if (hashIndex >= 0) return hashIndex;
+        const unfinishedIndex = chapterDetails.findIndex(detail => chapterWordCount(detail.writingField?.value) < detail.targetWords * .85);
+        return unfinishedIndex >= 0 ? unfinishedIndex : chapterCards.length - 1;
+      })();
+      const renderActiveChapter = (index, scrollToChapter = false, focusEditor = false) => {
+        activeIndex = Math.max(0, Math.min(index, chapterCards.length - 1));
+        chapterCards.forEach((card, cardIndex) => {
+          const active = cardIndex === activeIndex;
+          const detail = chapterDetails[cardIndex];
+          card.classList.toggle('is-active', active);
+          detail.expander.setAttribute('aria-expanded', active ? 'true' : 'false');
+          detail.expander.disabled = active;
+          detail.expander.textContent = active ? 'Stai scrivendo qui' : 'Apri questo capitolo';
+        });
+        const current = chapterDetails[activeIndex];
+        const title = current.titleInput?.value.trim() || current.heading?.textContent?.trim() || 'Senza titolo';
+        chapterSelect.value = String(activeIndex);
+        navigatorPrevious.disabled = activeIndex === 0;
+        navigatorNext.disabled = activeIndex === chapterCards.length - 1;
+        if (navigatorTitle) navigatorTitle.textContent = 'Capitolo ' + (activeIndex + 1) + ' di ' + chapterCards.length + ' · ' + title;
+        if (navigatorMessage) navigatorMessage.textContent = chapterWordCount(current.writingField?.value) ? 'Riprendiamo da dove avevi lasciato: la tua storia ti aspetta qui.' : 'Una pagina nuova ti aspetta. Comincia da un’immagine, una voce o un gesto.';
+        history.replaceState(null, '', window.location.pathname + window.location.search + '#' + chapterCards[activeIndex].id);
+        if (scrollToChapter) chapterCards[activeIndex].scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        if (focusEditor) window.setTimeout(() => current.writingField?.focus({ preventScroll: true }), reducedMotion ? 0 : 450);
+      };
+      const requestChapter = async (index, focusEditor = false) => {
+        const targetIndex = Math.max(0, Math.min(index, chapterCards.length - 1));
+        if (targetIndex === activeIndex) return;
+        const saved = await chapterDetails[activeIndex].saveNow();
+        if (!saved) return;
+        renderActiveChapter(targetIndex, true, focusEditor);
+      };
+      chapterDetails.forEach((detail, index) => {
+        detail.expander.addEventListener('click', () => { void requestChapter(index, true); });
+        detail.previousButton.addEventListener('click', () => { void requestChapter(index - 1, true); });
+        detail.nextButton.addEventListener('click', () => { void requestChapter(index + 1, true); });
+      });
+      navigatorPrevious.addEventListener('click', () => { void requestChapter(activeIndex - 1, true); });
+      navigatorNext.addEventListener('click', () => { void requestChapter(activeIndex + 1, true); });
+      chapterSelect.addEventListener('change', () => {
+        const requestedIndex = Number(chapterSelect.value);
+        void requestChapter(requestedIndex, true).then(() => { chapterSelect.value = String(activeIndex); });
+      });
+      renderActiveChapter(activeIndex, false, false);
+    }
     const planSelect = document.querySelector('[data-plan-select]');
     if (planSelect) {
       document.querySelectorAll('[data-plan-choice]').forEach(link => {
@@ -1362,6 +1602,21 @@ async function saveChapter(request, projectId, chapterId, user, env) {
   const title=clean(f.title,180);
   if(!title)return bookEditor(projectId,user,env,"Inserisci un titolo per il capitolo.");
   await env.DB.prepare('UPDATE "BookChapter" SET title=?,content=?,status=?,updatedAt=? WHERE id=? AND projectId=?').bind(title,clean(f.content,60000),"modificato",new Date().toISOString(),chapterId,projectId).run(); return redirect(`/libro/${projectId}#chapter-card-${chapterId}`);
+}
+
+async function autosaveChapter(request, projectId, chapterId, user, env) {
+  if (!user) return jsonResponse({ error: "Accesso richiesto" }, 401);
+  const project = await ownProject(projectId, user, env);
+  if (!project) return jsonResponse({ error: "Libro non disponibile" }, 404);
+  const chapter = await env.DB.prepare('SELECT id,title FROM "BookChapter" WHERE id=? AND projectId=?').bind(chapterId, projectId).first();
+  if (!chapter) return jsonResponse({ error: "Capitolo non disponibile" }, 404);
+  let data;
+  try { data = await request.json(); } catch { return jsonResponse({ error: "Richiesta non valida" }, 400); }
+  const title = clean(data?.title, 180) || chapter.title;
+  const content = clean(data?.content, 60000);
+  const savedAt = new Date().toISOString();
+  await env.DB.prepare('UPDATE "BookChapter" SET title=?,content=?,status=?,updatedAt=? WHERE id=? AND projectId=?').bind(title, content, "modificato", savedAt, chapterId, projectId).run();
+  return jsonResponse({ ok: true, savedAt, words: wordCount(content) });
 }
 
 async function previewBook(id, user, env) {
