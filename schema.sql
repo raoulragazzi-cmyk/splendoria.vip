@@ -30,6 +30,24 @@ CREATE TABLE IF NOT EXISTS "PasswordReset" (
 CREATE INDEX IF NOT EXISTS "PasswordReset_userId_idx" ON "PasswordReset"("userId");
 CREATE INDEX IF NOT EXISTS "PasswordReset_expiresAt_idx" ON "PasswordReset"("expiresAt");
 
+CREATE TABLE IF NOT EXISTS "RegistrationNotification" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "userId" TEXT NOT NULL,
+  "nome" TEXT NOT NULL DEFAULT '',
+  "email" TEXT NOT NULL,
+  "deliveryStatus" TEXT NOT NULL DEFAULT 'pending',
+  "deliveryError" TEXT NOT NULL DEFAULT '',
+  "attempts" INTEGER NOT NULL DEFAULT 0,
+  "lastAttemptAt" TEXT,
+  "acceptedAt" TEXT,
+  "messageId" TEXT,
+  "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "RegistrationNotification_userId_idx" ON "RegistrationNotification"("userId");
+CREATE INDEX IF NOT EXISTS "RegistrationNotification_status_idx" ON "RegistrationNotification"("deliveryStatus", "attempts");
+
 -- Per database creati con una versione precedente, applicare una sola volta:
 -- ALTER TABLE "PasswordReset" ADD COLUMN "usedAt" TEXT;
 -- ALTER TABLE "PasswordReset" ADD COLUMN "deliveryStatus" TEXT NOT NULL DEFAULT 'pending';
