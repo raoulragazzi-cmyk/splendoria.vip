@@ -44,7 +44,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette non applicate");
 if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("La tua storia destinata a vivere centinaia di anni") || !showcaseTypography.includes("Inizia il tuo libro")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260806-5"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260810-1"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (!publicNavigation.includes("Studio di Scrittura") || ["Area clienti", "Inizia gratis", "Area amministratore", "Come funziona", "Listino", "Contattaci"].some(label => publicNavigation.includes(label))) throw new Error("Navigazione: header pubblico non è minimale o espone collegamenti indesiderati");
 for (const weight of [400, 700]) {
@@ -137,6 +137,13 @@ if (cumulativeSpeech !== spokenOnce || mergeRecognitionText(cumulativeSpeech, "v
 if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1") || !studioJsBody.includes("La Musa sta scrivendo…")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
 if (!studioJsBody.includes("data-legacy-range") || !studioJsBody.includes("data-editorial-assessment") || !studioJsBody.includes("renderAssessment") || !studioJsBody.includes("Indice editoriale orientativo")) throw new Error("Asset JavaScript: slider o generazione della Scheda Tecnica mancanti");
+if (!studioJsBody.includes("paginateLiveChapter") || !studioJsBody.includes("livePageForCursor") || !studioJsBody.includes("data-live-chapter") || !studioJsBody.includes("data-live-content") || !studioJsBody.includes("renderLiveChapter(true)")) throw new Error("Studio: anteprima del capitolo non si aggiorna in tempo reale");
+const livePreviewHelperStart = studioJsBody.indexOf("const livePreviewWordsPerPage =");
+const livePreviewHelperEnd = studioJsBody.indexOf("document.querySelectorAll('[data-live-chapter]')", livePreviewHelperStart);
+if (livePreviewHelperStart < 0 || livePreviewHelperEnd < 0) throw new Error("Studio: paginatore dell’anteprima Royal non trovato");
+const paginateLiveChapter = new Function(`${studioJsBody.slice(livePreviewHelperStart, livePreviewHelperEnd)}; return paginateLiveChapter;`)();
+const livePreviewPages = paginateLiveChapter(Array.from({ length: 500 }, (_, index) => `parola${index + 1}`).join(" "));
+if (livePreviewPages.length !== 3 || livePreviewPages.flatMap(page => page.join(" ").split(/\s+/)).length !== 500) throw new Error("Studio: suddivisione in pagine dell’anteprima in tempo reale non valida");
 console.log("/assets/studio.js: dettatura, slider, Assessment e animazioni accessibili disponibili");
 
 const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente Muse" };
@@ -188,6 +195,8 @@ if (!museHtml.includes("Trasparenza IA") || !museHtml.includes("Gli output resta
 if (!museHtml.includes("DAMMI ALTRI DATI E FATTI") || !museHtml.includes('name="sourceMaterial"') || !museHtml.includes("date, luoghi, nomi e ruoli dei personaggi")) throw new Error("Muse: campo per dati, fatti, date e personaggi non disponibile");
 if (!museHtml.includes('id="chapter-card-capitolo-muse"') || !museHtml.includes('data-keep-writing-position') || !museHtml.includes('data-book-path="/libro/libro-muse"')) throw new Error("Muse: capitolo non predisposto a mantenere la posizione");
 if (!museHtml.includes('Titolo del capitolo') || !museHtml.includes('name="title" value="Il primo ricordo"')) throw new Error("Studio: titolo del capitolo non modificabile");
+if (!museHtml.includes('data-live-chapter') || !museHtml.includes("Anteprima PDF in tempo reale") || !museHtml.includes('data-live-title') || !museHtml.includes('data-live-page-status') || !museHtml.includes('data-live-prev') || !museHtml.includes('data-live-next') || !museHtml.includes("Royal · Garamond") || !museHtml.includes("Apri l’anteprima completa")) throw new Error("Studio: anteprima Royal del singolo capitolo incompleta");
+if (!museHtml.includes("--studio-type-small:16px;--studio-type-body:18px;--studio-type-reading:22px") || !museHtml.includes("min-height:680px") || !museHtml.includes("min-height:380px") || !museHtml.includes("min-height:260px")) throw new Error("Studio: campi più grandi o gerarchia tipografica a tre misure non applicati");
 if (!museHtml.includes("12 capitoli · circa 7 pagine ciascuno") || !museHtml.includes("18 capitoli · circa 6–7 pagine ciascuno") || !museHtml.includes("Avanzamento del libro") || !museHtml.includes("pagine stimate")) throw new Error("Studio: strutture o avanzamento parole/pagine mancanti");
 const improveButtonCount = (museHtml.match(/✦ Migliora/g) || []).length;
 const museDraftButtonCount = (museHtml.match(/>Affidati alla Musa<\/button>/g) || []).length;
