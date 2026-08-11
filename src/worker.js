@@ -32,9 +32,9 @@ const EDITORIAL_STATES = ["iniziato", "in_lavorazione", "in_revisione", "approva
 const COMMERCIAL_STATES = ["prova_gratuita", "gratuito", "formula_scelta", "da_pagare", "pagato", "rimborsato"];
 const PLAN_LABELS = { free: "Primo capitolo gratuito", digital: "Splendoria Digital", complete: "Splendoria Premium", assisted: "Splendoria Signature" };
 const PLANS = {
-  digital: { label: "Splendoria Digital", price: 1000, description: "Fino a 80 pagine · percorso interamente digitale guidato dalle Muse, con supervisione umana." },
-  complete: { label: "Splendoria Premium", price: 1500, description: "Fino a 120 pagine · percorso digitale più ampio e approfondito, con supervisione umana." },
-  assisted: { label: "Splendoria Signature", price: 2500, description: "Progetto biografico digitale su misura, con 10 copie cartacee comprese." }
+  digital: { label: "Splendoria Digital", price: 1000, description: "Circa 80 pagine · 12 capitoli · percorso digitale guidato dalle Muse e PDF A5 pronto per la stampa." },
+  complete: { label: "Splendoria Premium", price: 1500, description: "Circa 120 pagine · 18 capitoli · percorso approfondito con revisione editoriale e PDF A5 pronto per la stampa." },
+  assisted: { label: "Splendoria Signature", price: 2500, description: "Fino a 120 pagine · progetto editoriale su misura con 10 copie cartacee comprese." }
 };
 
 export default {
@@ -209,27 +209,32 @@ function editorialHome(user, url) {
           <h2 id="paths-title">Tre possibilità, una grande cura editoriale.</h2>
           <p>Il percorso si sceglie in base alla profondità della storia, alla quantità dei materiali e al livello di accompagnamento desiderato.</p>
         </div>
+        <aside class="legacy-path-included" aria-label="Servizi inclusi in ogni percorso">
+          <strong>Sempre incluso in ogni percorso</strong>
+          <p>Primo capitolo gratuito, Studio di scrittura riservato, guida delle Muse, dettatura vocale, controllo completo dell’autore, supervisione umana finale, impaginazione editoriale e PDF A5 pronto per la stampa.</p>
+        </aside>
         <div class="legacy-path-grid">
           <article class="legacy-path-card">
-            <p class="legacy-path-number">I</p><p class="legacy-path-tone">Tonalità intima</p><h3>Digital</h3><p class="legacy-price">1.000 €</p><p class="legacy-path-pages">Fino a 80 pagine</p>
-            <p>Per le memorie di famiglia. Un racconto delicato, per sussurrare la tua storia a chi verrà dopo di te.</p>
-            <ul><li>Percorso digitale guidato dalle Muse</li><li>Raccolta dei ricordi e costruzione narrativa</li><li>Supervisione umana e PDF editoriale</li></ul>
-            <a class="legacy-button legacy-button-outline" data-plan-choice="digital" href="/?formula=digital#contatti">Scegli Digital</a>
+            <p class="legacy-path-number">I</p><p class="legacy-path-tone">Percorso intimo</p><h3>Digital</h3><p class="legacy-price">1.000 €</p><p class="legacy-path-pages">Circa 80 pagine · 12 capitoli</p>
+            <p>Per trasformare i ricordi più importanti in un libro autentico, personale e destinato alla propria famiglia.</p>
+            <ul><li>Percorso digitale guidato dalle Muse</li><li>Raccolta dei ricordi e costruzione della narrazione</li><li>PDF editoriale A5 pronto per la lettura e per la stampa</li></ul>
+            <a class="legacy-button legacy-button-outline" href="${entry}">Crea gratuitamente il primo capitolo</a>
           </article>
           <article class="legacy-path-card legacy-path-featured">
-            <p class="legacy-path-number">II</p><p class="legacy-path-tone">Tonalità giornalistica</p><h3>Premium</h3><p class="legacy-price">1.500 €</p><p class="legacy-path-pages">Fino a 120 pagine</p>
-            <p>Per vite d’inchiesta e cronache vissute. Un approfondimento capace di ordinare lettere, documenti e verità ritrovate.</p>
-            <ul><li>Più interviste e maggiore profondità</li><li>Organizzazione di fotografie e documenti</li><li>Revisione narrativa e stilistica approfondita</li></ul>
-            <a class="legacy-button" data-plan-choice="complete" href="/?formula=complete#contatti">Scegli Premium</a>
+            <span class="legacy-path-badge">Il più scelto</span>
+            <p class="legacy-path-number">II</p><p class="legacy-path-tone">Percorso approfondito</p><h3>Premium</h3><p class="legacy-price">1.500 €</p><p class="legacy-path-pages">Circa 120 pagine · 18 capitoli</p>
+            <p>Per raccontare una vita con maggiore profondità, facendo emergere persone, luoghi, passaggi decisivi e significati che meritano più spazio.</p>
+            <ul><li>Più domande e interviste dedicate alle diverse fasi della vita</li><li>Maggiore profondità narrativa e attenzione alla voce dell’autore</li><li>Revisione editoriale approfondita e PDF A5 pronto per la stampa</li></ul>
+            <a class="legacy-button" href="${entry}">Crea gratuitamente il primo capitolo</a>
           </article>
           <article class="legacy-path-card legacy-path-signature">
-            <p class="legacy-path-number">III</p><p class="legacy-path-tone">Tonalità epica</p><h3>Signature</h3><p class="legacy-price">2.500 €</p><p class="legacy-path-pages">Progetto su misura</p>
-            <p>Per fondatori d’impresa e grandi visionari. Include 10 copie cartacee e un allestimento editoriale definito sul progetto.</p>
-            <ul><li>Ricerca e interviste approfondite</li><li>Assistenza personale fino all’approvazione</li><li>Possibile accompagnamento Scuola Holden, da concordare e soggetto a disponibilità</li></ul>
-            <a class="legacy-button legacy-button-outline" data-plan-choice="assisted" href="/?formula=assisted#contatti">Richiedi Signature</a>
+            <p class="legacy-path-number">III</p><p class="legacy-path-tone">Edizione su misura</p><h3>Signature</h3><p class="legacy-price">2.500 €</p><p class="legacy-path-pages">Fino a 120 pagine · 10 copie cartacee comprese</p>
+            <p>Per famiglie, professionisti e fondatori d’impresa che desiderano trasformare la propria storia in un’edizione privata di particolare prestigio.</p>
+            <ul><li>Progetto editoriale e interviste costruiti su misura</li><li>Assistenza personale fino all’approvazione dell’opera</li><li>10 copie rilegate con finiture definite nel progetto</li></ul>
+            <a class="legacy-button legacy-button-outline" data-plan-choice="assisted" href="/?formula=assisted#contatti">Raccontaci il tuo progetto</a>
           </article>
         </div>
-        <p class="legacy-commercial-note">Pagine e caratteristiche sono indicative e vengono confermate nella proposta contrattuale. L’eventuale coinvolgimento della Scuola Holden non è automatico né incluso senza accordo scritto.</p>
+        <p class="legacy-commercial-note">Pagine e caratteristiche sono indicative e vengono confermate nella proposta contrattuale. Su richiesta e in base alla disponibilità, può essere concordato un accompagnamento editoriale della Scuola Holden, con proposta separata.</p>
       </div>
     </section>
 
@@ -437,81 +442,81 @@ function home(user, url) {
     </section>
     <section class="showcase-section showcase-paper showcase-pricing" id="formule" aria-labelledby="pricing-title">
       <div class="wrap">
-        <p class="showcase-label">Listino</p>
-        <h2 class="showcase-title" id="pricing-title">Scegli il percorso per raccontare la tua storia</h2>
-        <p class="pricing-kicker">La tecnologia incontra la sensibilità umana</p>
-        <p class="pricing-intro">Ogni libro Splendoria nasce attraverso un percorso interamente digitale, guidato dalle nostre Muse e supervisionato da un professore di una scuola di scrittura. Un metodo innovativo che unisce ascolto, intelligenza artificiale e competenza narrativa.</p>
+        <p class="showcase-label">Catalogo dei Percorsi</p>
+        <h2 class="showcase-title" id="pricing-title">Tre possibilità, una grande cura editoriale.</h2>
+        <p class="pricing-kicker">Scegli la profondità più adatta alla tua storia</p>
+        <p class="pricing-intro">Il percorso si sceglie in base alla profondità della storia, alla quantità dei materiali e al livello di accompagnamento desiderato.</p>
+        <aside class="pricing-included" aria-label="Servizi inclusi in ogni percorso"><strong>Sempre incluso in ogni percorso</strong><p>Primo capitolo gratuito, Studio di scrittura riservato, guida delle Muse, dettatura vocale, controllo completo dell’autore, supervisione umana finale, impaginazione editoriale e PDF A5 pronto per la stampa.</p></aside>
 
         <div class="showcase-grid three pricing-grid">
           <article class="showcase-price" aria-labelledby="digital-title">
             <span class="price-icon" aria-hidden="true">✦</span>
+            <p class="price-path">Percorso intimo</p>
             <h3 id="digital-title">Splendoria Digital</h3>
-            <p class="price-tagline muted">Il modo più semplice per trasformare i tuoi ricordi in un libro</p>
+            <p class="price-tagline muted">Per trasformare i ricordi più importanti in un libro autentico, personale e destinato alla propria famiglia.</p>
             <p class="showcase-amount">1.000 €</p>
-            <p class="price-pages muted">Fino a 80 pagine</p>
+            <p class="price-pages muted">Circa 80 pagine · 12 capitoli</p>
             <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Digital">
               <li>Percorso digitale guidato dalle Muse</li>
-              <li>Intervista iniziale e raccolta dei ricordi</li>
-              <li>Scrittura con supervisione umana</li>
-              <li>Libro in PDF, revisionato e depositato</li>
+              <li>Raccolta dei ricordi e costruzione della narrazione</li>
+              <li>PDF editoriale A5 pronto per la lettura e per la stampa</li>
             </ul>
             <details class="price-details">
               <summary>Scopri tutti i servizi inclusi</summary>
               <div class="price-groups">
-                <section><h4>Metodo e intervista</h4><ul><li>Opera e percorso interamente digitali</li><li>Percorso guidato dalle Muse di Splendoria</li><li>Intervista iniziale online</li><li>Raccolta guidata di ricordi, fotografie e documenti</li></ul></section>
-                <section><h4>Scrittura e revisione</h4><ul><li>Scrittura e organizzazione narrativa con il supporto delle Muse</li><li>Supervisione umana affidata a un professore di una scuola di scrittura</li><li>Revisione grammaticale e stilistica</li><li>Revisione professionale prima della consegna definitiva</li></ul></section>
-                <section><h4>Consegna e tutela</h4><ul><li>Impaginazione digitale</li><li>Copertina personalizzata</li><li>Consegna del libro in formato PDF</li><li>Marcatura temporale e deposito digitale dell’opera</li><li>Possibilità di acquistare separatamente copie stampate</li></ul></section>
+                <section><h4>Metodo e intervista</h4><ul><li>Studio di scrittura riservato</li><li>Percorso guidato dalle Muse di Splendoria</li><li>Intervista iniziale e raccolta guidata dei ricordi</li></ul></section>
+                <section><h4>Scrittura e revisione</h4><ul><li>Costruzione della narrazione con il supporto delle Muse</li><li>Controllo completo dell’autore</li><li>Supervisione umana finale</li></ul></section>
+                <section><h4>Consegna e tutela</h4><ul><li>Impaginazione editoriale A5</li><li>PDF pronto per la lettura e per la stampa</li><li>Marcatura temporale e deposito digitale dell’opera</li><li>Possibilità di acquistare separatamente copie stampate</li></ul></section>
               </div>
             </details>
-            <a class="button" data-plan-choice="digital" href="/?formula=digital#contatti">Inizia il tuo libro</a>
+            <a class="button" href="${entry}">Crea gratuitamente il primo capitolo</a>
           </article>
 
           <article class="showcase-price featured" aria-labelledby="premium-title">
-            <span class="price-badge">Più scelta</span>
+            <span class="price-badge">Il più scelto</span>
             <span class="price-icon" aria-hidden="true">◆</span>
+            <p class="price-path">Percorso approfondito</p>
             <h3 id="premium-title">Splendoria Premium</h3>
-            <p class="price-tagline">Un racconto più ampio, profondo e ricco di dettagli</p>
+            <p class="price-tagline">Per raccontare una vita con maggiore profondità, facendo emergere persone, luoghi, passaggi decisivi e significati che meritano più spazio.</p>
             <p class="showcase-amount">1.500 €</p>
-            <p class="price-pages">Fino a 120 pagine</p>
+            <p class="price-pages">Circa 120 pagine · 18 capitoli</p>
             <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Premium">
-              <li>Più interviste sulle diverse fasi della vita</li>
-              <li>Raccolta di fotografie, lettere e documenti</li>
-              <li>Revisione narrativa e stilistica approfondita</li>
-              <li>PDF editoriale pronto per la stampa</li>
+              <li>Più domande e interviste dedicate alle diverse fasi della vita</li>
+              <li>Maggiore profondità narrativa e attenzione alla voce dell’autore</li>
+              <li>Revisione editoriale approfondita e PDF A5 pronto per la stampa</li>
             </ul>
             <details class="price-details">
               <summary>Scopri tutti i servizi inclusi</summary>
               <div class="price-groups">
-                <section><h4>Metodo e interviste</h4><ul><li>Opera e percorso interamente digitali</li><li>Percorso guidato dalle Muse di Splendoria</li><li>Intervista iniziale online di approfondimento</li><li>Più sessioni online dedicate alle diverse fasi della vita</li><li>Raccolta e organizzazione di fotografie, lettere e documenti</li></ul></section>
-                <section><h4>Scrittura e revisione</h4><ul><li>Scrittura e costruzione narrativa con il supporto delle Muse</li><li>Supervisione umana affidata a un professore di una scuola di scrittura</li><li>Revisione approfondita dei contenuti</li><li>Revisione grammaticale, narrativa e stilistica</li><li>Revisione professionale prima della consegna definitiva</li></ul></section>
-                <section><h4>Consegna e tutela</h4><ul><li>Impaginazione editoriale</li><li>Copertina personalizzata</li><li>Consegna in PDF pronto per la stampa</li><li>Marcatura temporale e deposito digitale dell’opera</li><li>Possibilità di acquistare separatamente copie stampate</li></ul></section>
+                <section><h4>Metodo e interviste</h4><ul><li>Studio di scrittura riservato</li><li>Percorso guidato dalle Muse di Splendoria</li><li>Più sessioni dedicate alle diverse fasi della vita</li></ul></section>
+                <section><h4>Scrittura e revisione</h4><ul><li>Maggiore profondità narrativa</li><li>Attenzione alla voce dell’autore</li><li>Revisione editoriale approfondita</li><li>Supervisione umana finale</li></ul></section>
+                <section><h4>Consegna e tutela</h4><ul><li>Impaginazione editoriale A5</li><li>PDF pronto per la lettura e per la stampa</li><li>Marcatura temporale e deposito digitale dell’opera</li><li>Possibilità di acquistare separatamente copie stampate</li></ul></section>
               </div>
             </details>
-            <a class="button" data-plan-choice="complete" href="/?formula=complete#contatti">Scegli Premium</a>
+            <a class="button" href="${entry}">Crea gratuitamente il primo capitolo</a>
           </article>
 
           <article class="showcase-price signature" aria-labelledby="signature-title">
             <span class="price-icon" aria-hidden="true">✧</span>
+            <p class="price-path">Edizione su misura</p>
             <h3 id="signature-title">Splendoria Signature</h3>
-            <p class="price-tagline muted">Un’opera biografica completa, costruita su misura</p>
+            <p class="price-tagline muted">Per famiglie, professionisti e fondatori d’impresa che desiderano trasformare la propria storia in un’edizione privata di particolare prestigio.</p>
             <p class="showcase-amount">2.500 €</p>
-            <p class="price-pages muted">Progetto su misura</p>
-            <p class="signature-included"><strong>10 copie cartacee comprese nel prezzo</strong></p>
+            <p class="price-pages muted">Fino a 120 pagine · 10 copie cartacee comprese</p>
             <ul class="price-highlights" aria-label="Caratteristiche principali di Splendoria Signature">
-              <li>Progetto biografico completamente su misura</li>
-              <li>Interviste approfondite e ricerca d’archivio</li>
-              <li>Assistenza personale fino all’approvazione</li>
-              <li><strong>10 copie cartacee comprese</strong></li>
+              <li>Progetto editoriale e interviste costruiti su misura</li>
+              <li>Assistenza personale fino all’approvazione dell’opera</li>
+              <li><strong>10 copie rilegate con finiture definite nel progetto</strong></li>
             </ul>
             <details class="price-details">
               <summary>Scopri tutti i servizi inclusi</summary>
               <div class="price-groups">
-                <section><h4>Metodo e ricerca</h4><ul><li>Opera e percorso interamente digitali</li><li>Percorso personalizzato guidato dalle Muse di Splendoria</li><li>Interviste online di approfondimento, senza una struttura rigida</li><li>Progetto dedicato a persone, famiglie, professionisti e imprese</li><li>Ricerca e organizzazione di fotografie, lettere, documenti e materiali d’archivio</li></ul></section>
-                <section><h4>Scrittura e accompagnamento</h4><ul><li>Scrittura e costruzione narrativa con il supporto delle Muse</li><li>Supervisione umana affidata a un professore di una scuola di scrittura</li><li>Possibilità, da concordare, di un accompagnamento editoriale più approfondito da parte della <strong>Scuola Holden</strong></li><li>Revisione narrativa, grammaticale e stilistica completa</li><li>Assistenza personale fino all’approvazione definitiva</li><li>Revisione professionale prima della consegna dell’opera</li></ul></section>
-                <section><h4>Edizione e consegna</h4><ul><li>Impaginazione editoriale realizzata su misura</li><li>Copertina personalizzata</li><li>Inserimento dei materiali d’archivio</li><li>Consegna della versione digitale completa</li><li><strong>10 copie cartacee comprese nel prezzo</strong></li><li>Marcatura temporale e deposito digitale dell’opera</li></ul></section>
+                <section><h4>Metodo e ricerca</h4><ul><li>Progetto editoriale costruito su misura</li><li>Interviste di approfondimento flessibili</li><li>Organizzazione dei materiali affidati dall’autore</li></ul></section>
+                <section><h4>Scrittura e accompagnamento</h4><ul><li>Percorso personalizzato guidato dalle Muse</li><li>Assistenza personale fino all’approvazione definitiva</li><li>Revisione narrativa, grammaticale e stilistica completa</li><li>Supervisione umana finale</li></ul></section>
+                <section><h4>Edizione e consegna</h4><ul><li>Impaginazione editoriale A5 su misura</li><li>PDF pronto per la stampa</li><li><strong>10 copie rilegate con finiture definite nel progetto</strong></li><li>Marcatura temporale e deposito digitale dell’opera</li></ul></section>
               </div>
             </details>
-            <a class="button" data-plan-choice="assisted" href="/?formula=assisted#contatti">Richiedi il progetto Signature</a>
+            <a class="button" data-plan-choice="assisted" href="/?formula=assisted#contatti">Raccontaci il tuo progetto</a>
           </article>
         </div>
 
@@ -522,10 +527,11 @@ function home(user, url) {
               <caption class="sr-only">Confronto tra Splendoria Digital, Premium e Signature</caption>
               <thead><tr><th scope="col">Caratteristica</th><th scope="col">Digital</th><th scope="col">Premium</th><th scope="col">Signature</th></tr></thead>
               <tbody>
-                <tr><th scope="row">Pagine indicative</th><td>Fino a 80</td><td>Fino a 120</td><td>Su progetto</td></tr>
-                <tr><th scope="row">Interviste online</th><td>Iniziale</td><td>Più sessioni</td><td>Approfondite e flessibili</td></tr>
+                <tr><th scope="row">Pagine indicative</th><td>Circa 80</td><td>Circa 120</td><td>Fino a 120</td></tr>
+                <tr><th scope="row">Struttura</th><td>12 capitoli</td><td>18 capitoli</td><td>Su misura</td></tr>
+                <tr><th scope="row">Interviste</th><td>Iniziale</td><td>Più sessioni</td><td>Approfondite e flessibili</td></tr>
                 <tr><th scope="row">Supervisione umana</th><td>Inclusa</td><td>Inclusa</td><td>Inclusa</td></tr>
-                <tr><th scope="row">PDF editoriale</th><td>Incluso</td><td>Pronto per la stampa</td><td>Edizione su misura</td></tr>
+                <tr><th scope="row">PDF editoriale A5</th><td>Pronto per la stampa</td><td>Pronto per la stampa</td><td>Edizione su misura</td></tr>
                 <tr><th scope="row">Copie cartacee</th><td>Acquistabili</td><td>Acquistabili</td><td><strong>10 incluse</strong></td></tr>
                 <tr><th scope="row">Scuola Holden</th><td>—</td><td>—</td><td>Possibile, da concordare</td></tr>
               </tbody>
@@ -546,7 +552,7 @@ function home(user, url) {
         <div class="pricing-notes" aria-label="Precisazioni sul listino">
           <p>Il numero di pagine è indicativo e può variare in base all’impaginazione, alla quantità di fotografie e alla struttura narrativa dell’opera.</p>
           <p>Eventuali servizi aggiuntivi, ulteriori copie stampate, traduzioni, lavorazioni grafiche o richieste speciali saranno quotati separatamente.</p>
-          <p>L’eventuale coinvolgimento della Scuola Holden è previsto esclusivamente nella formula Splendoria Signature e deve essere concordato in base alle caratteristiche del progetto.</p>
+          <p>Su richiesta e in base alla disponibilità, può essere concordato un accompagnamento editoriale della Scuola Holden, con proposta separata.</p>
         </div>
       </div>
     </section>
