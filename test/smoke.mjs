@@ -44,7 +44,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette non applicate");
 if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("La tua storia destinata a vivere centinaia di anni") || !showcaseTypography.includes("Inizia il tuo libro")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260810-4"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260811-1"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (["Come funziona", "Listino", "Contattaci", "Il mio Studio"].some(label => !publicNavigation.includes(label)) || !publicNavigation.includes('href="/#metodo"') || !publicNavigation.includes('href="/#formule"') || !publicNavigation.includes('href="/#contatti"') || publicNavigation.includes("Area amministratore")) throw new Error("Navigazione: menu completo della vetrina assente, destinazioni errate o collegamento amministratore esposto");
 for (const weight of [400, 700]) {
@@ -146,7 +146,7 @@ if (!studioJsBody.includes("muse-horizontal") || !studioJsBody.includes("chapter
 if (!studioJsBody.includes("/autosalva") || !studioJsBody.includes("Le tue parole sono al sicuro") || !studioJsBody.includes("Sto custodendo le tue parole") || !studioJsBody.includes("8000")) throw new Error("Studio: salvataggio automatico del capitolo non disponibile");
 const livePreviewHelperStart = studioJsBody.indexOf("const livePreviewWordsPerPage =");
 const livePreviewHelperEnd = studioJsBody.indexOf("document.querySelectorAll('[data-live-chapter]')", livePreviewHelperStart);
-if (livePreviewHelperStart < 0 || livePreviewHelperEnd < 0) throw new Error("Studio: paginatore dell’anteprima Royal non trovato");
+if (livePreviewHelperStart < 0 || livePreviewHelperEnd < 0) throw new Error("Studio: paginatore dell’anteprima A5 non trovato");
 const paginateLiveChapter = new Function(`${studioJsBody.slice(livePreviewHelperStart, livePreviewHelperEnd)}; return paginateLiveChapter;`)();
 const livePreviewPages = paginateLiveChapter(Array.from({ length: 500 }, (_, index) => `parola${index + 1}`).join(" "));
 if (livePreviewPages.length !== 3 || livePreviewPages.flatMap(page => page.join(" ").split(/\s+/)).length !== 500) throw new Error("Studio: suddivisione in pagine dell’anteprima in tempo reale non valida");
@@ -202,7 +202,7 @@ if (!museHtml.includes("Trasparenza IA") || !museHtml.includes("Gli output resta
 if (!museHtml.includes("DAMMI ALTRI DATI E FATTI") || !museHtml.includes('name="sourceMaterial"') || !museHtml.includes("date, luoghi, nomi e ruoli dei personaggi")) throw new Error("Muse: campo per dati, fatti, date e personaggi non disponibile");
 if (!museHtml.includes('id="chapter-card-capitolo-muse"') || !museHtml.includes('data-keep-writing-position') || !museHtml.includes('data-book-path="/libro/libro-muse"')) throw new Error("Muse: capitolo non predisposto a mantenere la posizione");
 if (!museHtml.includes('Titolo del capitolo') || !museHtml.includes('name="title" value="Il primo ricordo"')) throw new Error("Studio: titolo del capitolo non modificabile");
-if (!museHtml.includes('data-live-chapter') || !museHtml.includes("Anteprima PDF in tempo reale") || !museHtml.includes('data-live-title') || !museHtml.includes('data-live-page-status') || !museHtml.includes('data-live-prev') || !museHtml.includes('data-live-next') || !museHtml.includes("Royal · Garamond") || !museHtml.includes("Apri l’anteprima completa")) throw new Error("Studio: anteprima Royal del singolo capitolo incompleta");
+if (!museHtml.includes('data-live-chapter') || !museHtml.includes(">ANTEPRIMA</h4>") || museHtml.includes("Anteprima PDF in tempo reale") || museHtml.includes("Il capitolo mentre prende forma") || !museHtml.includes('data-live-title') || !museHtml.includes('data-live-page-status') || !museHtml.includes('data-live-prev') || !museHtml.includes('data-live-next') || !museHtml.includes("A5 · Garamond") || !museHtml.includes("Apri l’anteprima completa") || !museHtml.includes("calc(.93vw + 2.667px)")) throw new Error("Studio: anteprima A5 del singolo capitolo incompleta");
 if (!museHtml.includes("--studio-type-small:16px;--studio-type-body:18px;--studio-type-reading:22px") || !museHtml.includes("min-height:680px") || !museHtml.includes("min-height:380px") || !museHtml.includes("min-height:260px")) throw new Error("Studio: campi più grandi o gerarchia tipografica a tre misure non applicati");
 if (!museHtml.includes("12 capitoli · circa 7 pagine ciascuno") || !museHtml.includes("18 capitoli · circa 6–7 pagine ciascuno") || !museHtml.includes("Avanzamento del libro") || !museHtml.includes("pagine stimate")) throw new Error("Studio: strutture o avanzamento parole/pagine mancanti");
 const improveButtonCount = (museHtml.match(/✦ Migliora/g) || []).length;
@@ -459,13 +459,13 @@ const previewDb = {
 };
 const previewResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin/progetto/libro-pdf/anteprima", { headers: { cookie: "spl_session=test" } }), { ...env, DB: previewDb });
 const previewHtml = await previewResponse.text();
-const printRequirements = ["data-print-book", "Formato Royal", "155,6 × 233,9 mm", "size:171.575mm 249.892mm", "margin-top:27.53mm", "margin-bottom:28mm", "margin-left:35.94mm", "margin-right:20.7mm", "@top-left-corner", "@bottom-right-corner", "3 mm di abbondanza", "book-crop-marks", "crop-top-left", "eb-garamond-400.woff2", "font-size:14pt", "line-height:15.68pt", "font-size:20pt", "font-size:11pt", "text-align:justify", "text-indent:12.5mm", "La mia infanzia"];
-if (previewResponse.status !== 200 || printRequirements.some(text => !previewHtml.includes(text))) throw new Error("PDF: impaginazione Royal con linee di taglio incompleta");
+const printRequirements = ["data-print-book", "Formato finale A5 verticale", "148 × 210 mm", "154 × 216 mm", "size:154mm 216mm", "margin-top:18mm", "margin-bottom:18mm", "margin-left:8mm", "margin-right:18mm", "3 mm di abbondanza", "senza crocini", "eb-garamond-400.woff2", "font-size:14pt", "line-height:15.68pt", "font-size:20pt", "font-size:11pt", "text-align:justify", "text-indent:12.5mm", "La mia infanzia"];
+if (previewResponse.status !== 200 || printRequirements.some(text => !previewHtml.includes(text)) || previewHtml.includes("book-crop-marks") || previewHtml.includes("@top-left-corner")) throw new Error("PDF: impaginazione A5 verticale conforme al template incompleta");
 const titlePageHtml = previewHtml.match(/<section class="book-title-page">([\s\S]*?)<\/section>/)?.[1] || "";
 if (!titlePageHtml || /Splendoria/i.test(titlePageHtml) || titlePageHtml.includes("book-imprint\"")) throw new Error("PDF: la scritta Splendoria è ancora presente nella prima pagina");
 if (previewHtml.includes('onclick="window.print()"')) throw new Error("PDF: gestore inline incompatibile con la CSP ancora presente");
 if (!previewHtml.includes("Controllo umano dei contenuti") || !previewHtml.includes("diritti d’autore") || !previewHtml.includes("non sostituisce una valutazione legale")) throw new Error("Admin: checklist riservata di controllo contenuti mancante");
-console.log("/anteprima: stampa PDF Royal 155,6 × 233,9 mm con abbondanza e linee di taglio disponibile");
+console.log("/anteprima: stampa PDF A5 verticale, 148 × 210 mm al taglio e abbondanza di 3 mm, disponibile");
 
 const legacyPreviewDb = {
   prepare(sql) {
