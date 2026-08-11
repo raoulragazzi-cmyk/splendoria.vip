@@ -36,22 +36,82 @@ const PLANS = {
   complete: { label: "Splendoria Premium", price: 1500, description: "Circa 120 pagine · 18 capitoli · percorso approfondito con revisione editoriale e PDF A5 pronto per la stampa." },
   assisted: { label: "Splendoria Signature", price: 2500, description: "Fino a 120 pagine · progetto editoriale su misura con 10 copie cartacee comprese." }
 };
+const CANONICAL_ORIGIN = "https://www.splendoria.vip";
+const SOCIAL_IMAGE = `${CANONICAL_ORIGIN}/assets/splendoria-book-hero.webp`;
+const PUBLIC_PAGE_META = {
+  "La tua vita in un romanzo": {
+    canonicalPath: "/",
+    description: "Splendoria trasforma memorie di famiglia e storie d’impresa in opere editoriali curate, con Muse digitali, controllo dell’autore e supervisione umana.",
+    socialTitle: "La tua vita in un romanzo — Splendoria",
+    lastmod: "2026-08-11",
+    changefreq: "weekly",
+    priority: "1.0"
+  },
+  "Privacy Policy": {
+    canonicalPath: "/privacy-policy",
+    description: "Informativa sulla protezione dei dati personali e sul trattamento dei contenuti affidati a Splendoria.",
+    lastmod: "2026-08-05",
+    changefreq: "yearly",
+    priority: "0.3"
+  },
+  "Cookie Policy": {
+    canonicalPath: "/cookie-policy",
+    description: "Informazioni sui cookie tecnici e sulle preferenze locali utilizzate da Splendoria.",
+    lastmod: "2026-08-05",
+    changefreq: "yearly",
+    priority: "0.3"
+  },
+  "Termini e condizioni": {
+    canonicalPath: "/termini-condizioni",
+    description: "Condizioni d’uso dello Studio e dei percorsi editoriali Splendoria.",
+    lastmod: "2026-08-05",
+    changefreq: "yearly",
+    priority: "0.3"
+  },
+  "Note legali": {
+    canonicalPath: "/note-legali",
+    description: "Informazioni legali, titolarità e condizioni di utilizzo del sito Splendoria.",
+    lastmod: "2026-08-05",
+    changefreq: "yearly",
+    priority: "0.3"
+  },
+  "Trasparenza sull’intelligenza artificiale": {
+    canonicalPath: "/trasparenza-ai",
+    description: "Informazioni sul ruolo delle Muse, dell’intelligenza artificiale e della supervisione umana nel percorso Splendoria.",
+    lastmod: "2026-08-05",
+    changefreq: "yearly",
+    priority: "0.4"
+  }
+};
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="13" fill="#004225"/><rect x="4" y="4" width="56" height="56" rx="10" fill="none" stroke="#c5a059" stroke-width="2"/><text x="32" y="44" text-anchor="middle" font-family="Georgia,serif" font-size="39" font-weight="700" fill="#f3dfab">S</text></svg>`;
+const PRIVATE_OR_UTILITY_PATHS = [
+  "/accedi", "/registrati", "/area-clienti", "/area-amministratore",
+  "/password-dimenticata", "/reimposta-password", "/studio", "/nuovo-libro",
+  "/libro", "/admin", "/api", "/esci", "/contatti", "/healthz"
+];
 
 export default {
   async fetch(request, env) {
     const requestedUrl = new URL(request.url);
-    if (requestedUrl.hostname === "splendoria.vip") {
+    if (requestedUrl.hostname === "splendoria.vip" || requestedUrl.hostname === "book.splendoria.vip") {
+      const isLegacyBookHost = requestedUrl.hostname === "book.splendoria.vip";
       requestedUrl.hostname = "www.splendoria.vip";
-      return new Response(null, { status: 308, headers: { location: requestedUrl.toString() } });
+      if (isLegacyBookHost) {
+        requestedUrl.pathname = "/";
+        requestedUrl.search = "";
+      }
+      return applyResponsePolicy(new Response(null, { status: 308, headers: { location: requestedUrl.toString() } }), requestedUrl);
     }
+    const systemResponse = await systemRoute(request, env);
+    if (systemResponse) return applyResponsePolicy(systemResponse, requestedUrl);
     try {
       await ensureSchema(env.DB);
       await ensureRegistrationNotificationSchema(env.DB);
       await ensureColumn(env.DB, "PasswordReset", "usedAt", "TEXT");
-      return await route(request, env);
+      return applyResponsePolicy(await route(request, env), requestedUrl);
     } catch (error) {
       console.error(error);
-      return page("Errore", `<div class="formbox center"><h1>Qualcosa non ha funzionato</h1><p class="muted">Il problema è stato registrato. Riprova tra poco.</p><a class="button" href="/">Torna alla home</a></div>`, null, 500);
+      return applyResponsePolicy(page("Errore", `<div class="formbox center"><h1>Qualcosa non ha funzionato</h1><p class="muted">Il problema è stato registrato. Riprova tra poco.</p><a class="button" href="/">Torna alla home</a></div>`, null, 500), requestedUrl);
     }
   },
   async email(message, env) {
@@ -65,6 +125,98 @@ export default {
     await retryRegistrationNotifications(env);
   }
 };
+
+async function systemRoute(request, env) {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\/$/, "") || "/";
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") return null;
+  let response = null;
+  if (path === "/robots.txt") response = robotsResponse();
+  if (path === "/sitemap.xml") response = sitemapResponse();
+  if (path === "/favicon.ico") response = faviconResponse();
+  if (path === "/healthz") response = await healthResponse(env);
+  if (!response || method === "GET") return response;
+  return new Response(null, { status: response.status, headers: response.headers });
+}
+
+function robotsResponse() {
+  const body = `User-agent: *
+Allow: /
+Disallow: /accedi
+Disallow: /registrati
+Disallow: /area-clienti
+Disallow: /area-amministratore
+Disallow: /password-dimenticata
+Disallow: /reimposta-password
+Disallow: /studio
+Disallow: /libro/
+Disallow: /admin
+Disallow: /api/
+Disallow: /healthz
+
+Sitemap: ${CANONICAL_ORIGIN}/sitemap.xml
+`;
+  return new Response(body, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
+}
+
+function sitemapResponse() {
+  const urls = Object.values(PUBLIC_PAGE_META).map(meta => `  <url>
+    <loc>${CANONICAL_ORIGIN}${meta.canonicalPath}</loc>
+    <lastmod>${meta.lastmod}</lastmod>
+    <changefreq>${meta.changefreq}</changefreq>
+    <priority>${meta.priority}</priority>
+  </url>`).join("\n");
+  const body = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>
+`;
+  return new Response(body, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
+}
+
+function faviconResponse() {
+  return new Response(FAVICON_SVG, { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "public, max-age=31536000, immutable" } });
+}
+
+async function healthResponse(env) {
+  let database = "unavailable";
+  try {
+    const probe = await env.DB.prepare("SELECT 1 AS ok").first();
+    if (Number(probe?.ok) === 1) database = "ok";
+  } catch {}
+  const operational = database === "ok";
+  return jsonResponse({
+    status: operational ? "ok" : "degraded",
+    application: "splendoria",
+    checks: {
+      database,
+      ai: typeof env.AI?.run === "function" ? "configured" : "unavailable",
+      email: env.CONTACT_EMAIL && env.ADMIN_EMAIL_NOTIFICATION && validEmail(env.ADMIN_EMAIL) ? "configured" : "unavailable"
+    },
+    checkedAt: new Date().toISOString()
+  }, operational ? 200 : 503);
+}
+
+function isPrivateOrUtilityPath(pathname) {
+  return PRIVATE_OR_UTILITY_PATHS.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function applyResponsePolicy(response, requestedUrl) {
+  const headers = new Headers(response.headers);
+  headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  headers.set("permissions-policy", "camera=(), geolocation=(), microphone=(self), payment=(), usb=()");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  if (!headers.has("referrer-policy")) headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  const noIndex = isPrivateOrUtilityPath(requestedUrl.pathname) || response.status >= 400;
+  if (noIndex) {
+    headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+    headers.set("cache-control", "private, no-store, max-age=0, must-revalidate");
+    headers.set("pragma", "no-cache");
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
 
 async function route(request, env) {
   const url = new URL(request.url);
@@ -381,7 +533,7 @@ function editorialHome(user, url) {
     </section>
 
     <section class="legacy-final-cta" data-showcase-section="final-cta"><div class="wrap"><p class="legacy-kicker legacy-kicker-light">Splendoria</p><h2>La bellezza di poter finalmente trasmettere una visione.</h2><a class="legacy-button" href="${entry}">Entra nello Studio di Scrittura</a></div></section>
-  `, user, 200, "", "showcase-page legacy-showcase");
+  `, user, 200, "", "showcase-page legacy-showcase", PUBLIC_PAGE_META["La tua vita in un romanzo"]);
 }
 
 function home(user, url) {
@@ -560,11 +712,11 @@ function home(user, url) {
     <aside class="showcase-holden"><p>Nella formula Splendoria Signature può essere concordato un accompagnamento editoriale più approfondito da parte della Scuola Holden.</p><span>L’eventuale coinvolgimento è riservato ai progetti Signature e viene definito su misura, in base alle caratteristiche dell’opera.</span></aside>
     <section class="showcase-section" id="voci"><div class="wrap"><p class="showcase-label">Dicono di noi</p><h2 class="showcase-title">Vite diventate libri.</h2><p class="testimonial-intro">Tre esperienze diverse, unite dalla stessa sensazione: vedere finalmente la propria storia prendere forma.</p><div class="showcase-grid three testimonial-grid"><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Memorie</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Ho sempre desiderato scrivere un libro, ma mi intimoriva il foglio bianco. Le indicazioni online sono intuitive, i tempi sono stati rispettati e la qualità del libro è eccellente.”</blockquote><p><b>Tatiana</b> · Insegnante</p></article><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Racconti</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Eccellente il percorso di accompagnamento che mi ha portato a realizzare il mio sogno. Raccontare la mia vita a dei professionisti della scrittura è un'esperienza che consiglio vivamente.”</blockquote><p><b>Ettore</b> · Commerciante</p></article><article class="showcase-quote"><div class="quote-visual" aria-hidden="true"><span class="mini-cover"><i>S</i><small>Biografia</small></span></div><span class="review-stars" role="img" aria-label="Valutazione: 5 stelle su 5">★★★★★</span><blockquote>“Ho trovato un team di persone serie e motivate, con la mia stessa passione. Il libro che mi hanno consegnato è stato addirittura migliore di quanto mi aspettassi.”</blockquote><p><b>Giorgia</b> · Manager d'azienda</p></article></div></div></section>
     <section class="showcase-section showcase-paper showcase-cta"><h2>La tua storia comincia qui.</h2><p>Crea il tuo account gratuito, scrivi il primo capitolo della tua vita e scopri com'è vederla diventare un libro. Al resto pensiamo noi.</p><a class="button" href="${entry}">Inizia gratis</a></section>
-    <section id="contatti" class="showcase-section showcase-contact"><div class="wrap showcase-contact-grid"><div><p class="showcase-label left">Splendoria</p><h2>Contattaci</h2><p class="muted">Raccontami brevemente come possiamo aiutarti.</p><p><b>Parla con me</b><br><span class="muted">Raoul Ragazzi<br>Partita IVA ${VAT_NUMBER}<br>${LEGAL_ADDRESS}</span></p><p><b>Email</b><br><a href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a></p></div><form method="post" action="/contatti">${contactNotice}<p class="small muted">Tutti i campi sono obbligatori.</p><label class="field">Formula di interesse<select name="plan" data-plan-select required><option value=""${selectedPlan ? "" : " selected"} disabled>Seleziona una formula</option>${planOptions}</select></label><div class="grid three"><label class="field">Nome e cognome<input name="fullName" required maxlength="100"></label><label class="field">Telefono<input name="phone" required maxlength="40"></label><label class="field">Email<input name="email" type="email" required maxlength="160"></label></div><label class="field">Oggetto<input name="subject" required maxlength="160"></label><label class="field">Messaggio<textarea name="message" required maxlength="3000"></textarea></label><input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px"><label class="legal-check"><input type="checkbox" name="privacyRead" value="yes" required><span>Ho letto la <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> e comprendo come saranno trattati i dati inviati.</span></label><button class="button">Invia richiesta</button></form></div></section>`, user, 200, "", "showcase-page");
+    <section id="contatti" class="showcase-section showcase-contact"><div class="wrap showcase-contact-grid"><div><p class="showcase-label left">Splendoria</p><h2>Contattaci</h2><p class="muted">Raccontami brevemente come possiamo aiutarti.</p><p><b>Parla con me</b><br><span class="muted">Raoul Ragazzi<br>Partita IVA ${VAT_NUMBER}<br>${LEGAL_ADDRESS}</span></p><p><b>Email</b><br><a href="mailto:${LEGAL_EMAIL}">${LEGAL_EMAIL}</a></p></div><form method="post" action="/contatti">${contactNotice}<p class="small muted">Tutti i campi sono obbligatori.</p><label class="field">Formula di interesse<select name="plan" data-plan-select required><option value=""${selectedPlan ? "" : " selected"} disabled>Seleziona una formula</option>${planOptions}</select></label><div class="grid three"><label class="field">Nome e cognome<input name="fullName" required maxlength="100"></label><label class="field">Telefono<input name="phone" required maxlength="40"></label><label class="field">Email<input name="email" type="email" required maxlength="160"></label></div><label class="field">Oggetto<input name="subject" required maxlength="160"></label><label class="field">Messaggio<textarea name="message" required maxlength="3000"></textarea></label><input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px"><label class="legal-check"><input type="checkbox" name="privacyRead" value="yes" required><span>Ho letto la <a href="/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> e comprendo come saranno trattati i dati inviati.</span></label><button class="button">Invia richiesta</button></form></div></section>`, user, 200, "", "showcase-page", PUBLIC_PAGE_META["La tua vita in un romanzo"]);
 }
 
 function legalPage(title, label, intro, content, user) {
-  return page(title, `<article class="legal-page"><header class="legal-hero"><div class="legal-reading"><p class="eyebrow">${esc(label)}</p><h1>${esc(title)}</h1><p>${esc(intro)}</p><p class="legal-updated">Ultimo aggiornamento: ${LEGAL_UPDATED}</p></div></header><div class="legal-reading legal-content">${content}</div></article>`, user);
+  return page(title, `<article class="legal-page"><header class="legal-hero"><div class="legal-reading"><p class="eyebrow">${esc(label)}</p><h1>${esc(title)}</h1><p>${esc(intro)}</p><p class="legal-updated">Ultimo aggiornamento: ${LEGAL_UPDATED}</p></div></header><div class="legal-reading legal-content">${content}</div></article>`, user, 200, "", "", PUBLIC_PAGE_META[title]);
 }
 
 function privacyPage(user) {
@@ -638,17 +790,24 @@ function aiTransparencyPage(user) {
   `, user);
 }
 
-function page(title, body, user, status = 200, extra = "", bodyClass = "") {
+function page(title, body, user, status = 200, extra = "", bodyClass = "", meta = null) {
   const isEditorialShowcase = bodyClass.includes("legacy-showcase");
   const publicLinks = `<a href="/#metodo">Come funziona</a><a href="/#formule">Listino</a><a href="/#contatti">Contattaci</a>`;
   const studioLink = `<a${isEditorialShowcase ? ` class="legacy-studio-access"` : ""} href="${user ? (user.isAdmin ? "/admin" : "/studio") : "/area-clienti"}">${user && !user.isAdmin ? "Il mio Studio" : user?.isAdmin ? "Dashboard" : "Il mio Studio"}${isEditorialShowcase ? ` <span aria-hidden="true">↗</span>` : ""}</a>`;
   const logout = user ? `<form method="post" action="/esci" style="display:inline"><button class="button secondary" style="padding:8px 15px">Esci</button></form>` : "";
   const navigationLinks = `${publicLinks}${studioLink}${logout}`;
-  const description = isEditorialShowcase
+  const fallbackDescription = isEditorialShowcase
     ? "Splendoria trasforma memorie di famiglia e storie d’impresa in opere editoriali curate, con Muse digitali, controllo dell’autore e supervisione umana."
     : "Splendoria trasforma la tua storia in un libro, con Muse digitali, controllo dell’autore e supervisione umana.";
+  const description = clean(meta?.description || fallbackDescription, 320);
+  const canonicalUrl = status === 200 && meta?.canonicalPath ? `${CANONICAL_ORIGIN}${meta.canonicalPath}` : "";
+  const indexable = Boolean(canonicalUrl);
+  const documentTitle = `${title} — Splendoria`;
+  const socialTitle = meta?.socialTitle || documentTitle;
+  const robots = indexable ? "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" : "noindex, nofollow, noarchive";
+  const socialMeta = indexable ? `<link rel="canonical" href="${esc(canonicalUrl)}"><meta property="og:type" content="website"><meta property="og:site_name" content="Splendoria"><meta property="og:locale" content="it_IT"><meta property="og:title" content="${esc(socialTitle)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${esc(canonicalUrl)}"><meta property="og:image" content="${esc(SOCIAL_IMAGE)}"><meta property="og:image:secure_url" content="${esc(SOCIAL_IMAGE)}"><meta property="og:image:type" content="image/webp"><meta property="og:image:width" content="1024"><meta property="og:image:height" content="559"><meta property="og:image:alt" content="Libro biografico Splendoria rilegato con finiture dorate"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(socialTitle)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${esc(SOCIAL_IMAGE)}"><meta name="twitter:image:alt" content="Libro biografico Splendoria rilegato con finiture dorate">` : "";
   const heroPreload = bodyClass.includes("showcase-page") ? `<link rel="preload" as="image" href="/assets/splendoria-book-hero.webp" fetchpriority="high">` : "";
-  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(title)} — Splendoria</title><meta name="description" content="${esc(description)}">${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260811-1" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
+  return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#004225"><title>${esc(documentTitle)}</title><meta name="description" content="${esc(description)}"><meta name="robots" content="${robots}"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="shortcut icon" href="/favicon.ico">${socialMeta}${heroPreload}<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260811-1" defer></script></head><body class="${esc(bodyClass)}"><nav class="nav" aria-label="Navigazione principale"><div class="wrap navin"><a class="brand" href="/">Splendoria</a><div class="navlinks">${navigationLinks}</div></div></nav><main id="main-content">${body}</main><footer class="footer"><div class="wrap footer-grid"><div><b>Splendoria</b><p class="small">La tua vita in un romanzo</p><p class="small">Raoul Ragazzi · Partita IVA ${VAT_NUMBER}</p><p class="small">${LEGAL_ADDRESS}</p></div><nav class="footer-links" aria-label="Informazioni legali"><a href="/privacy-policy">Privacy Policy</a><a href="/cookie-policy">Cookie Policy</a><a href="/termini-condizioni">Termini e condizioni</a><a href="/note-legali">Note legali</a><a href="/trasparenza-ai">Trasparenza IA</a></nav></div></footer>${cookieNotice()}</body></html>`, { status, headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } });
 }
 
 function cookieNotice() {
