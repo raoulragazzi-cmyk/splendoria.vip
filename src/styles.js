@@ -341,15 +341,30 @@ h1,h2,h3,h4,.brand,.price,.editor-paper,.interview-step h4,.interview-step texta
 @media(max-width:520px){.legacy-slider{min-height:1550px}}
 @media(max-width:420px){.legacy-slider{min-height:1850px}}
 
-/* Aumento uniforme di 2 px per i corpi minuti della sola vetrina. */
-.legacy-credentials dt,.legacy-sheet-grid dt{font-size:12px!important}
-.legacy-path-tone,.legacy-slider-label,.legacy-slider output,.legacy-market-label,.legacy-assessment legend span,.legacy-sheet-header{font-size:13px!important}
-.legacy-kicker,.legacy-credentials dd,.legacy-showcase main .legacy-hero-book figcaption,.legacy-comparison-table thead th,.legacy-path-pages,.legacy-market-grid article>span,.legacy-control-list li>span,.legacy-choice-grid label>small,.legacy-assessment-actions p{font-size:14px!important}
-.legacy-showcase .legacy-studio-access,.legacy-button,.legacy-path-number,.legacy-commercial-note,.legacy-slider-note,.legacy-check-grid span,.legacy-field-wide,.legacy-contact-grid label,.legacy-privacy-check,.legacy-value-index small,.legacy-value-index p{font-size:15px!important}
-.legacy-text-link,.legacy-value-card>span,.legacy-showcase main .legacy-path-card li,.legacy-field-help,.legacy-choice-grid label>span,.legacy-sheet-next,.legacy-showcase .footer p,.legacy-showcase .footer a{font-size:16px!important}
-.legacy-comparison-table td,.legacy-control-list p,.legacy-sheet-grid dd,.legacy-faq-list details p{font-size:17px!important}
-.legacy-showcase main .legacy-value-card p,.legacy-showcase main .legacy-path-card>p:not(.legacy-path-number):not(.legacy-path-tone):not(.legacy-price):not(.legacy-path-pages),.legacy-market-grid article p:last-child,.legacy-field-wide input,.legacy-field-wide select,.legacy-contact-grid input,.legacy-faq-grid>div:first-child>p:not(.legacy-kicker){font-size:18px!important}
-@media(max-width:760px){.legacy-showcase .navin{align-items:flex-start;flex-wrap:wrap;padding:10px 0}.legacy-showcase .navlinks{width:100%;justify-content:space-between;gap:8px 15px}.legacy-showcase .navlinks>a{white-space:nowrap;font-size:14px}.legacy-showcase .legacy-studio-access{max-width:none!important;font-size:13px!important;text-align:left!important}.legacy-slider-hint{font-size:13px}}
+/* Scala di leggibilità dell'interfaccia: minimo 16 px per i testi funzionali,
+   +2 px per i secondari e fino a +4 px per i corpi originariamente più minuti. */
+body{font-size:18px}
+button,input,select,textarea{font-family:inherit}
+.navlinks a{font-size:17px}
+.pill,.button{font-family:inherit;font-size:17px;line-height:1.35}
+.eyebrow,.table th,.badge,.small,.footer-links a,.legal-check,.legal-updated,.password-hint,.cookie-banner nav a,.table-actions .button{font-size:16px}
+.formbox{font-size:18px}
+.access-card>p:not(.eyebrow){font-size:19px}
+.table{font-size:16px}
+.password-visibility{font-size:17px}
+.legal-content p,.legal-content li{font-size:19px}
+.cookie-banner p:not(.eyebrow){font-size:18px}
+.admin-content-review p,.admin-content-review li{font-size:17px}
+
+/* Vetrina: la gerarchia resta editoriale, ma nessun testo operativo scende
+   sotto la soglia leggibile di 16 px su desktop o smartphone. */
+.legacy-credentials dt,.legacy-sheet-grid dt,.legacy-path-tone,.legacy-slider-label,.legacy-slider output,.legacy-market-label,.legacy-assessment legend span,.legacy-sheet-header,.legacy-path-badge,.legacy-kicker,.legacy-credentials dd,.legacy-showcase main .legacy-hero-book figcaption,.legacy-comparison-table thead th,.legacy-path-pages,.legacy-market-grid article>span,.legacy-control-list li>span,.legacy-choice-grid label>small,.legacy-assessment-actions p,.legacy-slider-hint,.legacy-showcase main .hero-trust li,.legacy-showcase main .book-page .book-folio,.legacy-showcase main .book-page .book-note,.legacy-showcase .book-preview-caption,.legacy-showcase .book-preview-tabs button,.legacy-showcase main .price-path,.legacy-showcase main .price-groups h4,.legacy-showcase main .price-groups li,.legacy-showcase .price-details summary,.legacy-showcase .pricing-compare th,.legacy-showcase .pricing-compare td{font-size:16px!important}
+.legacy-showcase .legacy-studio-access,.legacy-button,.legacy-path-number,.legacy-commercial-note,.legacy-slider-note,.legacy-check-grid span,.legacy-field-wide,.legacy-contact-grid label,.legacy-privacy-check,.legacy-value-index small,.legacy-value-index p,.legacy-showcase .price-pages,.legacy-showcase .pricing-notes p,.legacy-showcase .button,.legacy-showcase .pill,.legacy-showcase .small{font-size:17px!important}
+.legacy-text-link,.legacy-value-card>span,.legacy-showcase main .legacy-path-card li,.legacy-field-help,.legacy-choice-grid label>span,.legacy-sheet-next,.legacy-showcase .footer p,.legacy-showcase .footer a,.legacy-showcase main .legacy-path-included p{font-size:18px!important}
+.legacy-comparison-table td,.legacy-comparison-table tbody th,.legacy-control-list p,.legacy-sheet-grid dd,.legacy-faq-list details p,.legacy-path-included strong,.legacy-governance-intro>p:not(.legacy-kicker){font-size:19px!important}
+.legacy-section-heading>p,.legacy-showcase main .legacy-value-card p,.legacy-showcase main .legacy-path-card>p:not(.legacy-path-number):not(.legacy-path-tone):not(.legacy-price):not(.legacy-path-pages),.legacy-market-grid article p:last-child,.legacy-field-wide input,.legacy-field-wide select,.legacy-contact-grid input,.legacy-faq-grid>div:first-child>p:not(.legacy-kicker){font-size:20px!important}
+.legacy-slider-after blockquote{font-size:clamp(20px,1.6vw,24px)!important}
+@media(max-width:760px){.legacy-showcase .navin{align-items:flex-start;flex-wrap:wrap;padding:10px 0}.legacy-showcase .navlinks{width:100%;justify-content:space-between;gap:8px 15px}.legacy-showcase .navlinks>a{white-space:nowrap;font-size:16px!important}.legacy-showcase .legacy-studio-access{max-width:none!important;font-size:16px!important;text-align:left!important}.legacy-slider-hint{font-size:16px!important}.legacy-slider-after blockquote{font-size:20px!important}}
 
 @media print{
   @page{size:A4;margin:15mm}
