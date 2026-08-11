@@ -3,11 +3,11 @@ import bcrypt from "bcryptjs";
 import { readFileSync } from "node:fs";
 
 const DB = {
-  prepare() {
+  prepare(sql = "") {
     return {
       bind() { return this; },
       async run() { return { success: true }; },
-      async first() { return null; },
+      async first() { return sql === "SELECT 1 AS ok" ? { ok: 1 } : null; },
       async all() { return { results: [] }; }
     };
   },
@@ -31,7 +31,53 @@ for (const path of ["/", "/privacy-policy", "/cookie-policy", "/termini-condizio
 
 const canonicalResponse = await worker.fetch(new Request("https://splendoria.vip/area-clienti?da=apice"), env);
 if (canonicalResponse.status !== 308 || canonicalResponse.headers.get("location") !== "https://www.splendoria.vip/area-clienti?da=apice") throw new Error("Dominio: reindirizzamento canonico verso www non valido");
+if (!canonicalResponse.headers.get("strict-transport-security")?.includes("includeSubDomains")) throw new Error("Sicurezza: HSTS assente dal reindirizzamento canonico");
+const legacyBookResponse = await worker.fetch(new Request("https://book.splendoria.vip/vecchio-percorso?x=1"), env);
+if (legacyBookResponse.status !== 308 || legacyBookResponse.headers.get("location") !== "https://www.splendoria.vip/") throw new Error("Dominio: sottodominio storico non reindirizzato alla pagina canonica");
 console.log("/dominio: host canonico www applicato");
+
+const publicSeoPages = [
+  ["/", "La tua vita in un romanzo — Splendoria"],
+  ["/privacy-policy", "Privacy Policy — Splendoria"],
+  ["/cookie-policy", "Cookie Policy — Splendoria"],
+  ["/termini-condizioni", "Termini e condizioni — Splendoria"],
+  ["/note-legali", "Note legali — Splendoria"],
+  ["/trasparenza-ai", "Trasparenza sull’intelligenza artificiale — Splendoria"]
+];
+for (const [path, title] of publicSeoPages) {
+  const response = await worker.fetch(new Request(`https://www.splendoria.vip${path}`), env);
+  const html = await response.text();
+  const canonicalUrl = `https://www.splendoria.vip${path}`;
+  if (response.status !== 200 || !html.includes(`<title>${title}</title>`) || !html.includes(`<link rel="canonical" href="${canonicalUrl}">`)) throw new Error(`${path}: title o canonical non validi`);
+  if (!html.includes('name="robots" content="index, follow, max-image-preview:large') || !html.includes('property="og:title"') || !html.includes(`property="og:url" content="${canonicalUrl}"`) || !html.includes('name="twitter:card" content="summary_large_image"')) throw new Error(`${path}: metadata social o robots incompleti`);
+  if (!html.includes('property="og:image" content="https://www.splendoria.vip/assets/splendoria-book-hero.webp"') || !html.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) throw new Error(`${path}: immagine social o favicon mancanti`);
+  if (!response.headers.get("strict-transport-security")?.includes("max-age=31536000") || !response.headers.get("permissions-policy")?.includes("microphone=(self)") || response.headers.get("x-frame-options") !== "DENY") throw new Error(`${path}: header di sicurezza incompleti`);
+}
+
+for (const path of ["/accedi", "/registrati", "/area-clienti", "/area-amministratore", "/password-dimenticata", "/reimposta-password?token=test"]) {
+  const response = await worker.fetch(new Request(`https://www.splendoria.vip${path}`), env);
+  const html = await response.text();
+  if (!html.includes('name="robots" content="noindex, nofollow, noarchive"') || html.includes('rel="canonical"')) throw new Error(`${path}: noindex HTML specifico non applicato`);
+  if (response.headers.get("x-robots-tag") !== "noindex, nofollow, noarchive" || !response.headers.get("cache-control")?.includes("no-store")) throw new Error(`${path}: noindex o no-store HTTP non applicati`);
+}
+const privateRedirectResponse = await worker.fetch(new Request("https://www.splendoria.vip/studio"), env);
+if (privateRedirectResponse.status !== 303 || privateRedirectResponse.headers.get("x-robots-tag") !== "noindex, nofollow, noarchive" || !privateRedirectResponse.headers.get("cache-control")?.includes("no-store")) throw new Error("Aree riservate: redirect non protetto da noindex e no-store");
+
+const robotsResponse = await worker.fetch(new Request("https://www.splendoria.vip/robots.txt"), { ...env, DB: { prepare() { throw new Error("DB non deve essere consultato"); } } });
+const robotsBody = await robotsResponse.text();
+if (robotsResponse.status !== 200 || !robotsResponse.headers.get("content-type")?.includes("text/plain") || !robotsBody.includes("Disallow: /studio") || !robotsBody.includes("Disallow: /libro/") || !robotsBody.includes("Disallow: /admin") || !robotsBody.includes("Sitemap: https://www.splendoria.vip/sitemap.xml")) throw new Error("SEO: robots.txt incompleto");
+const sitemapResponse = await worker.fetch(new Request("https://www.splendoria.vip/sitemap.xml"), { ...env, DB: { prepare() { throw new Error("DB non deve essere consultato"); } } });
+const sitemapBody = await sitemapResponse.text();
+if (sitemapResponse.status !== 200 || !sitemapResponse.headers.get("content-type")?.includes("application/xml") || (sitemapBody.match(/<url>/g) || []).length !== publicSeoPages.length) throw new Error("SEO: sitemap XML non valida");
+if (publicSeoPages.some(([path]) => !sitemapBody.includes(`<loc>https://www.splendoria.vip${path}</loc>`)) || ["/studio", "/libro/", "/admin", "/area-clienti"].some(path => sitemapBody.includes(path))) throw new Error("SEO: sitemap non contiene esclusivamente le pagine pubbliche");
+const faviconResponse = await worker.fetch(new Request("https://www.splendoria.vip/favicon.ico"), { ...env, DB: { prepare() { throw new Error("DB non deve essere consultato"); } } });
+if (faviconResponse.status !== 200 || !faviconResponse.headers.get("content-type")?.includes("image/svg+xml") || !(await faviconResponse.text()).includes("#004225")) throw new Error("SEO: favicon.ico non valida");
+const faviconSource = readFileSync(new URL("../public/favicon.svg", import.meta.url), "utf8");
+if (!faviconSource.includes("#004225") || !faviconSource.includes("#c5a059")) throw new Error("SEO: asset favicon.svg non valido");
+const healthResponse = await worker.fetch(new Request("https://www.splendoria.vip/healthz"), env);
+const health = await healthResponse.json();
+if (healthResponse.status !== 200 || health.status !== "ok" || health.checks?.database !== "ok" || healthResponse.headers.get("x-robots-tag") !== "noindex, nofollow, noarchive" || !healthResponse.headers.get("cache-control")?.includes("no-store")) throw new Error("Operatività: endpoint healthz non valido o indicizzabile");
+console.log("/seo: sitemap, robots, favicon, canonical, social metadata, noindex e hardening HTTP validi");
 
 const accessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env)).text();
 if (!accessHtml.includes('href="/area-clienti"') || !accessHtml.includes('href="/area-amministratore"') || !accessHtml.includes("Scegli la tua area")) throw new Error("Accesso: scelta tra area clienti e amministratore incompleta");
