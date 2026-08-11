@@ -111,17 +111,16 @@ h1,h2,h3,h4,.brand,.price,.editor-paper,.interview-step h4,.interview-step texta
 .studio-editor-page .chapter-compose-form>:not(.live-chapter-preview){grid-column:1}
 .studio-editor-page .live-chapter-preview{grid-column:2;grid-row:1/span 8;position:sticky;top:90px;min-width:0;padding:22px;border:1px solid rgba(214,173,99,.48);border-radius:26px;background:radial-gradient(circle at 90% 0,rgba(214,173,99,.2),transparent 34%),#102d29;color:#fff;box-shadow:0 24px 58px rgba(16,45,41,.22)}
 .studio-editor-page .live-preview-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:17px}
-.studio-editor-page .live-preview-heading h4{margin:4px 0 0;color:#fff;font:700 var(--studio-type-reading)/1.15 var(--font-editorial)}
-.studio-editor-page .live-preview-kicker{margin:0;color:#e0bd7e;font:850 var(--studio-type-small)/1.25 var(--font-ui);letter-spacing:.08em;text-transform:uppercase}
+.studio-editor-page .live-preview-heading h4{margin:0;color:#e0bd7e;font:850 var(--studio-type-reading)/1.15 var(--font-ui);letter-spacing:.08em;text-transform:uppercase}
 .studio-editor-page .live-preview-format{flex:0 0 auto;padding:7px 9px;border:1px solid rgba(255,255,255,.2);border-radius:999px;color:#d9e7e2;font:750 var(--studio-type-small)/1.2 var(--font-ui)}
 .studio-editor-page .live-page-stage{padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:19px;background:linear-gradient(145deg,#071b18,#1b453d);box-shadow:inset 0 0 38px rgba(0,0,0,.18)}
-.studio-editor-page .live-royal-page{position:relative;width:100%;aspect-ratio:155.575/233.892;overflow:hidden;padding:9% 16% 12% 13%;background:linear-gradient(90deg,#fffdf8,#f8f3e8);color:#171d1b;box-shadow:0 18px 40px rgba(0,0,0,.34),inset 0 0 32px rgba(115,86,44,.055);font-family:"Splendoria Garamond",Garamond,Georgia,serif}
+.studio-editor-page .live-royal-page{position:relative;width:100%;aspect-ratio:154/216;overflow:hidden;padding:9% 7% 10% 12%;background:linear-gradient(90deg,#fffdf8,#f8f3e8);color:#171d1b;box-shadow:0 18px 40px rgba(0,0,0,.34),inset 0 0 32px rgba(115,86,44,.055);font-family:"Splendoria Garamond",Garamond,Georgia,serif}
 .studio-editor-page .live-chapter-number{margin:0 0 4%;color:#0b746b;font:700 clamp(8px,.75vw,10px)/1.2 var(--font-ui)!important;letter-spacing:.13em;text-transform:uppercase}
 .studio-editor-page .live-royal-page h5{margin:0 0 7%;font:700 clamp(17px,1.45vw,21px)/1.12 "Splendoria Garamond",Garamond,Georgia,serif}
-.studio-editor-page .live-page-copy p{margin:0;font:400 clamp(11px,.93vw,13.3px)/1.12 "Splendoria Garamond",Garamond,Georgia,serif;text-align:justify;text-indent:9%;hyphens:auto}
+.studio-editor-page .live-page-copy p{margin:0;font:400 clamp(13.667px,calc(.93vw + 2.667px),16px)/1.3 "Splendoria Garamond",Garamond,Georgia,serif;text-align:justify;text-indent:9%;hyphens:auto}
 .studio-editor-page .live-page-copy p:first-child{text-indent:0}
 .studio-editor-page .live-page-copy .live-preview-placeholder{color:#72807b;font-style:italic;text-align:left;text-indent:0}
-.studio-editor-page .live-folio{position:absolute;right:13%;bottom:4%;margin:0;color:#63736e;font:400 clamp(8px,.75vw,10px)/1 "Splendoria Garamond",Garamond,Georgia,serif!important}
+.studio-editor-page .live-folio{position:absolute;right:7%;bottom:4%;margin:0;color:#63736e;font:400 clamp(8px,.75vw,10px)/1 "Splendoria Garamond",Garamond,Georgia,serif!important}
 .studio-editor-page .live-preview-navigation{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:10px;margin-top:16px}
 .studio-editor-page .live-preview-navigation button{display:grid;width:44px;height:44px;place-items:center;border:1px solid rgba(255,255,255,.24);border-radius:50%;background:rgba(255,255,255,.08);color:#fff;font-size:20px;cursor:pointer}
 .studio-editor-page .live-preview-navigation button:hover:not(:disabled){border-color:#d6ad63;background:rgba(214,173,99,.16)}
