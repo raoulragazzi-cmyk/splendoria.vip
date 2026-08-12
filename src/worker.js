@@ -14,8 +14,9 @@ const LIVE_PREVIEW_WORDS_PER_PAGE = 200;
 const LIVE_PREVIEW_FIRST_PAGE_WORDS = 150;
 const BOOK_FRONT_MATTER_PAGES = 2;
 const MUSE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const MUSE_WRITER_SYSTEM = `Agisci con la competenza equivalente a quella di uno scrittore e di un editor con formazione universitaria in letteratura italiana e comparata. Scrivi una prosa italiana originale, grammaticalmente rigorosa, sintatticamente compiuta, fluida, precisa e naturale. Cura concordanze, reggenze, punteggiatura, coesione tra i periodi, ritmo, varietà lessicale e continuità della voce narrante. Costruisci ogni passaggio con misura: evita enfasi artificiosa, formule generiche, frasi da intelligenza artificiale, ripetizioni e testo riempitivo. Non imitare né nominare autori reali. Prima di consegnare, rileggi mentalmente l'intero testo e correggi ogni errore o asperità. Restituisci soltanto il testo finale.`;
-const MUSE_EDITOR_SYSTEM = `Sei il revisore letterario finale di Splendoria e lavori con competenza equivalente a una formazione universitaria in letteratura italiana e comparata. Rileggi la bozza parola per parola e restituiscine una versione originale, grammaticalmente rigorosa, sintatticamente completa e fluida. Correggi ortografia, concordanze, reggenze, punteggiatura, nessi logici, ripetizioni, cacofonie e passaggi legnosi; migliora ritmo e precisione senza uniformare la voce dell'autore. Conserva integralmente fatti, nomi, date, numeri, relazioni, significato, punto di vista e tono. Non inventare nulla, non imitare autori reali e non aggiungere commenti, titoli o spiegazioni. Restituisci soltanto il testo revisionato.`;
+const ITALIAN_LANGUAGE_STANDARD = `Applica rigorosamente l'italiano standard contemporaneo. Non riprodurre gli errori grammaticali presenti nel materiale dell'autore: correggili senza alterare significato, tono o voce. Ammetti forme regionali o dialettali soltanto nel discorso diretto, quando l'autore chiede espressamente di conservarle come caratterizzazione di un personaggio. Controlla persona, numero e genere; accordi tra soggetto e verbo, nome e aggettivo, pronomi e participi; coniugazioni, tempi e modi verbali; consecutio temporum; uso del congiuntivo e del condizionale; articoli, preposizioni, reggenze, clitici, accenti, apostrofi e punteggiatura. Regola vincolante sugli ausiliari: nei tempi composti dei verbi intransitivi che richiedono «essere» usa l'ausiliare corretto e accorda il participio con il soggetto. Scrivi «siamo usciti» o «siamo uscite», «siamo andati» o «siamo andate», mai «abbiamo uscito» o «abbiamo andato»; applica la stessa regola a entrare, arrivare, partire, venire, rimanere, nascere, morire, diventare e agli altri verbi che richiedono «essere». Mantieni coerenti soggetto, punto di vista, riferimenti pronominali, cronologia e tempi verbali dall'inizio alla fine. Prima della consegna esegui silenziosamente due riletture: una grammaticale e sintattica, una logica e narrativa.`;
+const MUSE_WRITER_SYSTEM = `Agisci con la competenza equivalente a quella di uno scrittore e di un editor con formazione universitaria in letteratura italiana e comparata. ${ITALIAN_LANGUAGE_STANDARD} Scrivi una prosa italiana originale, grammaticalmente rigorosa, sintatticamente compiuta, fluida, precisa e naturale. Cura concordanze, reggenze, punteggiatura, coesione tra i periodi, ritmo, varietà lessicale e continuità della voce narrante. Costruisci ogni passaggio con misura: evita enfasi artificiosa, formule generiche, frasi da intelligenza artificiale, ripetizioni e testo riempitivo. Non imitare né nominare autori reali. Prima di consegnare, rileggi mentalmente l'intero testo e correggi ogni errore o asperità. Restituisci soltanto il testo finale.`;
+const MUSE_EDITOR_SYSTEM = `Sei il revisore letterario finale di Splendoria e lavori con competenza equivalente a una formazione universitaria in letteratura italiana e comparata. ${ITALIAN_LANGUAGE_STANDARD} Rileggi la bozza parola per parola e restituiscine una versione originale, grammaticalmente rigorosa, sintatticamente completa e fluida. Correggi ortografia, concordanze, reggenze, punteggiatura, nessi logici, ripetizioni, cacofonie e passaggi legnosi; migliora ritmo e precisione senza uniformare la voce dell'autore. Conserva integralmente fatti, nomi, date, numeri, relazioni, significato, punto di vista e tono. Non inventare nulla, non imitare autori reali e non aggiungere commenti, titoli o spiegazioni. Restituisci soltanto il testo revisionato.`;
 const BOOK_STRUCTURES = {
   12: { chapters: 12, targetPages: 84, label: "12 capitoli · circa 7 pagine ciascuno" },
   18: { chapters: 18, targetPages: 117, label: "18 capitoli · circa 6–7 pagine ciascuno" }
@@ -1537,11 +1538,12 @@ async function correctDictation(request, user, env) {
   const source = collapseAccidentalRepetitions(clean(data?.text, 8000), 8000);
   if (!source) return jsonResponse({ text: "" });
   const language = { "it-IT": "italiano", "de-DE": "tedesco", "en-GB": "inglese britannico" }[clean(data?.language, 10)] || "italiano";
+  const languageStandard = language === "italiano" ? `${ITALIAN_LANGUAGE_STANDARD} ` : "";
   let text = basicWrittenForm(source);
   try {
     const ai = await runMuseAi(env, {
       messages: [
-        { role: "system", content: `Trascrivi fedelmente in ${language}. Correggi esclusivamente grammatica, ortografia, maiuscole e punteggiatura ed elimina soltanto eventuali duplicazioni testuali accidentali prodotte dalla dettatura. Non riassumere, non ampliare, non sostituire concetti, nomi, date, numeri o dettagli, non cambiare significato, tono o ordine delle idee. Restituisci soltanto il testo corretto.` },
+        { role: "system", content: `Trascrivi fedelmente in ${language}. ${languageStandard}Correggi esclusivamente grammatica, ortografia, maiuscole e punteggiatura ed elimina soltanto eventuali duplicazioni testuali accidentali prodotte dalla dettatura. Non riassumere, non ampliare, non sostituire concetti, nomi, date, numeri o dettagli, non cambiare significato, tono o ordine delle idee. Restituisci soltanto il testo corretto.` },
         { role: "user", content: source }
       ],
       temperature: 0,
@@ -2184,6 +2186,19 @@ function meaningfulTokens(value) {
   return normalizedTokens(value).filter(token => token.length > 3 && !stopwords.has(token));
 }
 
+function italianGrammarIssues(value) {
+  const text = String(value || ""), issues = [];
+  const adverbs = "(?:(?:mai|già|gia|appena|ancora|sempre|poi|finalmente|subito|soltanto|anche|davvero)\\s+){0,2}";
+  const essereParticiples = "(?:andat[oaie]|uscit[oaie]|entrat[oaie]|arrivat[oaie]|partit[oaie]|venut[oaie]|rimas(?:to|ta|ti|te)|nat[oaie]|mort[oaie]|diventat[oaie]|cadut[oaie]|stat[oaie])";
+  const singularParticiples = "(?:andat[oa]|uscit[oa]|entrat[oa]|arrivat[oa]|partit[oa]|venut[oa]|rimas(?:to|ta)|nat[oa]|mort[oa]|diventat[oa]|cadut[oa]|stat[oa])";
+  const pluralParticiples = "(?:andat[ie]|uscit[ie]|entrat[ie]|arrivat[ie]|partit[ie]|venut[ie]|rimas(?:ti|te)|nat[ie]|mort[ie]|diventat[ie]|cadut[ie]|stat[ie])";
+  if (new RegExp(`\\b(?:ho|hai|ha|abbiamo|avete|hanno)\\s+${adverbs}${essereParticiples}\\b`, "iu").test(text)) issues.push("ausiliare errato con verbo intransitivo: usare essere e accordare il participio");
+  if (new RegExp(`\\b(?:siamo|siete)\\s+${adverbs}${singularParticiples}\\b`, "iu").test(text) || new RegExp(`\\b(?:è|sei)\\s+${adverbs}${pluralParticiples}\\b`, "iu").test(text)) issues.push("participio non concordato con il soggetto");
+  if (/\bqual['’]è\b/iu.test(text)) issues.push("elisione errata: scrivere qual è senza apostrofo");
+  if (/\bun\s+p(?:o|ò|ò)(?!['’\p{L}])/iu.test(text)) issues.push("forma errata: scrivere un po’ con apostrofo");
+  return issues;
+}
+
 function hasRepeatedPassages(value) {
   const tokens = normalizedTokens(value);
   for (const size of [12,10,8]) {
@@ -2218,6 +2233,7 @@ function museDraftIssues(source, candidate, targetWords, { minWords = 8, maxWord
   const issues = [], words = wordCount(candidate), upperLimit = maxWords || Math.max(90,Math.ceil(targetWords * 1.55));
   if (!candidate || words < minWords) issues.push("testo incompleto o troppo breve");
   if (words > upperLimit) issues.push("testo eccessivamente lungo");
+  issues.push(...italianGrammarIssues(candidate));
   if (hasRepeatedSentences(candidate) || hasNearRepeatedSentences(candidate) || hasRepeatedPassages(candidate)) issues.push("frasi o passaggi ripetuti");
   if (!contextualNumbersGrounded(source,candidate)) issues.push("numeri o date non presenti nelle fonti");
   if (candidate && contextualOverlap(source,candidate) < overlap) issues.push("contenuto troppo generico o poco ancorato alle fonti");
@@ -2495,8 +2511,8 @@ function collapseAccidentalRepetitions(value,max=60000){
 }
 function basicWrittenForm(value){let text=String(value||"").replace(/\s+([,.;:!?])/g,"$1").replace(/([,.;:!?])(?=\p{L})/gu,"$1 ").trim();text=text.replace(/(^|[.!?]\s+)(\p{Ll})/gu,(_,prefix,letter)=>prefix+letter.toLocaleUpperCase("it-IT"));if(text&&!/[.!?…]$/.test(text))text+=".";return text}
 function hasRepeatedSentences(value){const seen=new Set();for(const sentence of String(value||"").split(/(?<=[.!?])\s+/)){const normalized=normalizedTokens(sentence).join(" ");if(normalized.split(" ").filter(Boolean).length<3)continue;if(seen.has(normalized))return true;seen.add(normalized)}return false}
-function validFaithfulCorrection(source,candidate){if(!candidate||candidate.length>8000||!preservesNumbers(source,candidate)||hasRepeatedSentences(candidate)||hasNearRepeatedSentences(candidate)||hasRepeatedPassages(candidate))return false;const before=wordCount(source),after=wordCount(candidate);return before>0&&after>=Math.floor(before*.9)&&after<=Math.ceil(before*1.1)&&lexicalOverlap(source,candidate)>=.82}
-function validRevision(source,candidate,action){if(!candidate||candidate.length>60000||!preservesNumbers(source,candidate)||hasRepeatedSentences(candidate)||hasNearRepeatedSentences(candidate)||hasRepeatedPassages(candidate))return false;const before=wordCount(source),after=wordCount(candidate);if(!before||!after)return false;const limits=action==="grammar"?[.9,1.1]:action==="short"?[.45,.98]:[.65,1.65],overlap=action==="grammar"?.78:.55;return after>=Math.floor(before*limits[0])&&after<=Math.ceil(before*limits[1])&&lexicalOverlap(source,candidate)>=overlap}
+function validFaithfulCorrection(source,candidate){if(!candidate||candidate.length>8000||italianGrammarIssues(candidate).length||!preservesNumbers(source,candidate)||hasRepeatedSentences(candidate)||hasNearRepeatedSentences(candidate)||hasRepeatedPassages(candidate))return false;const before=wordCount(source),after=wordCount(candidate);return before>0&&after>=Math.floor(before*.9)&&after<=Math.ceil(before*1.1)&&lexicalOverlap(source,candidate)>=.82}
+function validRevision(source,candidate,action){if(!candidate||candidate.length>60000||italianGrammarIssues(candidate).length||!preservesNumbers(source,candidate)||hasRepeatedSentences(candidate)||hasNearRepeatedSentences(candidate)||hasRepeatedPassages(candidate))return false;const before=wordCount(source),after=wordCount(candidate);if(!before||!after)return false;const limits=action==="grammar"?[.9,1.1]:action==="short"?[.45,.98]:[.65,1.65],overlap=action==="grammar"?.78:.55;return after>=Math.floor(before*limits[0])&&after<=Math.ceil(before*limits[1])&&lexicalOverlap(source,candidate)>=overlap}
 async function improveNarrative(source,env,targetWords){
   const faithfulSource=collapseAccidentalRepetitions(source);
   if(!faithfulSource)return "";
