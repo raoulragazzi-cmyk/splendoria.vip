@@ -10,6 +10,10 @@
   },
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
   "ai": {
     "binding": "AI"
   },
@@ -18,7 +22,8 @@
       "binding": "DB",
       "database_name": "splendoria-db",
       "database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434",
-      "preview_database_id": "8bf872f6-3f9e-471f-95bc-a99a94f0d97c"
+      "preview_database_id": "8bf872f6-3f9e-471f-95bc-a99a94f0d97c",
+      "migrations_dir": "./migrations"
     }
   ],
   "send_email": [
