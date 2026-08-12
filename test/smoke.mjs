@@ -22,7 +22,7 @@ const env = {
   AI: { async run() { return { response: "Le radici\nLa svolta\nIl futuro\nEpilogo" }; } }
 };
 
-for (const path of ["/", "/privacy-policy", "/cookie-policy", "/termini-condizioni", "/note-legali", "/trasparenza-ai", "/accedi", "/area-clienti", "/area-amministratore", "/registrati", "/password-dimenticata", "/studio", "/admin", "/pagina-che-non-esiste"]) {
+for (const path of ["/", "/guida", "/privacy-policy", "/cookie-policy", "/termini-condizioni", "/note-legali", "/trasparenza-ai", "/accedi", "/area-clienti", "/area-amministratore", "/registrati", "/password-dimenticata", "/studio", "/account", "/admin", "/pagina-che-non-esiste"]) {
   const response = await worker.fetch(new Request(`https://www.splendoria.vip${path}`), env);
   if (![200, 303, 404].includes(response.status)) throw new Error(`${path}: stato ${response.status}`);
   if (response.status === 200 && !(await response.text()).includes("Splendoria")) throw new Error(`${path}: HTML non valido`);
@@ -38,6 +38,7 @@ console.log("/dominio: host canonico www applicato");
 
 const publicSeoPages = [
   ["/", "La tua vita in un romanzo — Splendoria"],
+  ["/guida", "Guida allo Studio — Splendoria"],
   ["/privacy-policy", "Privacy Policy — Splendoria"],
   ["/cookie-policy", "Cookie Policy — Splendoria"],
   ["/termini-condizioni", "Termini e condizioni — Splendoria"],
@@ -48,13 +49,14 @@ for (const [path, title] of publicSeoPages) {
   const response = await worker.fetch(new Request(`https://www.splendoria.vip${path}`), env);
   const html = await response.text();
   const canonicalUrl = `https://www.splendoria.vip${path}`;
+  if (!html.startsWith("<!DOCTYPE html>")) throw new Error(`${path}: dichiarazione HTML5 non canonica`);
   if (response.status !== 200 || !html.includes(`<title>${title}</title>`) || !html.includes(`<link rel="canonical" href="${canonicalUrl}">`)) throw new Error(`${path}: title o canonical non validi`);
   if (!html.includes('name="robots" content="index, follow, max-image-preview:large') || !html.includes('property="og:title"') || !html.includes(`property="og:url" content="${canonicalUrl}"`) || !html.includes('name="twitter:card" content="summary_large_image"')) throw new Error(`${path}: metadata social o robots incompleti`);
   if (!html.includes('property="og:image" content="https://www.splendoria.vip/assets/splendoria-book-hero.webp"') || !html.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) throw new Error(`${path}: immagine social o favicon mancanti`);
   if (!response.headers.get("strict-transport-security")?.includes("max-age=31536000") || !response.headers.get("permissions-policy")?.includes("microphone=(self)") || response.headers.get("x-frame-options") !== "DENY") throw new Error(`${path}: header di sicurezza incompleti`);
 }
 
-for (const path of ["/accedi", "/registrati", "/area-clienti", "/area-amministratore", "/password-dimenticata", "/reimposta-password?token=test"]) {
+for (const path of ["/accedi", "/registrati", "/area-clienti", "/area-amministratore", "/verifica-amministratore?challenge=test", "/verifica-email?token=test", "/password-dimenticata", "/reimposta-password?token=test"]) {
   const response = await worker.fetch(new Request(`https://www.splendoria.vip${path}`), env);
   const html = await response.text();
   if (!html.includes('name="robots" content="noindex, nofollow, noarchive"') || html.includes('rel="canonical"')) throw new Error(`${path}: noindex HTML specifico non applicato`);
@@ -65,7 +67,7 @@ if (privateRedirectResponse.status !== 303 || privateRedirectResponse.headers.ge
 
 const robotsResponse = await worker.fetch(new Request("https://www.splendoria.vip/robots.txt"), { ...env, DB: { prepare() { throw new Error("DB non deve essere consultato"); } } });
 const robotsBody = await robotsResponse.text();
-if (robotsResponse.status !== 200 || !robotsResponse.headers.get("content-type")?.includes("text/plain") || !robotsBody.includes("Disallow: /studio") || !robotsBody.includes("Disallow: /libro/") || !robotsBody.includes("Disallow: /admin") || !robotsBody.includes("Sitemap: https://www.splendoria.vip/sitemap.xml")) throw new Error("SEO: robots.txt incompleto");
+if (robotsResponse.status !== 200 || !robotsResponse.headers.get("content-type")?.includes("text/plain") || !robotsBody.includes("Disallow: /studio") || !robotsBody.includes("Disallow: /libro/") || !robotsBody.includes("Disallow: /account") || !robotsBody.includes("Disallow: /admin") || !robotsBody.includes("Sitemap: https://www.splendoria.vip/sitemap.xml")) throw new Error("SEO: robots.txt incompleto");
 const sitemapResponse = await worker.fetch(new Request("https://www.splendoria.vip/sitemap.xml"), { ...env, DB: { prepare() { throw new Error("DB non deve essere consultato"); } } });
 const sitemapBody = await sitemapResponse.text();
 if (sitemapResponse.status !== 200 || !sitemapResponse.headers.get("content-type")?.includes("application/xml") || (sitemapBody.match(/<url>/g) || []).length !== publicSeoPages.length) throw new Error("SEO: sitemap XML non valida");
@@ -93,7 +95,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette non applicate");
 if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("La tua storia destinata a vivere centinaia di anni") || !showcaseTypography.includes("Inizia il tuo libro")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260812-1"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260812-3"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (["Come funziona", "Listino", "Contattaci", "Il mio Studio"].some(label => !publicNavigation.includes(label)) || !publicNavigation.includes('href="/#metodo"') || !publicNavigation.includes('href="/#formule"') || !publicNavigation.includes('href="/#contatti"') || publicNavigation.includes("Area amministratore")) throw new Error("Navigazione: menu completo della vetrina assente, destinazioni errate o collegamento amministratore esposto");
 for (const weight of [400, 700]) {
@@ -116,11 +118,17 @@ if (!showcaseTypography.includes('data-editorial-assessment') || !showcaseTypogr
 if (!showcaseTypography.includes("Le Muse ti guidano") || !showcaseTypography.includes("Quattro livelli di controllo") || !showcaseTypography.includes("I tuoi racconti rimangono segreti")) throw new Error("Vetrina: guida delle Muse o livelli di controllo incompleti");
 if (["Casa editoriale della memoria", "Una storia destinata a restare", "Inizia il tuo Retaggio", "Governance operativa 7Agent", "“7Agent” identifica", "Protezione del dato", "Splendoria o il precipizio del testo indistinto", "La memoria non chiede di essere celebrata"].some(text => showcaseTypography.includes(text))) throw new Error("Vetrina: una o più formulazioni precedenti sono ancora pubblicate");
 if (!showcaseTypography.includes("Dati custoditi nell’infrastruttura Splendoria") || !showcaseTypography.includes("Progetto conservato su Splendoria D1 con accessi separati") || !showcaseTypography.includes("Account, progetti, capitoli e interviste sono conservati nell’infrastruttura Splendoria") || !showcaseTypography.includes("La bellezza di poter finalmente trasmettere una visione")) throw new Error("Vetrina: riferimenti a Splendoria o chiusura finale incompleti");
-if (!showcaseTypography.includes("La forza della tradizione") || !showcaseTypography.includes("gesti, fallimenti, errori e visioni") || !showcaseTypography.includes("Tre possibilità, una grande cura editoriale") || !showcaseTypography.includes("Circa 80 pagine · 12 capitoli") || !showcaseTypography.includes("Circa 120 pagine · 18 capitoli") || !showcaseTypography.includes("La prima architettura del tuo libro")) throw new Error("Vetrina: copy editoriale o pagine dei percorsi non aggiornati");
-if (showcaseTypography.includes("Vai al contenuto") || showcaseTypography.includes('class="skip-link"') || showcaseTypography.includes("Retaggio") || showcaseTypography.includes("Fino a 100 pagine") || showcaseTypography.includes("Fino a 250 pagine") || showcaseTypography.includes("Non un preventivo")) throw new Error("Vetrina: copy precedente o collegamento al contenuto ancora presente");
+if (!showcaseTypography.includes("La forza della tradizione") || !showcaseTypography.includes("gesti, fallimenti, errori e visioni") || !showcaseTypography.includes("Tre possibilità, una grande cura editoriale") || !showcaseTypography.includes("Fino a 100 pagine · 12 capitoli") || !showcaseTypography.includes("Fino a 120 pagine · 18 capitoli") || !showcaseTypography.includes("La prima architettura del tuo libro")) throw new Error("Vetrina: copy editoriale o pagine dei percorsi non aggiornati");
+if (!showcaseTypography.includes('<a class="skip-link" href="#main-content">Vai al contenuto principale</a>') || !showcaseTypography.includes('<main id="main-content" tabindex="-1">') || !showcaseTypography.includes(":focus-visible{outline:3px solid") || !showcaseTypography.includes("prefers-reduced-motion:reduce")) throw new Error("Accessibilità: navigazione da tastiera, focus o riduzione del movimento incompleti");
+if (showcaseTypography.includes("Retaggio") || showcaseTypography.includes("Fino a 250 pagine") || showcaseTypography.includes("Non un preventivo")) throw new Error("Vetrina: copy precedente ancora presente");
 if (showcaseTypography.includes("Retaggio Editoriale Certificato") || showcaseTypography.includes("scritta dai maestri") || showcaseTypography.includes("ROI Storico")) throw new Error("Vetrina: promessa commerciale non dimostrabile ancora pubblicata");
 if (showcaseTypography.includes("IT05Z0538758590000049304579")) throw new Error("Vetrina: coordinate bancarie esposte fuori dall’area riservata");
 console.log("/vetrina: dieci sezioni, Hero, slider, governance e Assessment disponibili");
+
+const guideResponse = await worker.fetch(new Request("https://www.splendoria.vip/guida"), env);
+const guideHtml = await guideResponse.text();
+if (guideResponse.status !== 200 || !guideHtml.includes("Il tuo libro, un passo alla volta") || !guideHtml.includes("260–460 parole") || !guideHtml.includes("siamo usciti") || !guideHtml.includes("Prova gratuita e sblocco") || !guideHtml.includes("data-print-guide")) throw new Error("Guida: manuale self-service, grammatica o diagnostica incompleti");
+console.log("/guida: manuale operativo e stampabile disponibile");
 
 const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"') || !wranglerConfig.includes('"directory": "./public"') || !wranglerConfig.includes('"name": "ADMIN_EMAIL_NOTIFICATION"') || !wranglerConfig.includes('"destination_address": "raoulragazzi@gmail.com"') || !wranglerConfig.includes('"crons": ["*/5 * * * *"]') || !wranglerConfig.includes('"migrations_dir": "./migrations"') || !wranglerConfig.includes('"observability"') || !wranglerConfig.includes('"head_sampling_rate": 1')) throw new Error("Cloudflare: configurazione di produzione, migrazioni, osservabilità, email o asset statici non valida");
@@ -130,10 +138,16 @@ console.log("/configurazione: database e URL di produzione attivi");
 const workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");
 const schemaSource = readFileSync(new URL("../schema.sql", import.meta.url), "utf8");
 const migrationSource = readFileSync(new URL("../migrations/0001_current_schema.sql", import.meta.url), "utf8");
+const adminSecurityMigrationSource = readFileSync(new URL("../migrations/0002_admin_login_challenge.sql", import.meta.url), "utf8");
+const emailVerificationMigrationSource = readFileSync(new URL("../migrations/0003_email_verification.sql", import.meta.url), "utf8");
+const auditMigrationSource = readFileSync(new URL("../migrations/0004_audit_events.sql", import.meta.url), "utf8");
 for (const table of ["User", "BookProject", "BookChapter", "BookInterview", "Session", "RegistrationNotification"]) {
   if (!workerSource.includes(`INSERT INTO "${table}"`)) throw new Error(`Cloudflare D1: scrittura persistente ${table} non trovata`);
 }
 if (!migrationSource.includes('CREATE TABLE IF NOT EXISTS "RegistrationNotification"') || !workerSource.includes("retryRegistrationNotifications") || !workerSource.includes("async scheduled")) throw new Error("Registrazione: tracciamento D1 o ritento automatico della notifica incompleto");
+if (!adminSecurityMigrationSource.includes('CREATE TABLE IF NOT EXISTS "AdminLoginChallenge"') || !workerSource.includes("startAdminLoginChallenge") || !workerSource.includes("verifyAdminLogin")) throw new Error("Amministrazione: migrazione o secondo fattore email incompleto");
+if (!emailVerificationMigrationSource.includes('ALTER TABLE "User" ADD COLUMN "emailVerifiedAt"') || !emailVerificationMigrationSource.includes('CREATE TABLE IF NOT EXISTS "EmailVerification"') || !workerSource.includes("sendWelcomeVerificationEmail") || !workerSource.includes("museActionPath")) throw new Error("Registrazione: verifica email, benvenuto o blocco della Musa incompleti");
+if (!auditMigrationSource.includes('CREATE TABLE IF NOT EXISTS "AuditEvent"') || !auditMigrationSource.includes('"actorHash"') || !auditMigrationSource.includes('"targetHash"') || !workerSource.includes("recordAuditEvent") || !workerSource.includes("pruneAuditEvents")) throw new Error("Audit: migrazione, minimizzazione o scadenza automatica incomplete");
 if (!migrationSource.includes('"sourceMaterial" TEXT NOT NULL DEFAULT') || !workerSource.includes("hasRepeatedPassages") || !workerSource.includes("italianGrammarIssues") || !workerSource.includes("ITALIAN_LANGUAGE_STANDARD") || !workerSource.includes("MUSE_WRITER_SYSTEM") || !workerSource.includes("MUSE_EDITOR_SYSTEM") || !workerSource.includes("@cf/meta/llama-3.3-70b-instruct-fp8-fast")) throw new Error("Muse: fonti, modello letterario o controllo qualità automatico incompleti");
 const fetchHandlerSource = workerSource.slice(workerSource.indexOf("async fetch(request, env)"), workerSource.indexOf("async email(message, env)"));
 if (/ensureSchema|ensureRegistrationNotificationSchema|ensureColumn/.test(fetchHandlerSource) || /async function ensureSchema|async function ensureColumn/.test(workerSource)) throw new Error("Prestazioni: controlli o modifiche dello schema D1 ancora eseguiti dal Worker");
@@ -146,13 +160,14 @@ console.log("/persistenza: utenti, libri, capitoli, interviste e sessioni su Clo
 const pricingResponse = await worker.fetch(new Request("https://www.splendoria.vip/?formula=complete"), env);
 const pricingHtml = await pricingResponse.text();
 if (!pricingHtml.includes("Digital") || !pricingHtml.includes("Premium") || !pricingHtml.includes("Signature")) throw new Error("Listino: formule mancanti");
-if (!pricingHtml.includes("1.000 €") || !pricingHtml.includes("1.500 €") || !pricingHtml.includes("2.500 €") || !pricingHtml.includes("10 copie cartacee")) throw new Error("Listino: prezzi o contenuti principali non validi");
+if (!pricingHtml.includes("1.000 €") || !pricingHtml.includes("1.900 €") || !pricingHtml.includes("2.500 €") || !pricingHtml.includes("10 copie cartacee")) throw new Error("Listino: prezzi o contenuti principali non validi");
 if (!pricingHtml.includes("Sempre incluso in ogni percorso") || !pricingHtml.includes("Primo capitolo gratuito, Studio di scrittura riservato") || !pricingHtml.includes("PDF A5 pronto per la stampa")) throw new Error("Listino: fascia dei servizi sempre inclusi incompleta");
 if (!pricingHtml.includes("Percorso intimo") || !pricingHtml.includes("Percorso approfondito") || !pricingHtml.includes("Edizione su misura") || !pricingHtml.includes("Il più scelto")) throw new Error("Listino: posizionamento dei tre percorsi incompleto");
 if (!pricingHtml.includes("PDF editoriale A5 pronto per la lettura e per la stampa") || !pricingHtml.includes("Maggiore profondità narrativa e attenzione alla voce dell’autore") || !pricingHtml.includes("10 copie rilegate con finiture definite nel progetto")) throw new Error("Listino: promesse distintive delle formule incomplete");
 if ((pricingHtml.match(/Crea gratuitamente il primo capitolo/g) || []).length !== 2 || !pricingHtml.includes("Raccontaci il tuo progetto")) throw new Error("Listino: inviti all’azione non coerenti con il percorso gratuito e Signature");
 if (!pricingHtml.includes("può essere concordato un accompagnamento editoriale della Scuola Holden, con proposta separata")) throw new Error("Listino: precisazione Scuola Holden incompleta");
-if (!pricingHtml.includes('<option value="complete" selected>Splendoria Premium · 1.500 €</option>')) throw new Error("Listino: formula Premium non riportata nel configuratore");
+if (!pricingHtml.includes('<option value="complete" selected>Splendoria Premium · 1.900 €</option>')) throw new Error("Listino: formula Premium non riportata nel configuratore");
+if (pricingHtml.includes("marcatura temporale") || pricingHtml.includes("deposito digitale") || pricingHtml.includes("versione digitale revisionata e depositata") || pricingHtml.includes("ricevi subito le tue credenziali") || pricingHtml.includes("fino a sei pagine")) throw new Error("Vetrina: contiene ancora promesse non implementate o incoerenti con lo Studio");
 if (["Tonalità intima", "Tonalità giornalistica", "Tonalità epica", "Per vite d’inchiesta", "Organizzazione di fotografie e documenti", "Supervisione umana e PDF editoriale"].some(text => pricingHtml.includes(text))) throw new Error("Listino: una o più formulazioni precedenti sono ancora pubblicate");
 if (pricingHtml.includes("Hybrid") || pricingHtml.includes("Premium Short Book") || pricingHtml.includes("Personal Branding &amp; Corporate")) throw new Error("Listino: denominazioni precedenti ancora presenti");
 if (pricingHtml.includes("prime 5 copie") || pricingHtml.includes("consegna entro 10 giorni")) throw new Error("Listino: promesse della precedente offerta ancora presenti");
@@ -164,7 +179,7 @@ if (!pricingHtml.includes('data-cookie-banner') || !pricingHtml.includes("Ho cap
 console.log("/formule: listino coerente e selezione Assessment disponibili");
 
 const legalChecks = [
-  ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)", "infrastruttura Splendoria", "Diritti dell’interessato"]],
+  ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)", "infrastruttura Splendoria", "Diritti dell’interessato", "esportare in formato leggibile", "profilo anonimizzato"]],
   ["/cookie-policy", ["Via Settala 22–24, Milano (MI)", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v1", "non installa cookie pubblicitari"]],
   ["/termini-condizioni", ["Diritto di recesso", "Termini e condizioni", "conferma scritta di Splendoria"]],
   ["/note-legali", ["Note legali", "Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)"]],
@@ -177,7 +192,7 @@ for (const [path, expected] of legalChecks) {
 }
 const registrationResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati"), env);
 const registrationHtml = await registrationResponse.text();
-if (!registrationHtml.includes('name="privacyRead"') || !registrationHtml.includes('href="/privacy-policy"') || !registrationHtml.includes('name="passwordConfirm"') || !registrationHtml.includes('data-password-visibility') || !registrationHtml.includes("almeno 10 caratteri")) throw new Error("Registrazione: conferma, visibilità password o presa visione Privacy mancanti");
+if (!registrationHtml.includes('name="privacyRead"') || !registrationHtml.includes('href="/privacy-policy"') || !registrationHtml.includes('name="passwordConfirm"') || !registrationHtml.includes('name="nome" type="text"') || !registrationHtml.includes('data-password-visibility') || !registrationHtml.includes('type="submit"') || !registrationHtml.includes("almeno 10 caratteri")) throw new Error("Registrazione: campi, conferma, visibilità password o presa visione Privacy mancanti");
 console.log("/informative: pagine, footer e prese visione legali disponibili");
 
 const studioJs = await worker.fetch(new Request("https://www.splendoria.vip/assets/studio.js"), env);
@@ -196,12 +211,14 @@ for (const repeatedBrowserResult of [spokenOnce, spokenOnce, spokenOnce]) merged
 if (mergedSpeech !== spokenOnce) throw new Error("Muse: lo stesso risultato vocale viene ancora scritto più volte");
 const cumulativeSpeech = mergeRecognitionText("Mi chiamo Raoul", "Mi chiamo Raoul e vivo a Milano");
 if (cumulativeSpeech !== spokenOnce || mergeRecognitionText(cumulativeSpeech, "vivo a Milano") !== spokenOnce) throw new Error("Muse: i risultati vocali cumulativi o sovrapposti vengono duplicati");
-if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1") || !studioJsBody.includes("La Musa scrive e rilegge…") || !studioJsBody.includes("data-chapter-notice")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
+if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1") || !studioJsBody.includes("data-chapter-notice")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
+if (!workerSource.includes('data-muse-progress role="status"') || !studioJsBody.includes("museActionPathname") || !studioJsBody.includes("beginMuseProgress") || !studioJsBody.includes("Controlla grammatica, sintassi e fluidità") || !studioJsBody.includes("event.defaultPrevented") || !studioJsBody.includes("data-muse-was-disabled")) throw new Error("Muse: avanzamento accessibile o protezione dai doppi invii incompleti");
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
 if (!studioJsBody.includes("data-legacy-range") || !studioJsBody.includes("data-editorial-assessment") || !studioJsBody.includes("renderAssessment") || !studioJsBody.includes("Indice editoriale orientativo")) throw new Error("Asset JavaScript: slider o generazione della Scheda Tecnica mancanti");
 if (!studioJsBody.includes("paginateLiveChapter") || !studioJsBody.includes("livePageForCursor") || !studioJsBody.includes("data-live-chapter") || !studioJsBody.includes("data-live-content") || !studioJsBody.includes("renderLiveChapter(true)")) throw new Error("Studio: anteprima del capitolo non si aggiorna in tempo reale");
 if (!studioJsBody.includes("muse-horizontal") || !studioJsBody.includes("chapter-navigator") || !studioJsBody.includes("renderActiveChapter") || !studioJsBody.includes("Salva e passa al capitolo successivo") || !studioJsBody.includes("Altri interventi editoriali")) throw new Error("Studio: Musa orizzontale, capitolo singolo o navigazione editoriale non disponibili");
 if (!studioJsBody.includes("/autosalva") || !studioJsBody.includes("Le tue parole sono al sicuro") || !studioJsBody.includes("Sto custodendo le tue parole") || !studioJsBody.includes("8000")) throw new Error("Studio: salvataggio automatico del capitolo non disponibile");
+if (!studioJsBody.includes("/autosalva-progetto") || !studioJsBody.includes("Ricordi al sicuro") || !studioJsBody.includes("project-save-status") || !studioJsBody.includes("6000")) throw new Error("Studio: salvataggio automatico dei ricordi iniziali non disponibile");
 const livePreviewHelperStart = studioJsBody.indexOf("const livePreviewWordsPerPage =");
 const livePreviewHelperEnd = studioJsBody.indexOf("document.querySelectorAll('[data-live-chapter]')", livePreviewHelperStart);
 if (livePreviewHelperStart < 0 || livePreviewHelperEnd < 0) throw new Error("Studio: paginatore dell’anteprima A5 non trovato");
@@ -211,10 +228,11 @@ if (livePreviewPages.length !== 3 || livePreviewPages.flatMap(page => page.join(
 console.log("/assets/studio.js: dettatura, slider, Assessment e animazioni accessibili disponibili");
 
 const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente Muse" };
+const groundedChapterMaterial = Array.from({ length: 60 }, (_, sentenceIndex) => Array.from({ length: 25 }, (_, wordIndex) => `dato${sentenceIndex * 25 + wordIndex + 1}`).join(" ") + ".").join(" ");
 const museProject = {
   id: "libro-muse", userId: museUser.id, title: "La mia storia", genre: "Autobiografia",
   tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: 100,
-  sourceMaterial: "Nel 1987 vivevo a Milano con mia nonna Anna, in via Verdi.",
+  sourceMaterial: `Nel 1987 vivevo a Milano con mia nonna Anna, in via Verdi. ${groundedChapterMaterial}`,
   story: "Sono nato a Milano e ricordo la casa di mia nonna Anna.", people: "Mia nonna Anna", events: "Le estati trascorse nella sua casa", message: "Custodire i ricordi di famiglia", status: "bozza", plan: "free"
 };
 const museChapter = { id: "capitolo-muse", projectId: museProject.id, position: 1, title: "Il primo ricordo", content: "Un capitolo già iniziato.", status: "generato" };
@@ -372,18 +390,19 @@ const sparseDb = {
   async batch(statements) { const results=[]; for(const statement of statements)results.push(await statement.run()); return results; }
 };
 const sparseDraft = "L'incontro con il gusto unico delle bollicine Ferrari Trento ha rafforzato il mio legame con la tradizione e la cultura italiana. In quel gusto riconosco un sapere che appartiene a una storia condivisa: per questo mi sento parte di qualcosa di più grande, capace di unire memoria, territorio e cultura.";
+let sparseAnswerAiCalls = 0;
 const sparseAnswerResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-ferrari/risposte/affidati", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
   body: new URLSearchParams({ generateAnswer: "0", answer_0: "" })
-}), { ...env, DB: sparseDb, AI: { async run(_model, options) {
-  return { response: options.messages?.[0]?.content?.includes("controllo qualità editoriale") ? "APPROVATO" : sparseDraft };
-} } });
-if (sparseAnswerResponse.status !== 303 || !sparseInterview.answers.includes("Ferrari Trento") || !sparseInterview.answers.includes("qualcosa di più grande")) throw new Error("Muse: la domanda non viene usata come fonte e il campo resta vuoto quando mancano altri materiali");
+}), { ...env, DB: sparseDb, AI: { async run() { sparseAnswerAiCalls += 1; return { response: sparseDraft }; } } });
+const sparseAnswerHtml = await sparseAnswerResponse.text();
+if (sparseAnswerResponse.status !== 200 || sparseAnswerAiCalls !== 0 || sparseInterview.answers || !sparseAnswerHtml.includes("La domanda orienta l’intervista") || !sparseAnswerHtml.includes("non può essere usata come fonte")) throw new Error("Muse: una domanda con premesse non confermate viene ancora trasformata in una falsa risposta autobiografica");
 const sparseEditorResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-ferrari", { headers: { cookie: "spl_session=test" } }), { ...env, DB: sparseDb });
 const sparseEditorHtml = await sparseEditorResponse.text();
 if (sparseEditorResponse.status !== 200 || !sparseEditorHtml.includes('id="interview-0"') || !sparseEditorHtml.includes("qualcosa di più grande")) throw new Error("Muse: la risposta generata viene salvata ma non ricompare nel campo corrispondente");
 let recoveryCalls = 0;
+sparseProject.sourceMaterial = "Ferrari Trento è un vino che ho assaggiato durante una degustazione reale. In quell’occasione ho pensato alla tradizione italiana e al valore della cultura condivisa con le persone presenti.";
 const safeRescueDraft = "Il gusto delle bollicine Ferrari Trento mi avvicina alla tradizione e alla cultura italiana. Vi riconosco un legame con una storia condivisa, e proprio questo legame mi fa sentire parte di qualcosa di più grande.";
 const rescuedAnswerResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-ferrari/risposte/affidati", {
   method: "POST",
@@ -403,6 +422,7 @@ const allAnswersResponse = await worker.fetch(new Request("https://www.splendori
 const generatedInterview = museInterviewUpdates[museInterviewUpdates.length - 1]?.[0] || "";
 if (allAnswersResponse.status !== 303 || allAnswersResponse.headers.get("location") !== "/libro/libro-muse#intervista-narrativa" || !generatedInterview.includes("Domanda 1:") || !generatedInterview.includes("Domanda 2:") || !generatedInterview.includes("custodire i ricordi di famiglia")) throw new Error("Muse: Affida queste risposte alla Musa non genera tutte le basi pertinenti dell'intervista");
 let chapterGenerationCalls = 0;
+const longMuseChapterDraft = `${groundedChapterMaterial} Le estati trascorse nella casa di mia nonna Anna, a Milano, sono il centro di questo ricordo. In quella casa imparavo a custodire la memoria della nostra famiglia. Ripensando a quel periodo, comprendo che la presenza di Anna ha dato continuità alle mie radici e ha reso quei ricordi parte del messaggio che desidero lasciare alla mia famiglia.`;
 const chapterDraftResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/capitolo/capitolo-muse/genera", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
@@ -410,7 +430,7 @@ const chapterDraftResponse = await worker.fetch(new Request("https://www.splendo
 }), { ...env, DB: museDb, AI: { async run(_model, options) {
   chapterGenerationCalls += 1;
   if (chapterGenerationCalls === 1) return { response: "La casa di mia nonna Anna a Milano custodiva la memoria della famiglia. Il ricordo non trova ancora una forma. La casa di mia nonna Anna a Milano custodiva la memoria della famiglia." };
-  return { response: "Le estati trascorse nella casa di mia nonna Anna, a Milano, sono il centro di questo ricordo. In quella casa imparavo a custodire la memoria della nostra famiglia. Ripensando a quel periodo, comprendo che la presenza di Anna ha dato continuità alle mie radici e ha reso quei ricordi parte del messaggio che desidero lasciare alla mia famiglia." };
+  return { response: longMuseChapterDraft };
 } } });
 const regeneratedChapter = [...museChapterUpdates].reverse().find(values => values[2] === "generato");
 if (chapterDraftResponse.status !== 303 || chapterGenerationCalls !== 2 || !regeneratedChapter?.[1]?.includes("Le estati trascorse") || (regeneratedChapter?.[1]?.match(/custodiva la memoria/g) || []).length) throw new Error("Muse: il capitolo ripetitivo non viene scartato e rigenerato automaticamente");
@@ -418,13 +438,15 @@ const outlineResponse = await worker.fetch(new Request("https://www.splendoria.v
 if (outlineResponse.status !== 303 || !museBatches.includes(14)) throw new Error("Muse: struttura da 12 capitoli non generata integralmente");
 console.log("/libro/libro-muse: sezione Muse e selettore trilingue disponibili");
 
-const trialUser = { id: "cliente-prova", email: "prova@example.com", nome: "Cliente Prova", createdAt: "2026-08-10T09:00:00.000Z" };
+const activeTrialCreatedAt = new Date(Date.now() - 2 * 86400000).toISOString();
+const trialUser = { id: "cliente-prova", email: "prova@example.com", nome: "Cliente Prova", createdAt: activeTrialCreatedAt };
 const trialProject = { ...museProject, id: "libro-prova", userId: trialUser.id, title: "Il libro della prova", targetPages: 84, createdAt: trialUser.createdAt, plan: "free" };
 const trialChapters = [
   { id: "capitolo-prova-1", projectId: trialProject.id, position: 1, title: "La prima soglia", content: "CONTENUTO VISIBILE DEL PRIMO CAPITOLO", status: "generato" },
   { id: "capitolo-prova-2", projectId: trialProject.id, position: 2, title: "La seconda soglia", content: "CONTENUTO RISERVATO DEL SECONDO CAPITOLO", status: "generato" }
 ];
 let trialCommercialState = "prova_gratuita";
+let trialUsage = 0;
 const trialChapterUpdates = [];
 const trialDb = {
   prepare(sql) {
@@ -447,7 +469,7 @@ const trialDb = {
         if (sql.includes('SELECT statoCommerciale FROM "BookProjectAdmin"')) return { statoCommerciale: trialCommercialState };
         if (sql.includes('FROM "BookChapter"')) return trialChapters.find(chapter => chapter.id === this.values[0]) || null;
         if (sql.includes('FROM "BookInterview"')) return null;
-        if (sql.includes('FROM "AiUsage"')) return { requests: 0 };
+        if (sql.includes('FROM "AiUsage"')) return { requests: trialUsage };
         return null;
       }
     };
@@ -457,23 +479,56 @@ const trialDb = {
 const trialEditorResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
 const trialEditorHtml = await trialEditorResponse.text();
 if (trialEditorResponse.status !== 200 || !trialEditorHtml.includes('id="chapter-card-capitolo-prova-1"') || !trialEditorHtml.includes("CONTENUTO VISIBILE DEL PRIMO CAPITOLO") || !trialEditorHtml.includes('id="chapter-lock-capitolo-prova-2"') || !trialEditorHtml.includes("La seconda soglia") || trialEditorHtml.includes("CONTENUTO RISERVATO DEL SECONDO CAPITOLO") || !trialEditorHtml.includes('data-total-chapters="2"')) throw new Error("Prova gratuita: il primo capitolo non è operativo o il secondo espone contenuti riservati");
+if (!trialEditorHtml.includes("Percorso guidato") || !trialEditorHtml.includes("passi completati") || !trialEditorHtml.includes('href="/guida"')) throw new Error("Onboarding: lista dinamica o collegamento al manuale assenti dal libro");
+const projectAutosaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/autosalva-progetto", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/json" }, body: JSON.stringify({ title: "Il libro della prova", tone: trialProject.tone, audience: trialProject.audience, targetPages: 84, sourceMaterial: trialProject.sourceMaterial, story: trialProject.story, people: trialProject.people, events: trialProject.events, message: trialProject.message, specialDataConsent: true }) }), { ...env, DB: trialDb });
+const projectAutosaveResult = await projectAutosaveResponse.json();
+if (projectAutosaveResponse.status !== 200 || !projectAutosaveResult.ok || !projectAutosaveResult.savedAt) throw new Error("Studio: autosalvataggio dei dati iniziali non operativo");
 for (const required of ["Prova gratuita di 14 giorni", "Raoul Ragazzi Fisar", "IT05Z0538758590000049304579", "BPER Filiale Merano", "Pagato", "Gratuito"]) if (!trialEditorHtml.includes(required)) throw new Error(`Prova gratuita: informazione riservata mancante (${required})`);
 let trialMuseCalls = 0;
 const trialMuseSystems = [];
 const trialMuseModels = [];
-const trialChapterDraft = "Ogni estate tornavo nella casa di mia nonna Anna, a Milano. Quelle stanze accompagnavano la mia infanzia e davano forma al legame con la nostra famiglia. In quel tempo imparavo che custodire un ricordo significa conservarne il valore senza sottrarlo alla vita. Oggi ripenso a quelle estati come alla prima soglia della mia storia, perché da lì nasce il messaggio che desidero lasciare alla mia famiglia.";
+const trialChapterDraft = `Capitolo 1: La prima soglia\n\n${groundedChapterMaterial} Ogni estate tornavo nella casa di mia nonna Anna, a Milano. Quelle stanze accompagnavano la mia infanzia e davano forma al legame con la nostra famiglia. In quel tempo imparavo che custodire un ricordo significa conservarne il valore senza sottrarlo alla vita. Oggi ripenso a quelle estati come alla prima soglia della mia storia, perché da lì nasce il messaggio che desidero lasciare alla mia famiglia.`;
 const trialFirstChapterResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: "" }) }), { ...env, DB: trialDb, AI: { async run(model, options) { trialMuseCalls += 1; trialMuseModels.push(model); trialMuseSystems.push(options.messages?.[0]?.content || ""); return { response: trialChapterDraft }; } } });
 const trialGeneratedChapter = [...trialChapterUpdates].reverse().find(values => values[2] === "generato");
 const writerProfile = trialMuseSystems[0]?.toLocaleLowerCase("it-IT") || "";
 const editorProfile = trialMuseSystems[1]?.toLocaleLowerCase("it-IT") || "";
-if (trialFirstChapterResponse.status !== 303 || trialFirstChapterResponse.headers.get("location") !== "/libro/libro-prova#chapter-card-capitolo-prova-1" || trialMuseCalls !== 2 || !trialGeneratedChapter?.[1]?.includes("prima soglia della mia storia")) throw new Error("Prova gratuita: la Musa non genera e salva il primo capitolo con due sole chiamate IA");
+if (trialFirstChapterResponse.status !== 303 || trialFirstChapterResponse.headers.get("location") !== "/libro/libro-prova#chapter-card-capitolo-prova-1" || trialMuseCalls !== 2 || !trialGeneratedChapter?.[1]?.includes("prima soglia della mia storia") || trialGeneratedChapter?.[1]?.startsWith("Capitolo 1") || trialGeneratedChapter?.[1]?.split(/\s+/).length < 1200) throw new Error("Prova gratuita: la Musa non genera un capitolo completo o lascia il titolo duplicato nel corpo");
 if (trialMuseModels.some(model => model !== "@cf/meta/llama-3.3-70b-instruct-fp8-fast") || !writerProfile.includes("formazione universitaria") || !writerProfile.includes("grammaticalmente rigorosa") || !writerProfile.includes("sintatticamente compiuta") || !writerProfile.includes("fluida") || !writerProfile.includes("siamo usciti") || !writerProfile.includes("mai «abbiamo uscito»") || !writerProfile.includes("due riletture") || !writerProfile.includes("non imitare") || !editorProfile.includes("revisore letterario finale") || !editorProfile.includes("reggenze") || !editorProfile.includes("siamo andati")) throw new Error("Muse: profilo letterario, modello 70B o rilettura grammaticale finale non applicati al primo capitolo");
+const richTrialSources = { sourceMaterial: trialProject.sourceMaterial, story: trialProject.story, people: trialProject.people, events: trialProject.events, message: trialProject.message };
+Object.assign(trialProject,{sourceMaterial:"Nel 1987 vivevo in una casa sul lago.",story:"Ricordo quell’estate.",people:"Mia nonna.",events:"Una passeggiata.",message:"Custodire la memoria."});
+let insufficientSourceAiCalls = 0;
+const insufficientSourceResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: "" }) }), { ...env, DB: trialDb, AI: { async run() { insufficientSourceAiCalls += 1; return { response: trialChapterDraft }; } } });
+const insufficientSourceHtml = await insufficientSourceResponse.text();
+if (insufficientSourceResponse.status !== 200 || insufficientSourceAiCalls !== 0 || !insufficientSourceHtml.includes("Per scrivere un capitolo completo senza inventare") || !insufficientSourceHtml.includes("Dammi altri dati e fatti") || !insufficientSourceHtml.includes("completa l’intervista")) throw new Error("Muse: tenta ancora di riempire un capitolo quando le fonti dell’autore sono insufficienti");
+Object.assign(trialProject,richTrialSources);
+const updatesBeforeShortDraft = trialChapterUpdates.length;
+let shortDraftCalls = 0;
+const shortGroundedDraft = groundedChapterMaterial.split(/\s+/).slice(0,350).join(" ");
+const shortDraftResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: "" }) }), { ...env, DB: trialDb, AI: { async run() { shortDraftCalls += 1; return { response: shortGroundedDraft }; } } });
+const shortDraftHtml = await shortDraftResponse.text();
+if (shortDraftResponse.status !== 200 || shortDraftCalls !== 2 || trialChapterUpdates.length !== updatesBeforeShortDraft || !shortDraftHtml.includes("La bozza è stata respinta perché troppo breve") || !shortDraftHtml.includes("Nessun testo è stato sostituito")) throw new Error("Muse: un capitolo molto più corto dell’obiettivo viene ancora salvato");
+const updatesBeforeUnsupportedFact = trialChapterUpdates.length;
+let unsupportedFactCalls = 0;
+const unsupportedFactDraft = `${groundedChapterMaterial} Nel laboratorio di Venezia trovavo ogni mattina una vecchia macchina da scrivere.`;
+const unsupportedFactResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: "" }) }), { ...env, DB: trialDb, AI: { async run() { unsupportedFactCalls += 1; return { response: unsupportedFactDraft }; } } });
+const unsupportedFactHtml = await unsupportedFactResponse.text();
+if (unsupportedFactResponse.status !== 200 || unsupportedFactCalls !== 2 || trialChapterUpdates.length !== updatesBeforeUnsupportedFact || !unsupportedFactHtml.includes("non pienamente verificabile sulle fonti")) throw new Error("Muse: un luogo o fatto concreto assente dalle fonti supera ancora il controllo finale");
 let auxiliaryGuardCalls = 0;
-const wrongAuxiliaryDraft = "Ogni estate abbiamo uscito dalla casa di mia nonna Anna, a Milano. Quelle giornate accompagnavano la mia infanzia e davano forma al legame con la nostra famiglia. In quel tempo imparavo che custodire un ricordo significa conservarne il valore senza sottrarlo alla vita. Oggi ripenso a quelle estati come alla prima soglia della mia storia, perché da lì nasce il messaggio che desidero lasciare alla mia famiglia.";
-const correctedAuxiliaryDraft = "Ogni estate siamo usciti dalla casa di mia nonna Anna, a Milano. Quelle giornate accompagnavano la mia infanzia e davano forma al legame con la nostra famiglia. In quel tempo imparavo che custodire un ricordo significa conservarne il valore senza sottrarlo alla vita. Oggi ripenso a quelle estati come alla prima soglia della mia storia, perché da lì nasce il messaggio che desidero lasciare alla mia famiglia.";
+const wrongAuxiliaryDraft = `${groundedChapterMaterial} Ogni estate abbiamo uscito dalla casa di mia nonna Anna, a Milano. Quelle giornate accompagnavano la mia infanzia e davano forma al legame con la nostra famiglia. In quel tempo imparavo che custodire un ricordo significa conservarne il valore senza sottrarlo alla vita. Oggi ripenso a quelle estati come alla prima soglia della mia storia, perché da lì nasce il messaggio che desidero lasciare alla mia famiglia.`;
+const correctedAuxiliaryDraft = `${groundedChapterMaterial} Ogni estate siamo usciti dalla casa di mia nonna Anna, a Milano. Quelle giornate accompagnavano la mia infanzia e davano forma al legame con la nostra famiglia. In quel tempo imparavo che custodire un ricordo significa conservarne il valore senza sottrarlo alla vita. Oggi ripenso a quelle estati come alla prima soglia della mia storia, perché da lì nasce il messaggio che desidero lasciare alla mia famiglia.`;
 const auxiliaryGuardResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: "" }) }), { ...env, DB: trialDb, AI: { async run() { auxiliaryGuardCalls += 1; return { response: auxiliaryGuardCalls === 1 ? wrongAuxiliaryDraft : correctedAuxiliaryDraft }; } } });
 const grammarCheckedChapter = [...trialChapterUpdates].reverse().find(values => values[2] === "generato");
 if (auxiliaryGuardResponse.status !== 303 || auxiliaryGuardCalls !== 2 || !grammarCheckedChapter?.[1]?.includes("siamo usciti") || grammarCheckedChapter?.[1]?.includes("abbiamo uscito")) throw new Error("Muse: un errore grave nell'uso dell'ausiliare non viene respinto e corretto prima del salvataggio");
+const wrongAuxiliarySource = "Nel 1987 abbiamo uscito dalla casa sul lago e abbiamo andato al pontile con nonno Carlo. Il giorno seguente abbiamo ritornato insieme e abbiamo rimasto in silenzio davanti alla vecchia barca.";
+const correctedAuxiliarySource = "Nel 1987 siamo usciti dalla casa sul lago e siamo andati al pontile con nonno Carlo. Il giorno seguente siamo ritornati insieme e siamo rimasti in silenzio davanti alla vecchia barca.";
+const grammarRevisionResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/rifinisci", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: wrongAuxiliarySource, action: "grammar" }) }), { ...env, DB: trialDb, AI: { async run() { return { response: correctedAuxiliarySource }; } } });
+const appliedGrammarRevision = [...trialChapterUpdates].reverse().find(values => values[2] === "revisionato_grammar");
+if (grammarRevisionResponse.status !== 303 || !appliedGrammarRevision?.[1]?.includes("siamo usciti") || !appliedGrammarRevision?.[1]?.includes("siamo andati") || !appliedGrammarRevision?.[1]?.includes("siamo rimasti") || appliedGrammarRevision?.[1]?.includes("abbiamo uscito")) throw new Error("Correggi grammatica: le correzioni multiple degli ausiliari vengono respinte dal controllo di fedeltà");
+trialChapters[0].status = "revisione_non_applicata";
+const rejectedRevisionNoticeResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
+const rejectedRevisionNoticeHtml = await rejectedRevisionNoticeResponse.text();
+if (!rejectedRevisionNoticeHtml.includes("La revisione non è stata applicata") || !rejectedRevisionNoticeHtml.includes("Il testo originale è rimasto intatto")) throw new Error("Correggi grammatica: il rifiuto di una revisione resta silenzioso");
+trialChapters[0].status = "generato";
 const blockedSaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-2/salva", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "Titolo forzato", content: "Testo forzato" }) }), { ...env, DB: trialDb });
 const blockedSaveHtml = await blockedSaveResponse.text();
 const blockedCardHtml = blockedSaveHtml.match(/<article class="card chapter-lock-card" id="chapter-lock-capitolo-prova-2">([\s\S]*?)<\/article>/)?.[1] || "";
@@ -488,6 +543,23 @@ if (blockedGenerateResponse.status !== 200 || blockedRefineResponse.status !== 2
 const trialPreviewResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/anteprima", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
 const trialPreviewHtml = await trialPreviewResponse.text();
 if (trialPreviewResponse.status !== 200 || !trialPreviewHtml.includes("CONTENUTO VISIBILE DEL PRIMO CAPITOLO") || trialPreviewHtml.includes("CONTENUTO RISERVATO DEL SECONDO CAPITOLO") || trialPreviewHtml.includes("La seconda soglia")) throw new Error("Prova gratuita: il PDF cliente include capitoli bloccati");
+trialProject.createdAt = new Date(Date.now() - 16 * 86400000).toISOString();
+const expiredTrialResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
+const expiredTrialHtml = await expiredTrialResponse.text();
+if (expiredTrialResponse.status !== 200 || !expiredTrialHtml.includes("Prova gratuita conclusa") || !expiredTrialHtml.includes('id="chapter-lock-capitolo-prova-1"') || !expiredTrialHtml.includes('id="chapter-lock-capitolo-prova-2"') || expiredTrialHtml.includes("CONTENUTO VISIBILE DEL PRIMO CAPITOLO") || expiredTrialHtml.includes("CONTENUTO RISERVATO DEL SECONDO CAPITOLO")) throw new Error("Prova gratuita: la scadenza di 14 giorni non blocca integralmente il progetto");
+let expiredTrialAiCalls = 0;
+const expiredTrialGeneration = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: "" }) }), { ...env, DB: trialDb, AI: { async run() { expiredTrialAiCalls += 1; return { response: trialChapterDraft }; } } });
+if (expiredTrialGeneration.status !== 200 || expiredTrialAiCalls !== 0) throw new Error("Prova gratuita: una chiamata diretta usa ancora la Musa dopo la scadenza");
+const expiredTrialPreview = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/anteprima", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
+const expiredTrialPreviewHtml = await expiredTrialPreview.text();
+if (expiredTrialPreview.status !== 200 || expiredTrialPreviewHtml.includes("CONTENUTO VISIBILE DEL PRIMO CAPITOLO") || expiredTrialPreviewHtml.includes("CONTENUTO RISERVATO DEL SECONDO CAPITOLO")) throw new Error("Prova gratuita: l’anteprima espone ancora i capitoli dopo la scadenza");
+trialProject.createdAt = activeTrialCreatedAt;
+trialUsage = 3;
+let exhaustedTrialAiCalls = 0;
+const exhaustedTrialGeneration = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: "" }) }), { ...env, DB: trialDb, AI: { async run() { exhaustedTrialAiCalls += 1; return { response: trialChapterDraft }; } } });
+const exhaustedTrialHtml = await exhaustedTrialGeneration.text();
+if (exhaustedTrialGeneration.status !== 200 || exhaustedTrialAiCalls !== 0 || !exhaustedTrialHtml.includes("tre generazioni gratuite disponibili per l’account")) throw new Error("Prova gratuita: il limite complessivo di generazioni IA non viene applicato");
+trialUsage = 0;
 for (const unlockedState of ["pagato", "gratuito"]) {
   trialCommercialState = unlockedState;
   const unlockedResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova", { headers: { cookie: "spl_session=test" } }), { ...env, DB: trialDb });
@@ -496,13 +568,17 @@ for (const unlockedState of ["pagato", "gratuito"]) {
 }
 trialCommercialState = "prova_gratuita";
 let newBookBatch = [];
+let existingProjectCount = 0;
 const newBookDb = {
-  prepare(sql) { return { sql, values: [], bind(...values) { this.values = values; return this; }, async run() { return { success: true }; }, async all() { return { results: [] }; }, async first() { if (sql.includes('FROM "Session" s JOIN "User" u')) return trialUser; return null; } }; },
+  prepare(sql) { return { sql, values: [], bind(...values) { this.values = values; return this; }, async run() { return { success: true }; }, async all() { return { results: [] }; }, async first() { if (sql.includes('FROM "Session" s JOIN "User" u')) return trialUser; if (sql.includes('SELECT COUNT(*) total FROM "BookProject"')) return { total: existingProjectCount }; return null; } }; },
   async batch(statements) { newBookBatch = statements; return statements.map(() => ({ success: true })); }
 };
 const newBookResponse = await worker.fetch(new Request("https://www.splendoria.vip/nuovo-libro", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "Il mio primo libro", genre: "Autobiografia", targetPages: "84" }) }), { ...env, DB: newBookDb });
 if (newBookResponse.status !== 303 || newBookBatch.length !== 2 || !newBookBatch[1].sql.includes('INSERT INTO "BookProjectAdmin"') || newBookBatch[1].values[3] !== "prova_gratuita") throw new Error("Nuovo libro: progetto e stato di prova gratuita non vengono creati atomicamente");
-console.log("/prova-gratuita: primo capitolo, PDF e sblocco Pagato/Gratuito verificati");
+existingProjectCount = 1;
+const secondBookResponse = await worker.fetch(new Request("https://www.splendoria.vip/nuovo-libro", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "Il mio secondo libro", genre: "Memoriale", targetPages: "84" }) }), { ...env, DB: newBookDb });
+if (secondBookResponse.status !== 303 || newBookBatch[1].values[3] !== "formula_scelta") throw new Error("Nuovo libro: lo stesso account può ancora creare più prove gratuite");
+console.log("/prova-gratuita: 14 giorni, quota totale, progetto unico, PDF e sblocco verificati");
 
 const previewUser = { id: "admin-pdf", email: "raoulragazzi@gmail.com", nome: "Raoul" };
 const previewProject = { id: "libro-pdf", userId: "cliente-pdf", title: "La mia vita", authorName: "Ulli" };
@@ -580,6 +656,7 @@ const dashboardDb = {
           { id: "cliente-dashboard", nome: "Maria", email: "maria@example.com", createdAt: "2026-08-01", books: 1, orders: 0, legacyChapters: 0, latestProjectId: "libro-dashboard", latestStatus: "bozza", chapters: 4, completedChapters: 2 },
           { id: "cliente-storico", nome: "Ulli", email: "ulli@example.com", createdAt: "2026-07-01", books: 0, orders: 1, legacyChapters: 14, legacyCompletedChapters: 7, latestProjectId: null, latestStatus: null, chapters: 0, completedChapters: 0 }
         ] };
+        if (sql.includes('FROM "AuditEvent"')) return { results: [{ action: "admin.project_state_changed", actorRole: "admin", targetType: "project", outcome: "success", metadata: JSON.stringify({ editorialState: "approvato", commercialState: "pagato" }), createdAt: "2026-08-12T10:00:00.000Z" }] };
         return { results: [] };
       },
       async first() {
@@ -593,7 +670,7 @@ const dashboardDb = {
 };
 const dashboardResponse = await worker.fetch(new Request("https://www.splendoria.vip/admin", { headers: { cookie: "spl_session=test" } }), { ...env, DB: dashboardDb });
 const dashboardHtml = await dashboardResponse.text();
-if (dashboardResponse.status !== 200 || !dashboardHtml.includes("Maria") || !dashboardHtml.includes("50% · 2/4 capitoli") || !dashboardHtml.includes("50% · 7/14") || !dashboardHtml.includes('/admin/progetto/libro-dashboard/anteprima') || !dashboardHtml.includes('/admin/cliente/cliente-storico/anteprima-storica') || !dashboardHtml.includes('/admin/cliente/cliente-storico') || (dashboardHtml.match(/Vedi PDF/g) || []).length < 4 || (dashboardHtml.match(/Gestisci e sblocca/g) || []).length < 4) throw new Error("Admin: utenti, avanzamento, PDF o controlli di sblocco non visibili");
+if (dashboardResponse.status !== 200 || !dashboardHtml.includes("Maria") || !dashboardHtml.includes("50% · 2/4 capitoli") || !dashboardHtml.includes("50% · 7/14") || !dashboardHtml.includes('/admin/progetto/libro-dashboard/anteprima') || !dashboardHtml.includes('/admin/cliente/cliente-storico/anteprima-storica') || !dashboardHtml.includes('/admin/cliente/cliente-storico') || (dashboardHtml.match(/Vedi PDF/g) || []).length < 4 || (dashboardHtml.match(/Gestisci e sblocca/g) || []).length < 4 || !dashboardHtml.includes("Registro attività critiche") || !dashboardHtml.includes("Stato progetto aggiornato") || !dashboardHtml.includes("stato commerciale: pagato") || !dashboardHtml.includes("365 giorni")) throw new Error("Admin: utenti, avanzamento, PDF, controlli di sblocco o audit non visibili");
 console.log("/admin: utenti, avanzamento, PDF e controlli di sblocco visibili");
 
 const legacyManagementState = { projectAdmin: null, orderStatus: null };
@@ -712,15 +789,31 @@ await expectRedirect("/admin/progetto/progetto-1/anteprima", { id: "cliente-1", 
 await expectRedirect("/studio", { id: "admin-1", email: "raoulragazzi@gmail.com", nome: "Admin" }, "/admin");
 
 function credentialDb(user) {
-  const state = { migratedHash: "" };
+  const state = { migratedHash: "", adminChallenges: new Map(), sessionCreated: false };
   const db = {
     prepare(sql) {
       return {
         values: [],
         bind(...values) { this.values = values; return this; },
         async run() {
+          let changes = 1;
           if (sql.startsWith('UPDATE "User" SET passwordHash=')) state.migratedHash = this.values[0];
-          return { success: true };
+          if (sql.startsWith('INSERT INTO "AdminLoginChallenge"')) {
+            const [id, userId, codeHash, expiresAt, attempts, createdAt] = this.values;
+            state.adminChallenges.set(id, { id, userId, codeHash, expiresAt, attempts, createdAt, email: user.email, usedAt: null });
+          }
+          if (sql.startsWith('DELETE FROM "AdminLoginChallenge" WHERE id=')) state.adminChallenges.delete(this.values[0]);
+          if (sql.startsWith('UPDATE "AdminLoginChallenge" SET attempts=')) {
+            const challenge = state.adminChallenges.get(this.values[0]);
+            if (challenge) challenge.attempts += 1;
+          }
+          if (sql.startsWith('UPDATE "AdminLoginChallenge" SET usedAt=')) {
+            const challenge = state.adminChallenges.get(this.values[1]);
+            if (challenge && !challenge.usedAt) challenge.usedAt = this.values[0];
+            else changes = 0;
+          }
+          if (sql.startsWith('INSERT INTO "Session"')) state.sessionCreated = true;
+          return { success: true, meta: { changes } };
         },
         async all() {
           if (sql.startsWith("PRAGMA table_info")) return { results: [{ name: "projectId" }, { name: "termsAcceptedAt" }, { name: "privacyAcceptedAt" }, { name: "specialDataConsentAt" }, { name: "deliveryStatus" }, { name: "deliveryError" }, { name: "deliveredAt" }, { name: "messageId" }] };
@@ -728,11 +821,12 @@ function credentialDb(user) {
         },
         async first() {
           if (sql.includes('SELECT * FROM "User" WHERE lower(trim(email))=')) return user;
+          if (sql.includes('FROM "AdminLoginChallenge" c JOIN "User"')) return state.adminChallenges.get(this.values[0]) || null;
           return null;
         }
       };
     },
-    async batch(statements) { return statements.map(() => ({ success: true })); }
+    async batch(statements) { const results = []; for (const statement of statements) results.push(await statement.run()); return results; }
   };
   return { db, state };
 }
@@ -750,17 +844,29 @@ const portableLogin = await worker.fetch(new Request("https://www.splendoria.vip
 if (portableLogin.status !== 303 || portableLogin.headers.get("location") !== "/studio") throw new Error("Login: email storica o variante bcrypt non accettata");
 
 const adminCredentials = credentialDb({ id: "legacy-admin", email: env.ADMIN_EMAIL, nome: "Raoul", passwordHash: await bcrypt.hash(legacyPassword, 4) });
-const adminLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore", { method: "POST", body: new URLSearchParams({ email: env.ADMIN_EMAIL, password: legacyPassword }) }), { ...env, DB: adminCredentials.db });
-if (adminLogin.status !== 303 || adminLogin.headers.get("location") !== "/admin") throw new Error("Login: account amministratore storico non accettato");
+let adminSecurityEmail = null;
+const adminLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore", { method: "POST", body: new URLSearchParams({ email: env.ADMIN_EMAIL, password: legacyPassword }) }), { ...env, DB: adminCredentials.db, CONTACT_EMAIL: { async send(message) { adminSecurityEmail = message; return { messageId: "admin-security-code" }; } } });
+const adminChallengeId = adminLogin.headers.get("location")?.match(/challenge=([^&]+)/)?.[1];
+const adminSecurityCode = adminSecurityEmail?.text?.match(/\b(\d{6})\b/)?.[1];
+if (adminLogin.status !== 303 || !adminLogin.headers.get("location")?.startsWith("/verifica-amministratore?challenge=") || !adminChallengeId || !adminSecurityCode || adminLogin.headers.get("set-cookie") || adminCredentials.state.sessionCreated) throw new Error("Login amministratore: password non seguita dalla seconda verifica email");
+const adminCodePage = await worker.fetch(new Request(`https://www.splendoria.vip/verifica-amministratore?challenge=${adminChallengeId}`), { ...env, DB: adminCredentials.db });
+if (adminCodePage.status !== 200 || !(await adminCodePage.text()).includes("codice di sei cifre")) throw new Error("Login amministratore: pagina di verifica non disponibile");
+const invalidAdminCode = adminSecurityCode === "000000" ? "111111" : "000000";
+const wrongAdminCode = await worker.fetch(new Request("https://www.splendoria.vip/verifica-amministratore", { method: "POST", body: new URLSearchParams({ challenge: adminChallengeId, code: invalidAdminCode }) }), { ...env, DB: adminCredentials.db });
+if (wrongAdminCode.status !== 200 || !(await wrongAdminCode.text()).includes("Codice non corretto")) throw new Error("Login amministratore: codice errato non rifiutato");
+const verifiedAdminLogin = await worker.fetch(new Request("https://www.splendoria.vip/verifica-amministratore", { method: "POST", body: new URLSearchParams({ challenge: adminChallengeId, code: adminSecurityCode }) }), { ...env, DB: adminCredentials.db });
+if (verifiedAdminLogin.status !== 303 || verifiedAdminLogin.headers.get("location") !== "/admin" || !verifiedAdminLogin.headers.get("set-cookie")?.includes("spl_session=") || !adminCredentials.state.sessionCreated) throw new Error("Login amministratore: codice corretto non crea la sessione protetta");
+const reusedAdminCode = await worker.fetch(new Request("https://www.splendoria.vip/verifica-amministratore", { method: "POST", body: new URLSearchParams({ challenge: adminChallengeId, code: adminSecurityCode }) }), { ...env, DB: adminCredentials.db });
+if (reusedAdminCode.status !== 200 || !(await reusedAdminCode.text()).includes("non è più valido")) throw new Error("Login amministratore: il codice monouso può essere riutilizzato");
 
 const wrongAreaCredentials = credentialDb({ id: "client-role", email: "cliente@example.com", nome: "Cliente", passwordHash: await bcrypt.hash(legacyPassword, 4) });
 const wrongAreaLogin = await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore", { method: "POST", body: new URLSearchParams({ email: "cliente@example.com", password: legacyPassword }) }), { ...env, DB: wrongAreaCredentials.db });
 const wrongAreaHtml = await wrongAreaLogin.text();
 if (wrongAreaLogin.status !== 200 || !wrongAreaHtml.includes("non è autorizzato")) throw new Error("Login: separazione dei ruoli non applicata");
-console.log("/login: account storici migrati e ruoli separati");
+console.log("/login: account storici, ruoli separati e secondo fattore amministratore verificati");
 
 function registrationDb() {
-  const state = { usersByEmail: new Map(), usersById: new Map(), sessions: new Map(), notifications: new Map(), insertedUsers: 0, registrationBatchSize: 0, passwordHash: "" };
+  const state = { usersByEmail: new Map(), usersById: new Map(), sessions: new Map(), notifications: new Map(), emailVerifications: new Map(), auditEvents: [], insertedUsers: 0, registrationBatchSize: 0, passwordHash: "", accountDeleted: false, deletedSql: [] };
   const db = {
     prepare(sql) {
       return {
@@ -769,7 +875,7 @@ function registrationDb() {
         async run() {
           if (sql.startsWith('INSERT INTO "User"')) {
             const [id, email, passwordHash, nome, privacyAcceptedAt, createdAt] = this.values;
-            const user = { id, email, passwordHash, nome, privacyAcceptedAt, createdAt };
+            const user = { id, email, passwordHash, nome, privacyAcceptedAt, createdAt, emailVerifiedAt: null };
             state.usersByEmail.set(email, user);
             state.usersById.set(id, user);
             state.insertedUsers += 1;
@@ -783,6 +889,50 @@ function registrationDb() {
             const [id, userId, nome, email, deliveryStatus, deliveryError, attempts, lastAttemptAt, acceptedAt, messageId, createdAt] = this.values;
             state.notifications.set(id, { id, userId, nome, email, deliveryStatus, deliveryError, attempts, lastAttemptAt: lastAttemptAt || "", acceptedAt, messageId, createdAt });
           }
+          if (sql.startsWith('INSERT INTO "EmailVerification"')) {
+            const [id, userId, tokenHash, expiresAt, deliveryStatus, deliveryError, createdAt] = this.values;
+            state.emailVerifications.set(id, { id, userId, tokenHash, expiresAt, deliveryStatus, deliveryError, createdAt, usedAt: null, deliveredAt: null, messageId: "" });
+          }
+          if (sql.startsWith('INSERT INTO "AuditEvent"')) state.auditEvents.push({ action: this.values[3], actorHash: this.values[1], targetHash: this.values[5], outcome: this.values[6], metadata: this.values[7] });
+          if (sql.startsWith('UPDATE "EmailVerification" SET deliveryStatus=?,deliveryError=?,deliveredAt=')) {
+            const verification = state.emailVerifications.get(this.values[4]);
+            if (verification) Object.assign(verification, { deliveryStatus: this.values[0], deliveryError: this.values[1], deliveredAt: this.values[2], messageId: this.values[3] });
+          }
+          if (sql.startsWith('UPDATE "EmailVerification" SET deliveryStatus=?,deliveryError=? WHERE id=')) {
+            const verification = state.emailVerifications.get(this.values[2]);
+            if (verification) Object.assign(verification, { deliveryStatus: this.values[0], deliveryError: this.values[1] });
+          }
+          if (sql.startsWith('UPDATE "EmailVerification" SET usedAt=')) {
+            const verification = state.emailVerifications.get(this.values[1]);
+            if (!verification || verification.usedAt) return { success: true, meta: { changes: 0 } };
+            verification.usedAt = this.values[0];
+          }
+          if (sql.startsWith('UPDATE "User" SET emailVerifiedAt=')) {
+            const account = state.usersById.get(this.values[1]);
+            if (account && !account.emailVerifiedAt) account.emailVerifiedAt = this.values[0];
+          }
+          if (sql.startsWith('UPDATE "User" SET nome=? WHERE id=')) {
+            const account = state.usersById.get(this.values[1]);
+            if (account) account.nome = this.values[0];
+          }
+          if (sql.startsWith('UPDATE "User" SET email=?,emailVerifiedAt=NULL')) {
+            const account = state.usersById.get(this.values[1]);
+            if (account) {
+              state.usersByEmail.delete(account.email);
+              account.email = this.values[0];
+              account.emailVerifiedAt = null;
+              state.usersByEmail.set(account.email, account);
+            }
+          }
+          if (sql.startsWith('UPDATE "User" SET email=?,passwordHash=?,nome=?')) {
+            const account = state.usersById.get(this.values[3]);
+            if (account) {
+              state.usersByEmail.delete(account.email);
+              Object.assign(account, { email: this.values[0], passwordHash: this.values[1], nome: this.values[2], privacyAcceptedAt: null, emailVerifiedAt: null });
+              state.usersByEmail.set(account.email, account);
+              state.accountDeleted = true;
+            }
+          }
           if (sql.startsWith(`UPDATE "RegistrationNotification" SET deliveryStatus='sending'`)) {
             const notification = state.notifications.get(this.values[1]);
             if (notification) Object.assign(notification, { deliveryStatus: "sending", attempts: Number(notification.attempts || 0) + 1, lastAttemptAt: this.values[0] });
@@ -795,7 +945,23 @@ function registrationDb() {
             const notification = state.notifications.get(this.values[2]);
             if (notification) Object.assign(notification, { deliveryStatus: this.values[0], deliveryError: this.values[1] });
           }
+          if (sql.startsWith('UPDATE "RegistrationNotification" SET nome=? WHERE userId=')) {
+            for (const notification of state.notifications.values()) if (notification.userId === this.values[1]) notification.nome = this.values[0];
+          }
+          if (sql.startsWith('UPDATE "RegistrationNotification" SET email=? WHERE userId=')) {
+            for (const notification of state.notifications.values()) if (notification.userId === this.values[1]) notification.email = this.values[0];
+          }
+          if (sql.startsWith('DELETE FROM "EmailVerification" WHERE userId=?')) {
+            for (const [id, verification] of state.emailVerifications) if (verification.userId === this.values[0] && (verification.usedAt === null || !sql.includes("usedAt IS NULL"))) state.emailVerifications.delete(id);
+          }
+          if (sql.startsWith('DELETE FROM "RegistrationNotification" WHERE userId=')) {
+            for (const [id, notification] of state.notifications) if (notification.userId === this.values[0]) state.notifications.delete(id);
+          }
           if (sql.startsWith('DELETE FROM "Session" WHERE tokenHash=')) state.sessions.delete(this.values[0]);
+          if (sql.startsWith('DELETE FROM "Session" WHERE userId=')) {
+            for (const [tokenHash, session] of state.sessions) if (session.userId === this.values[0]) state.sessions.delete(tokenHash);
+          }
+          if (sql.startsWith("DELETE FROM")) state.deletedSql.push(sql);
           return { success: true, meta: { changes: 1 } };
         },
         async all() {
@@ -811,6 +977,11 @@ function registrationDb() {
           }
           if (sql.includes('SELECT id FROM "User" WHERE lower(trim(email))=')) return state.usersByEmail.get(this.values[0]) || null;
           if (sql.includes('SELECT * FROM "User" WHERE lower(trim(email))=')) return state.usersByEmail.get(this.values[0]) || null;
+          if (sql.includes('FROM "EmailVerification" ev JOIN "User"')) {
+            const verification = [...state.emailVerifications.values()].find(item => item.tokenHash === this.values[0]);
+            return verification ? { ...verification, email: state.usersById.get(verification.userId)?.email, emailVerifiedAt: state.usersById.get(verification.userId)?.emailVerifiedAt } : null;
+          }
+          if (sql.startsWith('SELECT\n    (SELECT COUNT(*) FROM "BookProject"')) return { projects: 0, orders: 0 };
           return null;
         }
       };
@@ -831,19 +1002,38 @@ const mismatchResponse = await worker.fetch(new Request("https://www.splendoria.
 const mismatchHtml = await mismatchResponse.text();
 if (mismatchResponse.status !== 200 || !mismatchHtml.includes("Le due password non coincidono") || !mismatchHtml.includes('value="errore@example.com"') || registration.state.insertedUsers !== 0) throw new Error("Registrazione: password discordanti non gestite correttamente");
 
-let registrationEmail = null;
-const registerResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", body: new URLSearchParams({ email: newEmail, nome: "Nuova Cliente", password: newPassword, passwordConfirm: newPassword, privacyRead: "yes" }) }), { ...env, DB: registration.db, CONTACT_EMAIL: { async send(message) { registrationEmail = message; return { messageId: "registration-message-id" }; } } });
+let registrationThrottleReads = 0, blockedRegistrationInsert = false;
+const blockedRegistrationDb = {
+  prepare(sql) { return { values: [], bind(...values) { this.values = values; return this; }, async run() { if (sql.startsWith('INSERT INTO "User"')) blockedRegistrationInsert = true; return { success: true, meta: { changes: 1 } }; }, async all() { return { results: [] }; }, async first() { if (sql.includes('SELECT * FROM "AuthThrottle"')) { registrationThrottleReads += 1; return registrationThrottleReads === 2 ? { attempts: 8, windowStart: new Date().toISOString(), blockedUntil: new Date(Date.now() + 60000).toISOString() } : null; } return null; } }; },
+  async batch(statements) { for (const statement of statements) await statement.run(); return statements.map(() => ({ success: true })); }
+};
+const blockedRegistration = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", headers: { "cf-connecting-ip": "203.0.113.42" }, body: new URLSearchParams({ email: "altra@example.com", nome: "Altra Cliente", password: newPassword, passwordConfirm: newPassword, privacyRead: "yes" }) }), { ...env, DB: blockedRegistrationDb });
+if (blockedRegistration.status !== 200 || !(await blockedRegistration.text()).includes("Troppe registrazioni o tentativi da questa connessione") || blockedRegistrationInsert) throw new Error("Registrazione: il limite per indirizzo di rete è aggirabile cambiando email");
+
+let registrationEmail = null, welcomeEmail = null;
+const registerResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", body: new URLSearchParams({ email: newEmail, nome: "Nuova Cliente", password: newPassword, passwordConfirm: newPassword, privacyRead: "yes" }) }), { ...env, DB: registration.db, CONTACT_EMAIL: { async send(message) { if (message.to === newEmail) welcomeEmail = message; else registrationEmail = message; return { messageId: message.to === newEmail ? "welcome-message-id" : "registration-message-id" }; } } });
 const firstCookie = registerResponse.headers.get("set-cookie")?.match(/^spl_session=([^;]+)/)?.[1];
 if (registerResponse.status !== 303 || registerResponse.headers.get("location") !== "/studio" || !firstCookie || registration.state.insertedUsers !== 1 || registration.state.registrationBatchSize !== 2) throw new Error("Registrazione: creazione atomica di account e sessione non riuscita");
 if (!registration.state.passwordHash.startsWith("pbkdf2$100000$")) throw new Error("Registrazione: hash password non compatibile con Cloudflare Workers");
 if (registrationEmail?.to !== env.ADMIN_EMAIL || !registrationEmail?.subject?.includes("Nuova iscrizione a Splendoria") || !registrationEmail?.text?.includes("Nuova Cliente") || !registrationEmail?.text?.includes(newEmail) || registrationEmail?.text?.includes(newPassword)) throw new Error("Registrazione: notifica email all’amministratore assente o non sicura");
+const emailVerificationToken = welcomeEmail?.text?.match(/verifica-email\?token=([a-f0-9]+)/)?.[1];
+const storedEmailVerification = [...registration.state.emailVerifications.values()][0];
+if (welcomeEmail?.to !== newEmail || !welcomeEmail?.subject?.includes("Benvenuto in Splendoria") || !welcomeEmail?.text?.includes("Guida completa") || !emailVerificationToken || storedEmailVerification?.deliveryStatus !== "sent" || storedEmailVerification?.messageId !== "welcome-message-id") throw new Error("Registrazione: email di benvenuto e verifica non consegnata o non tracciata");
 const storedRegistrationNotification = [...registration.state.notifications.values()][0];
 if (storedRegistrationNotification?.deliveryStatus !== "sent" || storedRegistrationNotification?.attempts !== 1 || storedRegistrationNotification?.messageId !== "registration-message-id" || !storedRegistrationNotification?.acceptedAt) throw new Error("Registrazione: esito della notifica email non tracciato su D1");
 
 const studioAfterRegistration = await worker.fetch(new Request("https://www.splendoria.vip/studio", { headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
 const studioAfterRegistrationHtml = await studioAfterRegistration.text();
 const studioNavigation = studioAfterRegistrationHtml.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
-if (studioAfterRegistration.status !== 200 || !studioAfterRegistrationHtml.includes("Ciao, Nuova Cliente") || ["Come funziona", "Listino", "Contattaci", "Il mio Studio", "Esci"].some(label => !studioNavigation.includes(label))) throw new Error("Registrazione: accesso immediato o menu completo dello Studio non riuscito");
+if (studioAfterRegistration.status !== 200 || !studioAfterRegistrationHtml.includes("Ciao, Nuova Cliente") || !studioAfterRegistrationHtml.includes("Verifica il tuo indirizzo email") || !studioAfterRegistrationHtml.includes('action="/reinvia-verifica-email"') || ["Come funziona", "Listino", "Guida", "Contattaci", "Il mio Studio", "Account", "Esci"].some(label => !studioNavigation.includes(label))) throw new Error("Registrazione: accesso immediato, verifica email o menu completo dello Studio non riusciti");
+let unverifiedMuseCalls = 0;
+const unverifiedMuseResponse = await worker.fetch(new Request("https://www.splendoria.vip/api/musa/trascrizione", { method: "POST", headers: { cookie: `spl_session=${firstCookie}`, "content-type": "application/json" }, body: JSON.stringify({ text: "Abbiamo uscito di casa", language: "it-IT" }) }), { ...env, DB: registration.db, AI: { async run() { unverifiedMuseCalls += 1; return { response: "Siamo usciti di casa" }; } } });
+if (unverifiedMuseResponse.status !== 403 || unverifiedMuseCalls !== 0 || !(await unverifiedMuseResponse.json()).error?.includes("Verifica prima")) throw new Error("Registrazione: un account non verificato può usare la Musa");
+const verifiedEmailResponse = await worker.fetch(new Request(`https://www.splendoria.vip/verifica-email?token=${emailVerificationToken}`, { headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
+const verifiedEmailHtml = await verifiedEmailResponse.text();
+if (verifiedEmailResponse.status !== 200 || !verifiedEmailHtml.includes("Indirizzo verificato") || !registration.state.usersByEmail.get(newEmail)?.emailVerifiedAt) throw new Error("Registrazione: collegamento di verifica valido non attiva l’account");
+const studioAfterVerification = await worker.fetch(new Request("https://www.splendoria.vip/studio", { headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
+if ((await studioAfterVerification.text()).includes("Verifica il tuo indirizzo email")) throw new Error("Registrazione: avviso di verifica ancora visibile dopo la conferma");
 
 const logoutAfterRegistration = await worker.fetch(new Request("https://www.splendoria.vip/esci", { method: "POST", headers: { cookie: `spl_session=${firstCookie}` } }), { ...env, DB: registration.db });
 if (logoutAfterRegistration.status !== 303 || !logoutAfterRegistration.headers.get("location")?.startsWith("/area-clienti?e=") || !logoutAfterRegistration.headers.get("set-cookie")?.includes("Max-Age=0")) throw new Error("Registrazione: uscita o cancellazione della sessione non riuscita");
@@ -858,13 +1048,46 @@ const studioAfterLogin = await worker.fetch(new Request("https://www.splendoria.
 if (studioAfterLogin.status !== 200 || !(await studioAfterLogin.text()).includes("Ciao, Nuova Cliente")) throw new Error("Registrazione: rientro nello Studio non riuscito");
 console.log("/registrazione: conferma password, accesso, uscita e nuovo accesso verificati");
 
+const accountResponse = await worker.fetch(new Request("https://www.splendoria.vip/account", { headers: { cookie: `spl_session=${secondCookie}` } }), { ...env, DB: registration.db });
+const accountHtml = await accountResponse.text();
+if (accountResponse.status !== 200 || !accountHtml.includes("Il mio account") || !accountHtml.includes('action="/account/profilo"') || !accountHtml.includes('action="/account/email"') || !accountHtml.includes('href="/account/esporta.json"') || !accountHtml.includes('action="/account/cancella"') || !accountHtml.includes("Indirizzo verificato") || accountResponse.headers.get("x-robots-tag") !== "noindex, nofollow, noarchive") throw new Error("Account: pagina self-service incompleta o indicizzabile");
+
+const badAccountEmail = await worker.fetch(new Request("https://www.splendoria.vip/account/email", { method: "POST", headers: { cookie: `spl_session=${secondCookie}` }, body: new URLSearchParams({ email: "cambio@example.com", password: "PasswordErrata2026!" }) }), { ...env, DB: registration.db });
+if (badAccountEmail.status !== 200 || !(await badAccountEmail.text()).includes("password attuale non è corretta") || registration.state.usersById.values().next().value.email !== newEmail) throw new Error("Account: cambio email senza password corretta non bloccato");
+
+const profileResponse = await worker.fetch(new Request("https://www.splendoria.vip/account/profilo", { method: "POST", headers: { cookie: `spl_session=${secondCookie}` }, body: new URLSearchParams({ nome: "Autrice Digitale" }) }), { ...env, DB: registration.db });
+if (profileResponse.status !== 200 || !(await profileResponse.text()).includes("Nome aggiornato correttamente") || registration.state.usersByEmail.get(newEmail)?.nome !== "Autrice Digitale" || [...registration.state.notifications.values()][0]?.nome !== "Autrice Digitale") throw new Error("Account: modifica autonoma del nome non riuscita");
+
+const exportResponse = await worker.fetch(new Request("https://www.splendoria.vip/account/esporta.json", { headers: { cookie: `spl_session=${secondCookie}` } }), { ...env, DB: registration.db });
+const exportedData = await exportResponse.json();
+if (exportResponse.status !== 200 || !exportResponse.headers.get("content-disposition")?.includes("splendoria-i-miei-dati-") || exportedData.account?.email !== newEmail || exportedData.account?.nome !== "Autrice Digitale" || !Array.isArray(exportedData.projects) || JSON.stringify(exportedData).includes("passwordHash")) throw new Error("Account: esportazione dei dati incompleta o non sicura");
+
+let changedAddressEmail = null;
+const changedEmail = "autrice.digitale@example.com";
+const accountEmailResponse = await worker.fetch(new Request("https://www.splendoria.vip/account/email", { method: "POST", headers: { cookie: `spl_session=${secondCookie}` }, body: new URLSearchParams({ email: changedEmail, password: newPassword }) }), { ...env, DB: registration.db, CONTACT_EMAIL: { async send(message) { changedAddressEmail = message; return { messageId: "changed-address-id" }; } } });
+const accountEmailHtml = await accountEmailResponse.text();
+const changedAddressToken = changedAddressEmail?.text?.match(/verifica-email\?token=([a-f0-9]+)/)?.[1];
+if (accountEmailResponse.status !== 200 || !accountEmailHtml.includes("Email aggiornata") || !accountEmailHtml.includes("Verifica il tuo indirizzo email") || changedAddressEmail?.to !== changedEmail || !changedAddressToken || registration.state.usersByEmail.has(newEmail) || registration.state.usersByEmail.get(changedEmail)?.emailVerifiedAt !== null) throw new Error("Account: cambio e nuova verifica dell’email non riusciti");
+const changedAddressVerification = await worker.fetch(new Request(`https://www.splendoria.vip/verifica-email?token=${changedAddressToken}`, { headers: { cookie: `spl_session=${secondCookie}` } }), { ...env, DB: registration.db });
+if (changedAddressVerification.status !== 200 || !(await changedAddressVerification.text()).includes("Indirizzo verificato") || !registration.state.usersByEmail.get(changedEmail)?.emailVerifiedAt) throw new Error("Account: il nuovo indirizzo non può essere verificato");
+
+const refusedDeletion = await worker.fetch(new Request("https://www.splendoria.vip/account/cancella", { method: "POST", headers: { cookie: `spl_session=${secondCookie}` }, body: new URLSearchParams({ confirmation: "NO", password: newPassword }) }), { ...env, DB: registration.db });
+if (refusedDeletion.status !== 200 || !(await refusedDeletion.text()).includes("scrivere esattamente CANCELLA") || registration.state.accountDeleted) throw new Error("Account: cancellazione senza conferma rafforzata non bloccata");
+const deletedAccountResponse = await worker.fetch(new Request("https://www.splendoria.vip/account/cancella", { method: "POST", headers: { cookie: `spl_session=${secondCookie}` }, body: new URLSearchParams({ confirmation: "CANCELLA", password: newPassword }) }), { ...env, DB: registration.db });
+if (deletedAccountResponse.status !== 303 || !deletedAccountResponse.headers.get("location")?.startsWith("/area-clienti?e=") || !deletedAccountResponse.headers.get("set-cookie")?.includes("Max-Age=0") || !registration.state.accountDeleted || registration.state.sessions.size !== 0 || registration.state.emailVerifications.size !== 0 || registration.state.notifications.size !== 0 || !registration.state.deletedSql.some(sql => sql.startsWith('DELETE FROM "BookProject"'))) throw new Error("Account: cancellazione e anonimizzazione non riuscite");
+const accountAuditActions = registration.state.auditEvents.map(event => event.action);
+if (!["account.registered", "account.email_verified", "account.login", "account.profile_changed", "account.data_exported", "account.email_changed", "account.deleted"].every(action => accountAuditActions.includes(action)) || registration.state.auditEvents.some(event => !event.actorHash || !event.targetHash || /nuova\.cliente|Autrice Digitale/i.test(event.metadata))) throw new Error("Audit: eventi account mancanti o dati anagrafici salvati in chiaro");
+const deletedSessionResponse = await worker.fetch(new Request("https://www.splendoria.vip/account", { headers: { cookie: `spl_session=${secondCookie}` } }), { ...env, DB: registration.db });
+if (deletedSessionResponse.status !== 303 || deletedSessionResponse.headers.get("location") !== "/area-clienti") throw new Error("Account: sessione ancora valida dopo la cancellazione");
+console.log("/account: profilo, email, esportazione, cancellazione e anonimizzazione verificati");
+
 const retryRegistration = registrationDb();
 let retrySendAttempts = 0;
 const failedRegistrationResponse = await worker.fetch(new Request("https://www.splendoria.vip/registrati", { method: "POST", body: new URLSearchParams({ email: "ritenta@example.com", nome: "Cliente Ritento", password: newPassword, passwordConfirm: newPassword, privacyRead: "yes" }) }), { ...env, DB: retryRegistration.db, CONTACT_EMAIL: { async send() { retrySendAttempts += 1; const error = new Error("Servizio temporaneamente non disponibile"); error.code = "E_TEMPORARY"; throw error; } } });
-if (failedRegistrationResponse.status !== 303 || [...retryRegistration.state.notifications.values()][0]?.deliveryStatus !== "failed" || retrySendAttempts !== 1) throw new Error("Registrazione: errore temporaneo della notifica non registrato");
+if (failedRegistrationResponse.status !== 303 || [...retryRegistration.state.notifications.values()][0]?.deliveryStatus !== "failed" || [...retryRegistration.state.emailVerifications.values()][0]?.deliveryStatus !== "failed" || retrySendAttempts !== 2) throw new Error("Registrazione: errore temporaneo delle email non registrato");
 await worker.scheduled({}, { ...env, DB: retryRegistration.db, ADMIN_EMAIL_NOTIFICATION: { async send(message) { retrySendAttempts += 1; registrationEmail = message; return { messageId: "registration-retry-id" }; } } });
 const retriedNotification = [...retryRegistration.state.notifications.values()][0];
-if (retrySendAttempts !== 2 || retriedNotification?.deliveryStatus !== "sent" || retriedNotification?.attempts !== 2 || retriedNotification?.messageId !== "registration-retry-id") throw new Error("Registrazione: ritento automatico della notifica non riuscito");
+if (retrySendAttempts !== 3 || retriedNotification?.deliveryStatus !== "sent" || retriedNotification?.attempts !== 2 || retriedNotification?.messageId !== "registration-retry-id") throw new Error("Registrazione: ritento automatico della notifica non riuscito");
 console.log("/registrazione: email reale tracciata e ritento automatico verificato");
 
 function resetDb() {

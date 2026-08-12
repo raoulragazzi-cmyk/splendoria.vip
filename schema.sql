@@ -63,6 +63,54 @@ CREATE TABLE IF NOT EXISTS "AuthThrottle" (
   "updatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS "AdminLoginChallenge" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "userId" TEXT NOT NULL,
+  "codeHash" TEXT NOT NULL,
+  "expiresAt" TEXT NOT NULL,
+  "attempts" INTEGER NOT NULL DEFAULT 0,
+  "usedAt" TEXT,
+  "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "AdminLoginChallenge_userId_idx" ON "AdminLoginChallenge"("userId");
+CREATE INDEX IF NOT EXISTS "AdminLoginChallenge_expiresAt_idx" ON "AdminLoginChallenge"("expiresAt");
+
+-- Aggiunta versionata in migrations/0003_email_verification.sql:
+-- ALTER TABLE "User" ADD COLUMN "emailVerifiedAt" TEXT;
+CREATE TABLE IF NOT EXISTS "EmailVerification" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "userId" TEXT NOT NULL,
+  "tokenHash" TEXT NOT NULL UNIQUE,
+  "expiresAt" TEXT NOT NULL,
+  "usedAt" TEXT,
+  "deliveryStatus" TEXT NOT NULL DEFAULT 'pending',
+  "deliveryError" TEXT NOT NULL DEFAULT '',
+  "deliveredAt" TEXT,
+  "messageId" TEXT,
+  "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "EmailVerification_userId_idx" ON "EmailVerification"("userId");
+CREATE INDEX IF NOT EXISTS "EmailVerification_expiresAt_idx" ON "EmailVerification"("expiresAt");
+
+CREATE TABLE IF NOT EXISTS "AuditEvent" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "actorHash" TEXT NOT NULL DEFAULT '',
+  "actorRole" TEXT NOT NULL DEFAULT 'system',
+  "action" TEXT NOT NULL,
+  "targetType" TEXT NOT NULL DEFAULT '',
+  "targetHash" TEXT NOT NULL DEFAULT '',
+  "outcome" TEXT NOT NULL DEFAULT 'success',
+  "metadata" TEXT NOT NULL DEFAULT '{}',
+  "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS "AuditEvent_createdAt_idx" ON "AuditEvent"("createdAt");
+CREATE INDEX IF NOT EXISTS "AuditEvent_action_idx" ON "AuditEvent"("action", "createdAt");
+
 CREATE TABLE IF NOT EXISTS "ProjectAdmin" (
   "userId" TEXT NOT NULL PRIMARY KEY,
   "statoEditoriale" TEXT NOT NULL DEFAULT 'iniziato',
