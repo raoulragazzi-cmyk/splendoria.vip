@@ -77,6 +77,9 @@ if (!faviconSource.includes("#004225") || !faviconSource.includes("#c5a059")) th
 const healthResponse = await worker.fetch(new Request("https://www.splendoria.vip/healthz"), env);
 const health = await healthResponse.json();
 if (healthResponse.status !== 200 || health.status !== "ok" || health.checks?.database !== "ok" || healthResponse.headers.get("x-robots-tag") !== "noindex, nofollow, noarchive" || !healthResponse.headers.get("cache-control")?.includes("no-store")) throw new Error("Operatività: endpoint healthz non valido o indicizzabile");
+let publicDatabaseQueries = 0;
+const publicWithoutSchemaChecks = await worker.fetch(new Request("https://www.splendoria.vip/"), { ...env, DB: { prepare() { publicDatabaseQueries += 1; throw new Error("La home pubblica non deve interrogare D1 senza sessione"); } } });
+if (publicWithoutSchemaChecks.status !== 200 || publicDatabaseQueries !== 0) throw new Error("Prestazioni: la home esegue ancora verifiche D1 non necessarie");
 console.log("/seo: sitemap, robots, favicon, canonical, social metadata, noindex e hardening HTTP validi");
 
 const accessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env)).text();
@@ -90,7 +93,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette non applicate");
 if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("La tua storia destinata a vivere centinaia di anni") || !showcaseTypography.includes("Inizia il tuo libro")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260811-1"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!showcaseTypography.includes('src="/assets/studio.js?v=20260812-1"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (["Come funziona", "Listino", "Contattaci", "Il mio Studio"].some(label => !publicNavigation.includes(label)) || !publicNavigation.includes('href="/#metodo"') || !publicNavigation.includes('href="/#formule"') || !publicNavigation.includes('href="/#contatti"') || publicNavigation.includes("Area amministratore")) throw new Error("Navigazione: menu completo della vetrina assente, destinazioni errate o collegamento amministratore esposto");
 for (const weight of [400, 700]) {
@@ -120,17 +123,20 @@ if (showcaseTypography.includes("IT05Z0538758590000049304579")) throw new Error(
 console.log("/vetrina: dieci sezioni, Hero, slider, governance e Assessment disponibili");
 
 const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
-if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"') || !wranglerConfig.includes('"directory": "./public"') || !wranglerConfig.includes('"name": "ADMIN_EMAIL_NOTIFICATION"') || !wranglerConfig.includes('"destination_address": "raoulragazzi@gmail.com"') || !wranglerConfig.includes('"crons": ["*/5 * * * *"]')) throw new Error("Cloudflare: configurazione di produzione, email o asset statici non valida");
+if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"') || !wranglerConfig.includes('"directory": "./public"') || !wranglerConfig.includes('"name": "ADMIN_EMAIL_NOTIFICATION"') || !wranglerConfig.includes('"destination_address": "raoulragazzi@gmail.com"') || !wranglerConfig.includes('"crons": ["*/5 * * * *"]') || !wranglerConfig.includes('"migrations_dir": "./migrations"') || !wranglerConfig.includes('"observability"') || !wranglerConfig.includes('"head_sampling_rate": 1')) throw new Error("Cloudflare: configurazione di produzione, migrazioni, osservabilità, email o asset statici non valida");
 if (wranglerConfig.includes('"database_name": "splendoria-v2-test"') || wranglerConfig.includes("splendoria-v2.raoulragazzi.workers.dev")) throw new Error("Cloudflare: riferimenti all’ambiente di test ancora attivi");
 console.log("/configurazione: database e URL di produzione attivi");
 
 const workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");
 const schemaSource = readFileSync(new URL("../schema.sql", import.meta.url), "utf8");
+const migrationSource = readFileSync(new URL("../migrations/0001_current_schema.sql", import.meta.url), "utf8");
 for (const table of ["User", "BookProject", "BookChapter", "BookInterview", "Session", "RegistrationNotification"]) {
   if (!workerSource.includes(`INSERT INTO "${table}"`)) throw new Error(`Cloudflare D1: scrittura persistente ${table} non trovata`);
 }
-if (!schemaSource.includes('CREATE TABLE IF NOT EXISTS "RegistrationNotification"') || !workerSource.includes("retryRegistrationNotifications") || !workerSource.includes("async scheduled")) throw new Error("Registrazione: tracciamento D1 o ritento automatico della notifica incompleto");
-if (!schemaSource.includes('"sourceMaterial" TEXT NOT NULL DEFAULT') || !workerSource.includes('ensureColumn(db,"BookProject","sourceMaterial"') || !workerSource.includes("hasRepeatedPassages") || !workerSource.includes("reviewMuseDraft")) throw new Error("Muse: fonti aggiuntive, migrazione D1 o controllo qualità automatico incompleti");
+if (!migrationSource.includes('CREATE TABLE IF NOT EXISTS "RegistrationNotification"') || !workerSource.includes("retryRegistrationNotifications") || !workerSource.includes("async scheduled")) throw new Error("Registrazione: tracciamento D1 o ritento automatico della notifica incompleto");
+if (!migrationSource.includes('"sourceMaterial" TEXT NOT NULL DEFAULT') || !workerSource.includes("hasRepeatedPassages") || !workerSource.includes("MUSE_WRITER_SYSTEM") || !workerSource.includes("MUSE_EDITOR_SYSTEM") || !workerSource.includes("@cf/meta/llama-3.3-70b-instruct-fp8-fast")) throw new Error("Muse: fonti, modello letterario o controllo qualità automatico incompleti");
+const fetchHandlerSource = workerSource.slice(workerSource.indexOf("async fetch(request, env)"), workerSource.indexOf("async email(message, env)"));
+if (/ensureSchema|ensureRegistrationNotificationSchema|ensureColumn/.test(fetchHandlerSource) || /async function ensureSchema|async function ensureColumn/.test(workerSource)) throw new Error("Prestazioni: controlli o modifiche dello schema D1 ancora eseguiti dal Worker");
 if (!schemaSource.includes('"statoCommerciale" TEXT NOT NULL DEFAULT \'prova_gratuita\'') || !workerSource.includes('"prova_gratuita"') || !workerSource.includes("IT05Z0538758590000049304579")) throw new Error("Prova gratuita: stato commerciale o coordinate di pagamento mancanti");
 const localStorageKeys = [...workerSource.matchAll(/localStorage\.(?:getItem|setItem)\(['"]([^'"]+)/g)].map(match => match[1]);
 const unexpectedLocalStorage = localStorageKeys.filter(key => !["splendoria-cookie-notice-v1", "splendoria-voice-language"].includes(key));
@@ -190,7 +196,7 @@ for (const repeatedBrowserResult of [spokenOnce, spokenOnce, spokenOnce]) merged
 if (mergedSpeech !== spokenOnce) throw new Error("Muse: lo stesso risultato vocale viene ancora scritto più volte");
 const cumulativeSpeech = mergeRecognitionText("Mi chiamo Raoul", "Mi chiamo Raoul e vivo a Milano");
 if (cumulativeSpeech !== spokenOnce || mergeRecognitionText(cumulativeSpeech, "vivo a Milano") !== spokenOnce) throw new Error("Muse: i risultati vocali cumulativi o sovrapposti vengono duplicati");
-if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1") || !studioJsBody.includes("La Musa sta scrivendo…")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
+if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1") || !studioJsBody.includes("La Musa scrive e rilegge…") || !studioJsBody.includes("data-chapter-notice")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
 if (!studioJsBody.includes("data-legacy-range") || !studioJsBody.includes("data-editorial-assessment") || !studioJsBody.includes("renderAssessment") || !studioJsBody.includes("Indice editoriale orientativo")) throw new Error("Asset JavaScript: slider o generazione della Scheda Tecnica mancanti");
 if (!studioJsBody.includes("paginateLiveChapter") || !studioJsBody.includes("livePageForCursor") || !studioJsBody.includes("data-live-chapter") || !studioJsBody.includes("data-live-content") || !studioJsBody.includes("renderLiveChapter(true)")) throw new Error("Studio: anteprima del capitolo non si aggiorna in tempo reale");
@@ -251,6 +257,7 @@ if (museResponse.status !== 200 || !museHtml.includes("Racconta con la tua voce"
 if (!museHtml.includes('<option value="it-IT">Italiano</option>') || !museHtml.includes('<option value="de-DE">Deutsch</option>') || !museHtml.includes('<option value="en-GB">English</option>')) throw new Error("Muse: selettore trilingue non valido");
 if (!museHtml.includes('aria-live="polite"')) throw new Error("Muse: stato della dettatura non accessibile");
 if (!museHtml.includes("Trasparenza IA") || !museHtml.includes("Gli output restano modificabili") || !museHtml.includes('name="specialDataConsent"')) throw new Error("Muse: trasparenza IA o consenso ai dati particolari mancante");
+if (!museHtml.includes("scrittura ed editing di livello universitario") || !museHtml.includes("grammatica, sintassi, lessico, ritmo e fluidità") || !museHtml.includes("rilegge la bozza")) throw new Error("Muse: profilo editoriale avanzato non spiegato nello Studio");
 if (!museHtml.includes("DAMMI ALTRI DATI E FATTI") || !museHtml.includes('name="sourceMaterial"') || !museHtml.includes("date, luoghi, nomi e ruoli dei personaggi")) throw new Error("Muse: campo per dati, fatti, date e personaggi non disponibile");
 if (!museHtml.includes('id="chapter-card-capitolo-muse"') || !museHtml.includes('data-keep-writing-position') || !museHtml.includes('data-book-path="/libro/libro-muse"')) throw new Error("Muse: capitolo non predisposto a mantenere la posizione");
 if (!museHtml.includes('Titolo del capitolo') || !museHtml.includes('name="title" value="Il primo ricordo"')) throw new Error("Studio: titolo del capitolo non modificabile");
@@ -310,19 +317,17 @@ const projectDraftResponse = await worker.fetch(new Request("https://www.splendo
   body: new URLSearchParams({ museField: "events", title: "La mia storia", tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: "84", sourceMaterial: museProject.sourceMaterial, story: "Sono nato a Milano e ogni estate tornavo nella casa di mia nonna Anna.", people: "Mia nonna Anna", events: "", message: "Custodire i ricordi di famiglia", specialDataConsent: "yes" })
 }), { ...env, DB: museDb, AI: { async run() { return { response: "Ricordo come momento decisivo le estati trascorse nella casa di mia nonna Anna a Milano, dove imparavo a custodire i ricordi di famiglia." }; } } });
 if (projectDraftResponse.status !== 303 || !museProjectUpdates.some(values => values[7]?.includes("momento decisivo"))) throw new Error("Muse: Affidati alla Musa non genera e salva una bozza contestuale nel campo del progetto");
-let regenerationCalls = 0, reviewCalls = 0;
+let regenerationCalls = 0;
 const regeneratedDraftResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/affidati", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
   body: new URLSearchParams({ museField: "events", title: "La mia storia", tone: "Emozionante e autentico", audience: "Famiglia e amici", targetPages: "84", sourceMaterial: museProject.sourceMaterial, story: museProject.story, people: museProject.people, events: "", message: museProject.message, specialDataConsent: "yes" })
 }), { ...env, DB: museDb, AI: { async run(_model, options) {
-  const system = options.messages?.[0]?.content || "";
-  if (system.includes("controllo qualità editoriale")) { reviewCalls += 1; return { response: reviewCalls === 1 ? "RIFIUTATO: il testo non ha un ordine narrativo chiaro" : "APPROVATO" }; }
   regenerationCalls += 1;
-  return { response: regenerationCalls === 1 ? "Milano e Anna restano nel ricordo della casa, ma il racconto procede senza un ordine chiaro." : "Ricordo come momento decisivo le estati trascorse a Milano nella casa di mia nonna Anna: lì ho compreso quanto fosse importante custodire i ricordi della nostra famiglia." };
+  return { response: regenerationCalls === 1 ? "Milano e Anna restano nel ricordo della casa. Milano e Anna restano nel ricordo della casa." : "Ricordo come momento decisivo le estati trascorse a Milano nella casa di mia nonna Anna: lì ho compreso quanto fosse importante custodire i ricordi della nostra famiglia." };
 } } });
 const regeneratedProject = museProjectUpdates[museProjectUpdates.length - 1] || [];
-if (regeneratedDraftResponse.status !== 303 || regenerationCalls !== 2 || reviewCalls !== 2 || !regeneratedProject[7]?.includes("momento decisivo") || regeneratedProject[7]?.includes("senza un ordine chiaro")) throw new Error("Muse: una bozza respinta dal controllo qualità non viene rigenerata automaticamente prima del salvataggio");
+if (regeneratedDraftResponse.status !== 303 || regenerationCalls !== 2 || !regeneratedProject[7]?.includes("momento decisivo") || regeneratedProject[7]?.includes("Milano e Anna restano")) throw new Error("Muse: una bozza ripetitiva non viene rigenerata automaticamente prima del salvataggio");
 const singleAnswerResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/risposte/affidati", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
@@ -378,19 +383,18 @@ if (sparseAnswerResponse.status !== 303 || !sparseInterview.answers.includes("Fe
 const sparseEditorResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-ferrari", { headers: { cookie: "spl_session=test" } }), { ...env, DB: sparseDb });
 const sparseEditorHtml = await sparseEditorResponse.text();
 if (sparseEditorResponse.status !== 200 || !sparseEditorHtml.includes('id="interview-0"') || !sparseEditorHtml.includes("qualcosa di più grande")) throw new Error("Muse: la risposta generata viene salvata ma non ricompare nel campo corrispondente");
-let strictReviewCalls = 0, safeRescueCalls = 0;
+let recoveryCalls = 0;
 const safeRescueDraft = "Il gusto delle bollicine Ferrari Trento mi avvicina alla tradizione e alla cultura italiana. Vi riconosco un legame con una storia condivisa, e proprio questo legame mi fa sentire parte di qualcosa di più grande.";
 const rescuedAnswerResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-ferrari/risposte/affidati", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
   body: new URLSearchParams({ generateAnswer: "0", answer_0: "" })
 }), { ...env, DB: sparseDb, AI: { async run(_model, options) {
-  const system = options.messages?.[0]?.content || "";
-  if (system.includes("controllo qualità editoriale")) { strictReviewCalls += 1; return { response: "RIFIUTATO: controllo prudenziale" }; }
-  if (system.includes("redattrice di sicurezza")) { safeRescueCalls += 1; return { response: safeRescueDraft }; }
-  return { response: sparseDraft };
+  recoveryCalls += 1;
+  if (recoveryCalls === 1) throw new Error("Workers AI temporaneamente non disponibile");
+  return { response: safeRescueDraft };
 } } });
-if (rescuedAnswerResponse.status !== 303 || strictReviewCalls !== 2 || safeRescueCalls !== 1 || !sparseInterview.answers.includes(safeRescueDraft)) throw new Error("Muse: dopo due bozze respinte non produce una risposta sicura e lascia il campo vuoto");
+if (rescuedAnswerResponse.status !== 303 || recoveryCalls !== 2 || !sparseInterview.answers.includes(safeRescueDraft)) throw new Error("Muse: non recupera da un errore temporaneo senza superare due chiamate IA");
 const allAnswersResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/risposte", {
   method: "POST",
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
@@ -404,8 +408,6 @@ const chapterDraftResponse = await worker.fetch(new Request("https://www.splendo
   headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" },
   body: new URLSearchParams({ title: "Il primo ricordo", content: "Un capitolo già iniziato." })
 }), { ...env, DB: museDb, AI: { async run(_model, options) {
-  const system = options.messages?.[0]?.content || "";
-  if (system.includes("controllo qualità editoriale")) return { response: "APPROVATO" };
   chapterGenerationCalls += 1;
   if (chapterGenerationCalls === 1) return { response: "La casa di mia nonna Anna a Milano custodiva la memoria della famiglia. Il ricordo non trova ancora una forma. La casa di mia nonna Anna a Milano custodiva la memoria della famiglia." };
   return { response: "Le estati trascorse nella casa di mia nonna Anna, a Milano, sono il centro di questo ricordo. In quella casa imparavo a custodire la memoria della nostra famiglia. Ripensando a quel periodo, comprendo che la presenza di Anna ha dato continuità alle mie radici e ha reso quei ricordi parte del messaggio che desidero lasciare alla mia famiglia." };
@@ -456,8 +458,20 @@ const trialEditorResponse = await worker.fetch(new Request("https://www.splendor
 const trialEditorHtml = await trialEditorResponse.text();
 if (trialEditorResponse.status !== 200 || !trialEditorHtml.includes('id="chapter-card-capitolo-prova-1"') || !trialEditorHtml.includes("CONTENUTO VISIBILE DEL PRIMO CAPITOLO") || !trialEditorHtml.includes('id="chapter-lock-capitolo-prova-2"') || !trialEditorHtml.includes("La seconda soglia") || trialEditorHtml.includes("CONTENUTO RISERVATO DEL SECONDO CAPITOLO") || !trialEditorHtml.includes('data-total-chapters="2"')) throw new Error("Prova gratuita: il primo capitolo non è operativo o il secondo espone contenuti riservati");
 for (const required of ["Prova gratuita di 14 giorni", "Raoul Ragazzi Fisar", "IT05Z0538758590000049304579", "BPER Filiale Merano", "Pagato", "Gratuito"]) if (!trialEditorHtml.includes(required)) throw new Error(`Prova gratuita: informazione riservata mancante (${required})`);
+let trialMuseCalls = 0;
+const trialMuseSystems = [];
+const trialMuseModels = [];
+const trialChapterDraft = "Ogni estate tornavo nella casa di mia nonna Anna, a Milano. Quelle stanze accompagnavano la mia infanzia e davano forma al legame con la nostra famiglia. In quel tempo imparavo che custodire un ricordo significa conservarne il valore senza sottrarlo alla vita. Oggi ripenso a quelle estati come alla prima soglia della mia storia, perché da lì nasce il messaggio che desidero lasciare alla mia famiglia.";
+const trialFirstChapterResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-1/genera", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "La prima soglia", content: "" }) }), { ...env, DB: trialDb, AI: { async run(model, options) { trialMuseCalls += 1; trialMuseModels.push(model); trialMuseSystems.push(options.messages?.[0]?.content || ""); return { response: trialChapterDraft }; } } });
+const trialGeneratedChapter = [...trialChapterUpdates].reverse().find(values => values[2] === "generato");
+const writerProfile = trialMuseSystems[0]?.toLocaleLowerCase("it-IT") || "";
+const editorProfile = trialMuseSystems[1]?.toLocaleLowerCase("it-IT") || "";
+if (trialFirstChapterResponse.status !== 303 || trialFirstChapterResponse.headers.get("location") !== "/libro/libro-prova#chapter-card-capitolo-prova-1" || trialMuseCalls !== 2 || !trialGeneratedChapter?.[1]?.includes("prima soglia della mia storia")) throw new Error("Prova gratuita: la Musa non genera e salva il primo capitolo con due sole chiamate IA");
+if (trialMuseModels.some(model => model !== "@cf/meta/llama-3.3-70b-instruct-fp8-fast") || !writerProfile.includes("formazione universitaria") || !writerProfile.includes("grammaticalmente rigorosa") || !writerProfile.includes("sintatticamente compiuta") || !writerProfile.includes("fluida") || !writerProfile.includes("non imitare") || !editorProfile.includes("revisore letterario finale") || !editorProfile.includes("reggenze")) throw new Error("Muse: profilo letterario, modello 70B o rilettura finale non applicati al primo capitolo");
 const blockedSaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-2/salva", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ title: "Titolo forzato", content: "Testo forzato" }) }), { ...env, DB: trialDb });
-if (blockedSaveResponse.status !== 200 || !(await blockedSaveResponse.text()).includes("Questo capitolo è riservato al libro completo") || trialChapterUpdates.some(values => values.includes("Testo forzato"))) throw new Error("Prova gratuita: salvataggio diretto del secondo capitolo non bloccato");
+const blockedSaveHtml = await blockedSaveResponse.text();
+const blockedCardHtml = blockedSaveHtml.match(/<article class="card chapter-lock-card" id="chapter-lock-capitolo-prova-2">([\s\S]*?)<\/article>/)?.[1] || "";
+if (blockedSaveResponse.status !== 200 || !blockedCardHtml.includes("Questo capitolo è riservato al libro completo") || !blockedCardHtml.includes("data-chapter-notice") || trialChapterUpdates.some(values => values.includes("Testo forzato"))) throw new Error("Prova gratuita: salvataggio diretto del secondo capitolo non bloccato o messaggio non mostrato nel capitolo");
 const blockedAutosaveResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-prova/capitolo/capitolo-prova-2/autosalva", { method: "POST", headers: { cookie: "spl_session=test", "content-type": "application/json" }, body: JSON.stringify({ title: "Titolo forzato", content: "Testo forzato" }) }), { ...env, DB: trialDb });
 if (blockedAutosaveResponse.status !== 403 || !(await blockedAutosaveResponse.json()).error?.includes("Capitolo bloccato")) throw new Error("Prova gratuita: autosalvataggio diretto del secondo capitolo non bloccato");
 let blockedAiCalls = 0;
@@ -887,34 +901,28 @@ const failedResetResponse = await worker.fetch(new Request("https://www.splendor
 if (failedResetResponse.status !== 200 || failedReset.state.delivery?.[0] !== "failed" || !failedReset.state.delivery?.[1]?.includes("E_SENDER_NOT_VERIFIED")) throw new Error("Recupero password: errore di consegna non registrato");
 console.log("/password-dimenticata: invio e diagnostica verificati");
 
-const legacyResetSchemaState = { usedAtAdded: false, batchSize: 0 };
-const legacyResetSchemaDb = {
+const migratedResetSchemaState = { schemaWrites: 0, batchSize: 0 };
+const migratedResetSchemaDb = {
   prepare(sql) {
     return {
       values: [],
       bind(...values) { this.values = values; return this; },
       async run() {
-        if (sql === 'ALTER TABLE "PasswordReset" ADD COLUMN "usedAt" TEXT') legacyResetSchemaState.usedAtAdded = true;
+        if (/^(?:ALTER|CREATE|PRAGMA)/i.test(sql.trim())) migratedResetSchemaState.schemaWrites += 1;
         return { success: true };
       },
-      async all() {
-        const common = ["projectId", "termsAcceptedAt", "privacyAcceptedAt", "specialDataConsentAt", "deliveryStatus", "deliveryError", "deliveredAt", "messageId"];
-        if (sql === 'PRAGMA table_info("PasswordReset")') return { results: [...common, ...(legacyResetSchemaState.usedAtAdded ? ["usedAt"] : [])].map(name => ({ name })) };
-        if (sql.startsWith("PRAGMA table_info")) return { results: common.map(name => ({ name })) };
-        return { results: [] };
-      },
+      async all() { return { results: [] }; },
       async first() {
         if (sql.includes('SELECT pr.*,u.email FROM "PasswordReset"')) {
-          if (!legacyResetSchemaState.usedAtAdded) throw new Error("no such column: pr.usedAt");
           return { id: "reset-storico", userId: "cliente-storico", email: "cliente@example.com", usedAt: null, expiresAt: new Date(Date.now() + 60000).toISOString() };
         }
         return null;
       }
     };
   },
-  async batch(statements) { legacyResetSchemaState.batchSize = statements.length; return statements.map(() => ({ success: true })); }
+  async batch(statements) { migratedResetSchemaState.batchSize = statements.length; return statements.map(() => ({ success: true })); }
 };
-const legacyResetToken = "a".repeat(64), legacyResetPassword = "NuovaPassword2026!";
-const legacyResetResponse = await worker.fetch(new Request("https://www.splendoria.vip/reimposta-password", { method: "POST", body: new URLSearchParams({ token: legacyResetToken, password: legacyResetPassword, passwordConfirm: legacyResetPassword }) }), { ...env, DB: legacyResetSchemaDb });
-if (legacyResetResponse.status !== 303 || !legacyResetResponse.headers.get("location")?.startsWith("/area-clienti?e=") || !legacyResetSchemaState.usedAtAdded || legacyResetSchemaState.batchSize !== 3) throw new Error("Recupero password: migrazione dello schema storico o salvataggio non riusciti");
-console.log("/reimposta-password: schema storico aggiornato e nuova password salvata");
+const migratedResetToken = "a".repeat(64), migratedResetPassword = "NuovaPassword2026!";
+const migratedResetResponse = await worker.fetch(new Request("https://www.splendoria.vip/reimposta-password", { method: "POST", body: new URLSearchParams({ token: migratedResetToken, password: migratedResetPassword, passwordConfirm: migratedResetPassword }) }), { ...env, DB: migratedResetSchemaDb });
+if (migratedResetResponse.status !== 303 || !migratedResetResponse.headers.get("location")?.startsWith("/area-clienti?e=") || migratedResetSchemaState.schemaWrites !== 0 || migratedResetSchemaState.batchSize !== 3 || !migrationSource.includes('"usedAt" TEXT')) throw new Error("Recupero password: schema versionato o salvataggio non riusciti");
+console.log("/reimposta-password: migrazione versionata e nuova password salvata");
