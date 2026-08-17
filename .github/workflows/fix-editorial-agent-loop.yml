@@ -1,12 +1,9 @@
-# One-shot maintenance workflow: remove after successful patch.
 name: Repair editorial agent retry loop
 
 on:
   push:
-    branches:
-      - splendoria.vip
-    paths:
-      - .github/workflows/fix-editorial-agent-loop.yml
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/fix-editorial-agent-loop.yml"]
 
 permissions:
   contents: write
@@ -15,90 +12,8 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: splendoria.vip
           fetch-depth: 0
-
-      - name: Apply guarded agent repair
-        shell: python
-        run: |
-          from pathlib import Path
-
-          path = Path("src/worker.js")
-          text = path.read_text(encoding="utf-8")
-
-          replacements = []
-
-          replacements.append((
-              '  const attempt = agentChapterAttempts(chapter.status) + 1, paused = attempt >= 3, now = (/* @__PURE__ */ new Date()).toISOString();',
-              '  const previousAttempt = agentChapterAttempts(chapter.status), attempt = Math.min(3, previousAttempt + 1), paused = attempt >= 3, now = (/* @__PURE__ */ new Date()).toISOString();'
-          ))
-
-          replacements.append((
-              '    activeChapter = chapters.results.find((chapter) => !agentChapterComplete(chapter));\n    if (!activeChapter) {',
-              '''    activeChapter = chapters.results.find((chapter) => !agentChapterComplete(chapter));
-    if (activeChapter && agentChapterAttempts(activeChapter.status) >= 3) {
-      const pausedAt = (/* @__PURE__ */ new Date()).toISOString();
-      await env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_PAUSED, pausedAt, project.id, AGENT_PROJECT_RUNNING).run();
-      await recordAuditEvent(env, { actorRole: "system", action: "agent.paused", targetType: "chapter", targetId: activeChapter.id, outcome: "rejected", metadata: { reason: "chapter_retry_limit", position: activeChapter.position, attempts: agentChapterAttempts(activeChapter.status) } });
-      return { ok: false, paused: true, message: `Capitolo ${activeChapter.position} fermato al limite di tre tentativi. Nessun testo precedente è stato sovrascritto.` };
-    }
-    if (!activeChapter) {'''
-          ))
-
-          replacements.append((
-              '    const draft = await generateMuseDraft(env, { task, context: museContext(project), current, targetWords, minWords, maxWords, maxTokens: 3200, overlap: 0.14, strictFacts: true });',
-              '''    const agentContext = seededBrief ? `${museContext(project)}\n\nDOSSIER SPECIFICO AUTORIZZATO DEL CAPITOLO:\n${seededBrief}` : museContext(project);
-    const draft = await generateMuseDraft(env, { task, context: agentContext, current, targetWords, minWords, maxWords, maxTokens: 3200, overlap: 0.14, strictFacts: true });'''
-          ))
-
-          replacements.append((
-              '''  await env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_ACTIVE, (/* @__PURE__ */ new Date()).toISOString(), id, AGENT_PROJECT_PAUSED).run();
-  await recordAuditEvent(env, { actorId: user.id, actorRole: "admin", action: "agent.resumed", targetType: "project", targetId: id });
-  return adminProject(id, user, env, "AGENTE riattivato. Continuerà dal primo capitolo non completato.");''',
-              '''  const resumedAt = (/* @__PURE__ */ new Date()).toISOString();
-  const blockedChapter = await env.DB.prepare('SELECT id,position,status FROM "BookChapter" WHERE projectId=? AND status LIKE ? ORDER BY position LIMIT 1').bind(id, "agente_errore_%").first();
-  if (blockedChapter) {
-    await env.DB.batch([
-      env.DB.prepare('UPDATE "BookChapter" SET status=?,updatedAt=? WHERE id=? AND projectId=?').bind("agente_da_generare", resumedAt, blockedChapter.id, id),
-      env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_ACTIVE, resumedAt, id, AGENT_PROJECT_PAUSED)
-    ]);
-  } else {
-    await env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_ACTIVE, resumedAt, id, AGENT_PROJECT_PAUSED).run();
-  }
-  await recordAuditEvent(env, { actorId: user.id, actorRole: "admin", action: "agent.resumed", targetType: "project", targetId: id, metadata: blockedChapter ? { resetChapter: blockedChapter.position, previousStatus: blockedChapter.status } : null });
-  return adminProject(id, user, env, blockedChapter ? `AGENTE riattivato. Il capitolo ${blockedChapter.position} riparte con tre nuovi tentativi; i testi già approvati restano intatti.` : "AGENTE riattivato. Continuerà dal primo capitolo non completato.");'''
-          ))
-
-          replacements.append((
-              'Riprendi dal prossimo capitolo',
-              'Riprendi AGENTE'
-          ))
-
-          changed = False
-          for old, new in replacements:
-              if old in text:
-                  text = text.replace(old, new, 1)
-                  changed = True
-              elif new not in text:
-                  raise SystemExit(f"Patch anchor not found: {old[:120]!r}")
-
-          if changed:
-              path.write_text(text, encoding="utf-8")
-
-      - name: Syntax check
-        run: node --check src/worker.js
-
-      - name: Commit repaired worker
-        run: |
-          if git diff --quiet -- src/worker.js; then
-            echo "Worker already repaired; nothing to commit."
-            exit 0
-          fi
-          git config user.name "splendoria-maintenance"
-          git config user.email "actions@users.noreply.github.com"
-          git add src/worker.js
-          git commit -m "fix: stop editorial agent retry loop and reset blocked chapter"
-          git push origin HEAD:splendoria.vip
+      - run: echo "maintenance workflow ready"
