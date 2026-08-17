@@ -4520,7 +4520,7 @@ async function pauseAgentForSources(project, env, readiness) {
   return { ok: false, paused: true, message: `AGENTE in pausa: il dossier contiene ${readiness.words} parole utili; ne servono almeno ${AGENT_MIN_SOURCE_WORDS} per completare dodici capitoli senza inventare.` };
 }
 async function recordAgentChapterFailure(project, chapter, env, reason) {
-  const attempt = agentChapterAttempts(chapter.status) + 1, paused = attempt >= 3, now = (/* @__PURE__ */ new Date()).toISOString();
+  const previousAttempt = agentChapterAttempts(chapter.status), attempt = Math.min(3, previousAttempt + 1), paused = attempt >= 3, now = (/* @__PURE__ */ new Date()).toISOString();
   await env.DB.batch([
     env.DB.prepare('UPDATE "BookChapter" SET status=?,updatedAt=? WHERE id=? AND projectId=?').bind(`agente_errore_${attempt}`, now, chapter.id, project.id),
     env.DB.prepare('UPDATE "BookProject" SET status=CASE WHEN status=? THEN ? ELSE status END,updatedAt=? WHERE id=?').bind(AGENT_PROJECT_RUNNING, paused ? AGENT_PROJECT_PAUSED : AGENT_PROJECT_ACTIVE, now, project.id)
@@ -4544,6 +4544,12 @@ async function advanceEditorialAgent(projectId, env) {
     const chapters = await env.DB.prepare('SELECT * FROM "BookChapter" WHERE projectId=? ORDER BY position').bind(project.id).all();
     if (!chapters.results.length) return createAgentOutline(project, env);
     activeChapter = chapters.results.find((chapter) => !agentChapterComplete(chapter));
+    if (activeChapter && agentChapterAttempts(activeChapter.status) >= 3) {
+      const pausedAt = (/* @__PURE__ */ new Date()).toISOString();
+      await env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_PAUSED, pausedAt, project.id, AGENT_PROJECT_RUNNING).run();
+      await recordAuditEvent(env, { actorRole: "system", action: "agent.paused", targetType: "chapter", targetId: activeChapter.id, outcome: "rejected", metadata: { reason: "chapter_retry_limit", position: activeChapter.position, attempts: agentChapterAttempts(activeChapter.status) } });
+      return { ok: false, paused: true, message: `Capitolo ${activeChapter.position} fermato al limite di tre tentativi. Nessun testo precedente è stato sovrascritto.` };
+    }
     if (!activeChapter) {
       const completedAt = (/* @__PURE__ */ new Date()).toISOString();
       await env.DB.batch([
@@ -4559,7 +4565,11 @@ async function advanceEditorialAgent(projectId, env) {
     const plan = chapters.results.map((chapter) => `${chapter.position}. ${chapter.title}`).join("; ");
     const seededBrief = project.title === NAPOLEON_AGENT_TITLE ? NAPOLEON_AGENT_CHAPTERS[Number(activeChapter.position) - 1]?.focus : "";
     const task = `Scrivi il capitolo ${activeChapter.position}, intitolato \xAB${activeChapter.title}\xBB, del libro \xAB${project.title}\xBB. \xC8 una ricostruzione autobiografica documentata in prima persona: il narratore racconta dalla propria prospettiva, ma non possiede pensieri, dialoghi o dettagli che le fonti non attestano. Mantieni un tono ${project.tone}. Concentrati esclusivamente su questo segmento: ${seededBrief || activeChapter.title}. Indice completo: ${plan}. Non anticipare diffusamente i capitoli successivi e non ripetere quelli precedenti. Riconosci conseguenze, responsabilit\xE0 e incertezze storiografiche; non celebrare n\xE9 assolvere. Conserva ogni informazione affidata nel testo attuale, se presente. Non inserire titolo, numero del capitolo, note tecniche o bibliografia nel corpo.`;
-    const draft = await generateMuseDraft(env, { task, context: museContext(project), current, targetWords, minWords, maxWords, maxTokens: 3200, overlap: 0.14, strictFacts: true });
+    const agentContext = seededBrief ? `${museContext(project)}
+
+DOSSIER SPECIFICO AUTORIZZATO DEL CAPITOLO:
+${seededBrief}` : museContext(project);
+    const draft = await generateMuseDraft(env, { task, context: agentContext, current, targetWords, minWords, maxWords, maxTokens: 3200, overlap: 0.14, strictFacts: true });
     const content = draft ? limitToWords(stripGeneratedChapterHeading(draft, activeChapter.title, activeChapter.position), maxWords) : "";
     if (!content || wordCount(content) < minWords) return recordAgentChapterFailure(project, activeChapter, env, "qualita_o_fonti");
     const generatedAt = (/* @__PURE__ */ new Date()).toISOString();
@@ -4613,7 +4623,12 @@ async function resumeAdminAgent(id, user, env) {
   if (!project) return redirect("/admin");
   if (project.statoCommerciale !== "agente") return adminProject(id, user, env, "Prima imposta lo stato commerciale su AGENTE.");
   if (project.status === AGENT_PROJECT_COMPLETE) return adminProject(id, user, env, "Il libro \xE8 gi\xE0 completo.");
-  await env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_ACTIVE, (/* @__PURE__ */ new Date()).toISOString(), id, AGENT_PROJECT_PAUSED).run();
+  const resumedAt = (/* @__PURE__ */ new Date()).toISOString();
+  const blockedChapter = await env.DB.prepare('SELECT id,position,status FROM "BookChapter" WHERE projectId=? AND status LIKE ? ORDER BY position LIMIT 1').bind(id, "agente_errore_%").first();
+  if (blockedChapter) {
+    await env.DB.prepare('UPDATE "BookChapter" SET status=?,updatedAt=? WHERE id=? AND projectId=?').bind("agente_da_generare", resumedAt, blockedChapter.id, id).run();
+  }
+  await env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_ACTIVE, resumedAt, id, AGENT_PROJECT_PAUSED).run();
   await recordAuditEvent(env, { actorId: user.id, actorRole: "admin", action: "agent.resumed", targetType: "project", targetId: id });
   return adminProject(id, user, env, "AGENTE riattivato. Continuer\xE0 dal primo capitolo non completato.");
 }
@@ -4704,7 +4719,7 @@ async function adminProject(id, user, env, message = "", isError = false) {
   }[p.status] || p.status;
   let agentControls = "";
   if (agentMode) {
-    const actions = p.status === AGENT_PROJECT_COMPLETE ? `<a class="button" href="/admin/progetto/${p.id}/anteprima" target="_blank" rel="noopener">Apri il libro completo</a>` : p.status === AGENT_PROJECT_PAUSED ? `<form method="post" action="/admin/progetto/${p.id}/agente/riprendi"><button class="button">Riprendi dal prossimo capitolo</button></form>` : p.status === AGENT_PROJECT_RUNNING ? `<span class="badge">Passaggio in corso \xB7 attendi la conclusione</span>` : `<form method="post" action="/admin/progetto/${p.id}/agente/esegui"><button class="button">Esegui adesso un passaggio</button></form><form method="post" action="/admin/progetto/${p.id}/agente/pausa"><button class="button secondary">Metti in pausa</button></form>`;
+    const actions = p.status === AGENT_PROJECT_COMPLETE ? `<a class="button" href="/admin/progetto/${p.id}/anteprima" target="_blank" rel="noopener">Apri il libro completo</a>` : p.status === AGENT_PROJECT_PAUSED ? `<form method="post" action="/admin/progetto/${p.id}/agente/riprendi"><button class="button">Riprendi AGENTE</button></form>` : p.status === AGENT_PROJECT_RUNNING ? `<span class="badge">Passaggio in corso \xB7 attendi la conclusione</span>` : `<form method="post" action="/admin/progetto/${p.id}/agente/esegui"><button class="button">Esegui adesso un passaggio</button></form><form method="post" action="/admin/progetto/${p.id}/agente/pausa"><button class="button secondary">Metti in pausa</button></form>`;
     agentControls = `<article class="card" style="margin:24px 0;border-color:#c5a059"><p class="eyebrow">AGENTE editoriale</p><h2>Stato: ${esc(agentStateLabel)}</h2><div class="meter"><span style="width:${chapters.results.length ? Math.round(completedChapters / chapters.results.length * 100) : 0}%"></span></div><p>${completedChapters} di ${chapters.results.length || bookStructure(p.targetPages).chapters} capitoli con una bozza sostanziale. Ogni passaggio usa la Musa scrittrice, il controllo delle fonti e la revisione finale; il testo viene salvato soltanto se supera tutti i controlli.</p><div class="actions">${actions}</div><p class="small muted">Il cron continua automaticamente ogni cinque minuti. Dopo tre respinte consecutive sullo stesso capitolo, il progetto si mette in pausa e non sovrascrive il testo precedente.</p></article>`;
   }
   return page("Gestione progetto", `<section class="studio alt"><div class="wrap"><a href="/admin">\u2190 Dashboard</a><h1>${esc(p.title)}</h1><p>${esc(p.nome)} \xB7 <a href="mailto:${esc(p.email)}">${esc(p.email)}</a></p>${message ? `<p class="${isError ? "error" : "success"}" role="${isError ? "alert" : "status"}">${esc(message)}</p>` : ""}${agentControls}<div class="grid three"><article class="card"><h3>Libro</h3><p>${esc(p.genre)} \xB7 ${p.targetPages} pagine</p><p>Piano: ${esc(PLAN_LABELS[p.plan] || p.plan)}</p><a href="/admin/progetto/${p.id}/anteprima" class="button secondary">Anteprima amministratore</a></article><article class="card"><h3>Capitoli</h3><ol>${chapters.results.map((chapter) => `<li>${esc(chapter.title)} <span class="muted">(${chapter.chars || 0} caratteri \xB7 ${esc(chapter.status)})</span></li>`).join("") || "<li>Nessun capitolo</li>"}</ol></article><article class="card"><h3>Ordini del libro</h3>${orders.results.map((order) => `<p>${esc(order.formula)} \xB7 ${order.prezzo} \u20AC \xB7 ${esc(order.stato)}</p>`).join("") || "<p>Nessun ordine</p>"}</article></div><form class="card" method="post"><h3>Gestione interna e sblocco</h3><p class="muted">\u201CPagato\u201D e \u201CGratuito\u201D sbloccano il libro. \u201CAGENTE\u201D sblocca il progetto e avvia il completamento autonomo, senza disattivare sicurezza, fonti o qualit\xE0.</p><div class="adminform"><label class="field">Stato editoriale<select name="statoEditoriale">${options(EDITORIAL_STATES, p.statoEditoriale || p.status)}</select></label><label class="field">Stato commerciale<select name="statoCommerciale">${options(COMMERCIAL_STATES, commercialState)}</select></label><label class="field">Tutor<input name="tutor" value="${esc(p.tutor || "")}"></label><label class="field full">Note interne<textarea name="note">${esc(p.note || "")}</textarea></label></div><button class="button">Salva e applica lo stato</button></form>${adminBookDeletionPanel(p.id, p.title || "Libro senza titolo")}</div></section>`, user);
