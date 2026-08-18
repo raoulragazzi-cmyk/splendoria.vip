@@ -1,0 +1,113 @@
+name: Self-heal Napoleon agent
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/self-heal-napoleon.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Patch self-heal and public progress status
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/worker.js')
+          s = p.read_text(encoding='utf-8')
+
+          old_queue = '''async function runEditorialAgentQueue(env) {
+            const staleBefore = new Date(Date.now() - AGENT_STALE_MINUTES * 6e4).toISOString();
+            const project = await env.DB.prepare(`SELECT p.id FROM "BookProject" p JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE a.statoCommerciale='agente' AND (p.status=? OR (p.status=? AND p.updatedAt<?)) ORDER BY p.updatedAt ASC LIMIT 1`).bind(AGENT_PROJECT_ACTIVE, AGENT_PROJECT_RUNNING, staleBefore).first();
+            if (!project) return { ok: true, idle: true };
+            return advanceEditorialAgent(project.id, env);
+          }'''
+          new_queue = '''async function runEditorialAgentQueue(env) {
+            const staleBefore = new Date(Date.now() - AGENT_STALE_MINUTES * 6e4).toISOString();
+            let project = await env.DB.prepare(`SELECT p.id FROM "BookProject" p JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE a.statoCommerciale='agente' AND (p.status=? OR (p.status=? AND p.updatedAt<?)) ORDER BY p.updatedAt ASC LIMIT 1`).bind(AGENT_PROJECT_ACTIVE, AGENT_PROJECT_RUNNING, staleBefore).first();
+            if (!project) {
+              const repair = await env.DB.prepare(`SELECT p.id,c.id AS chapterId,c.position,c.status AS chapterStatus FROM "BookProject" p JOIN "BookProjectAdmin" a ON a.projectId=p.id JOIN "BookChapter" c ON c.projectId=p.id WHERE p.title=? AND a.statoCommerciale='agente' AND p.status=? AND c.status LIKE 'agente_errore_%' AND NOT EXISTS (SELECT 1 FROM "AuditEvent" e WHERE e.action='agent.napoleon_repair_resume') ORDER BY c.position LIMIT 1`).bind(NAPOLEON_AGENT_TITLE, AGENT_PROJECT_PAUSED).first();
+              if (repair) {
+                const repairedAt = (/* @__PURE__ */ new Date()).toISOString();
+                await env.DB.batch([
+                  env.DB.prepare('UPDATE "BookChapter" SET status=?,updatedAt=? WHERE id=? AND projectId=?').bind("agente_da_generare", repairedAt, repair.chapterId, repair.id),
+                  env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_ACTIVE, repairedAt, repair.id, AGENT_PROJECT_PAUSED)
+                ]);
+                await recordAuditEvent(env, { actorRole: "system", action: "agent.napoleon_repair_resume", targetType: "project", targetId: repair.id, metadata: { position: repair.position, previousStatus: repair.chapterStatus } });
+                project = { id: repair.id };
+              }
+            }
+            if (!project) return { ok: true, idle: true };
+            return advanceEditorialAgent(project.id, env);
+          }'''
+          if old_queue in s:
+              s = s.replace(old_queue, new_queue, 1)
+          elif new_queue not in s:
+              raise SystemExit('runEditorialAgentQueue anchor not found')
+
+          old_route = '  if (path === "/healthz") response = await healthResponse(env);'
+          new_route = '  if (path === "/healthz") response = await healthResponse(env);\n  if (path === "/agent-status/napoleone") response = await napoleonAgentStatusResponse(env);'
+          if old_route in s:
+              s = s.replace(old_route, new_route, 1)
+          elif new_route not in s:
+              raise SystemExit('health route anchor not found')
+
+          health_anchor = '''function faviconResponse() {
+            return new Response(FAVICON_SVG, { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "public, max-age=31536000, immutable" } });
+          }
+          async function healthResponse(env) {'''
+          health_new = '''function faviconResponse() {
+            return new Response(FAVICON_SVG, { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "public, max-age=31536000, immutable" } });
+          }
+          async function napoleonAgentStatusResponse(env) {
+            try {
+              const project = await env.DB.prepare('SELECT id,status,updatedAt FROM "BookProject" WHERE title=? ORDER BY createdAt LIMIT 1').bind(NAPOLEON_AGENT_TITLE).first();
+              if (!project) return jsonResponse({ book: NAPOLEON_AGENT_TITLE, status: "not_found", complete: false }, 404);
+              const chapters = await env.DB.prepare('SELECT position,status,length(content) AS chars FROM "BookChapter" WHERE projectId=? ORDER BY position').bind(project.id).all();
+              const rows = chapters.results || [];
+              const completed = rows.filter((chapter) => agentChapterComplete({ content: "x ".repeat(Math.max(0, Math.ceil(Number(chapter.chars || 0) / 2))), status: chapter.status })).length;
+              const current = rows.find((chapter) => !String(chapter.status || "").startsWith("generato_agente")) || null;
+              return jsonResponse({ book: NAPOLEON_AGENT_TITLE, status: project.status, complete: project.status === AGENT_PROJECT_COMPLETE, completedChapters: completed, totalChapters: rows.length, currentChapter: current ? Number(current.position) : null, currentStatus: current ? current.status : null, updatedAt: project.updatedAt });
+            } catch {
+              return jsonResponse({ book: NAPOLEON_AGENT_TITLE, status: "unavailable", complete: false }, 503);
+            }
+          }
+          async function healthResponse(env) {'''
+          if health_anchor in s:
+              s = s.replace(health_anchor, health_new, 1)
+          elif 'async function napoleonAgentStatusResponse(env)' not in s:
+              raise SystemExit('health function anchor not found')
+
+          robots_old = 'Disallow: /healthz\n\nSitemap:'
+          robots_new = 'Disallow: /healthz\nDisallow: /agent-status/\n\nSitemap:'
+          if robots_old in s:
+              s = s.replace(robots_old, robots_new, 1)
+
+          p.write_text(s, encoding='utf-8')
+      - name: Syntax check
+        run: node --check src/worker.js
+      - name: Smoke tests
+        run: npm test
+      - name: Commit worker repair
+        run: |
+          if git diff --quiet -- src/worker.js; then
+            echo "Worker already patched."
+            exit 0
+          fi
+          git config user.name "splendoria-maintenance"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/worker.js
+          git commit -m "fix: self-heal blocked Napoleon agent and expose progress"
+          git push origin HEAD:splendoria.vip
