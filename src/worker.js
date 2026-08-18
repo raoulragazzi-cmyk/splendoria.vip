@@ -2402,6 +2402,7 @@ async function systemRoute(request, env) {
   if (path === "/sitemap.xml") response = sitemapResponse();
   if (path === "/favicon.ico") response = faviconResponse();
   if (path === "/healthz") response = await healthResponse(env);
+  if (path === "/agent-status/napoleone") response = await napoleonAgentStatusResponse(env);
   if (!response || method === "GET") return response;
   return new Response(null, { status: response.status, headers: response.headers });
 }
@@ -2423,6 +2424,7 @@ Disallow: /account
 Disallow: /admin
 Disallow: /api/
 Disallow: /healthz
+Disallow: /agent-status/
 
 Sitemap: ${CANONICAL_ORIGIN}/sitemap.xml
 `;
@@ -2444,6 +2446,19 @@ ${urls}
 }
 function faviconResponse() {
   return new Response(FAVICON_SVG, { headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "public, max-age=31536000, immutable" } });
+}
+async function napoleonAgentStatusResponse(env) {
+  try {
+    const project = await env.DB.prepare('SELECT id,status,updatedAt FROM "BookProject" WHERE title=? ORDER BY createdAt LIMIT 1').bind(NAPOLEON_AGENT_TITLE).first();
+    if (!project) return jsonResponse({ book: NAPOLEON_AGENT_TITLE, status: "not_found", complete: false }, 404);
+    const chapters = await env.DB.prepare('SELECT position,status,length(content) AS chars FROM "BookChapter" WHERE projectId=? ORDER BY position').bind(project.id).all();
+    const rows = chapters.results || [];
+    const completed = rows.filter((chapter) => String(chapter.status || "") === "generato_agente").length;
+    const current = rows.find((chapter) => String(chapter.status || "") !== "generato_agente") || null;
+    return jsonResponse({ book: NAPOLEON_AGENT_TITLE, status: project.status, complete: project.status === AGENT_PROJECT_COMPLETE, completedChapters: completed, totalChapters: rows.length, currentChapter: current ? Number(current.position) : null, currentStatus: current ? current.status : null, updatedAt: project.updatedAt });
+  } catch {
+    return jsonResponse({ book: NAPOLEON_AGENT_TITLE, status: "unavailable", complete: false }, 503);
+  }
 }
 async function healthResponse(env) {
   let database = "unavailable";
@@ -4593,7 +4608,19 @@ ${seededBrief}` : museContext(project);
 }
 async function runEditorialAgentQueue(env) {
   const staleBefore = new Date(Date.now() - AGENT_STALE_MINUTES * 6e4).toISOString();
-  const project = await env.DB.prepare(`SELECT p.id FROM "BookProject" p JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE a.statoCommerciale='agente' AND (p.status=? OR (p.status=? AND p.updatedAt<?)) ORDER BY p.updatedAt ASC LIMIT 1`).bind(AGENT_PROJECT_ACTIVE, AGENT_PROJECT_RUNNING, staleBefore).first();
+  let project = await env.DB.prepare(`SELECT p.id FROM "BookProject" p JOIN "BookProjectAdmin" a ON a.projectId=p.id WHERE a.statoCommerciale='agente' AND (p.status=? OR (p.status=? AND p.updatedAt<?)) ORDER BY p.updatedAt ASC LIMIT 1`).bind(AGENT_PROJECT_ACTIVE, AGENT_PROJECT_RUNNING, staleBefore).first();
+  if (!project) {
+    const repair = await env.DB.prepare(`SELECT p.id,c.id AS chapterId,c.position,c.status AS chapterStatus FROM "BookProject" p JOIN "BookProjectAdmin" a ON a.projectId=p.id JOIN "BookChapter" c ON c.projectId=p.id WHERE p.title=? AND a.statoCommerciale='agente' AND p.status=? AND c.status LIKE 'agente_errore_%' AND NOT EXISTS (SELECT 1 FROM "AuditEvent" e WHERE e.action='agent.napoleon_repair_resume') ORDER BY c.position LIMIT 1`).bind(NAPOLEON_AGENT_TITLE, AGENT_PROJECT_PAUSED).first();
+    if (repair) {
+      const repairedAt = (/* @__PURE__ */ new Date()).toISOString();
+      await env.DB.batch([
+        env.DB.prepare('UPDATE "BookChapter" SET status=?,updatedAt=? WHERE id=? AND projectId=?').bind("agente_da_generare", repairedAt, repair.chapterId, repair.id),
+        env.DB.prepare('UPDATE "BookProject" SET status=?,updatedAt=? WHERE id=? AND status=?').bind(AGENT_PROJECT_ACTIVE, repairedAt, repair.id, AGENT_PROJECT_PAUSED)
+      ]);
+      await recordAuditEvent(env, { actorRole: "system", action: "agent.napoleon_repair_resume", targetType: "project", targetId: repair.id, metadata: { position: repair.position, previousStatus: repair.chapterStatus } });
+      project = { id: repair.id };
+    }
+  }
   if (!project) return { ok: true, idle: true };
   return advanceEditorialAgent(project.id, env);
 }
