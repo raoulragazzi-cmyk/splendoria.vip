@@ -30,8 +30,10 @@
 - [ ] Production deploy initiated from the approved source.
 
 ## After deploy
-- [ ] Health endpoint / homepage responds.
-- [ ] Authentication smoke test passes.
+- [ ] Run `BASE_URL=https://www.splendoria.vip bash scripts/postdeploy-check.sh` and require a full PASS.
+- [ ] Homepage and public access pages respond with expected HTTP status.
+- [ ] Protected Studio/Admin routes return an allowed page/redirect status.
+- [ ] Authentication smoke test passes with a dedicated test account.
 - [ ] One affected end-to-end user journey passes.
 - [ ] Cloudflare logs show no new critical errors.
 - [ ] Release/commit recorded as current production baseline.
