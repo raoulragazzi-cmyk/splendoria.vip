@@ -56,7 +56,16 @@
           "migrations_dir": "./migrations"
         }
       ],
-      "send_email": [],
+      "send_email": [
+        {
+          "name": "CONTACT_EMAIL",
+          "allowed_destination_addresses": []
+        },
+        {
+          "name": "ADMIN_EMAIL_NOTIFICATION",
+          "allowed_destination_addresses": []
+        }
+      ],
       "triggers": {
         "crons": []
       },
