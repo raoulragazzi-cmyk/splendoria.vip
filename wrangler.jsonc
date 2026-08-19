@@ -42,5 +42,29 @@
     "APP_URL": "https://www.splendoria.vip",
     "ADMIN_EMAIL": "raoulragazzi@gmail.com",
     "EMAIL_FROM": "contatti@splendoria.vip"
+  },
+  "env": {
+    "staging": {
+      "ai": {
+        "binding": "AI"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "splendoria-v2-test",
+          "database_id": "8bf872f6-3f9e-471f-95bc-a99a94f0d97c",
+          "migrations_dir": "./migrations"
+        }
+      ],
+      "triggers": {
+        "crons": []
+      },
+      "vars": {
+        "APP_URL": "https://splendoria-v2-staging.raoulragazzi.workers.dev",
+        "ADMIN_EMAIL": "raoulragazzi@gmail.com",
+        "EMAIL_FROM": "contatti@splendoria.vip",
+        "ENVIRONMENT": "staging"
+      }
+    }
   }
 }
