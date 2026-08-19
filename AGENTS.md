@@ -2,6 +2,12 @@
 
 These instructions apply to AI coding agents and automated contributors.
 
+## Mandatory project identity gate
+
+Before any write, migration, Cloudflare change or deploy, read `PROJECT_FINGERPRINT.md` and verify repository, target Worker, target domain and D1 ID. If live infrastructure disagrees with the fingerprint, STOP and re-verify read-only.
+
+Never infer the project from UI appearance, filenames or nearby conversation context.
+
 ## Source and environments
 
 - GitHub is the source of truth for code.
@@ -26,13 +32,15 @@ Treat these as high risk:
 ## Workflow
 
 1. Understand the request and classify risk.
-2. Use a dedicated branch and PR for non-trivial changes.
-3. Preserve a rollback target.
-4. Run the Pull Request Quality Gate.
-5. Require production dependency audit, smoke suite and both Wrangler dry-runs where applicable.
-6. Validate risky functionality on staging with synthetic data before production.
-7. Back up D1 before risky production migrations.
-8. After deploy, run `scripts/postdeploy-check.sh` and relevant functional acceptance.
+2. Verify `PROJECT_FINGERPRINT.md`.
+3. Use a dedicated branch and PR for non-trivial changes.
+4. Preserve a rollback target.
+5. Run the Pull Request Quality Gate.
+6. Require production dependency audit, smoke suite and both Wrangler dry-runs where applicable.
+7. Validate risky functionality on staging with synthetic data before production.
+8. Back up D1 before risky production migrations.
+9. Repeat the Project Identity Gate immediately before production deploy.
+10. After deploy, run `scripts/postdeploy-check.sh` and relevant functional acceptance.
 
 ## Database rules
 
@@ -48,6 +56,7 @@ Staging email bindings may exist for configuration parity but must not have real
 ## Release blockers
 
 Stop rather than bypass when:
+- project fingerprint mismatch or ambiguity;
 - one user can access another user's book/content;
 - admin/customer roles cross unexpectedly;
 - a migration risks data loss without backup/recovery;
@@ -64,6 +73,7 @@ Do not weaken a failing test merely to obtain a green CI. First determine whethe
 ## Read first
 
 Before high-risk changes, read:
+- `PROJECT_FINGERPRINT.md`
 - `GOVERNANCE.md`
 - `RELEASE_CHECKLIST.md`
 - `SECURITY.md`
