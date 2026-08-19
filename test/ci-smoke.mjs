@@ -65,10 +65,10 @@ if (!staging.vars?.APP_URL || staging.vars.APP_URL === wrangler.vars?.APP_URL ||
 if (staging.vars?.ENVIRONMENT !== "staging") {
   throw new Error("CI: ENVIRONMENT=staging mancante");
 }
-if (Object.prototype.hasOwnProperty.call(staging, "send_email")) {
-  throw new Error("CI: staging non deve avere binding email production durante il bootstrap");
+if (!Array.isArray(staging.send_email) || staging.send_email.length !== 0) {
+  throw new Error("CI: staging deve dichiarare send_email come array vuoto durante il bootstrap");
 }
-console.log("/configurazione-staging: D1 separato, cron disattivato, AI esplicita, email production assente");
+console.log("/configurazione-staging: D1 separato, cron disattivato, AI esplicita, email production disabilitata esplicitamente");
 
 await writeFile(generatedUrl, normalizedSmoke, "utf8");
 try {
