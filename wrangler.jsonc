@@ -56,6 +56,7 @@
           "migrations_dir": "./migrations"
         }
       ],
+      "send_email": [],
       "triggers": {
         "crons": []
       },
