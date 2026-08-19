@@ -45,6 +45,8 @@
   },
   "env": {
     "staging": {
+      "name": "splendoria-v2-staging",
+      "workers_dev": true,
       "ai": {
         "binding": "AI"
       },
