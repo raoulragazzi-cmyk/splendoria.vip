@@ -65,10 +65,18 @@ if (!staging.vars?.APP_URL || staging.vars.APP_URL === wrangler.vars?.APP_URL ||
 if (staging.vars?.ENVIRONMENT !== "staging") {
   throw new Error("CI: ENVIRONMENT=staging mancante");
 }
-if (!Array.isArray(staging.send_email) || staging.send_email.length !== 0) {
-  throw new Error("CI: staging deve dichiarare send_email come array vuoto durante il bootstrap");
+const stagingEmailBindings = staging.send_email || [];
+const expectedEmailBindingNames = ["CONTACT_EMAIL", "ADMIN_EMAIL_NOTIFICATION"];
+if (!Array.isArray(stagingEmailBindings) || stagingEmailBindings.length !== expectedEmailBindingNames.length) {
+  throw new Error("CI: binding email staging mancanti o inattesi");
 }
-console.log("/configurazione-staging: D1 separato, cron disattivato, AI esplicita, email production disabilitata esplicitamente");
+for (const name of expectedEmailBindingNames) {
+  const binding = stagingEmailBindings.find(item => item.name === name);
+  if (!binding || !Array.isArray(binding.allowed_destination_addresses) || binding.allowed_destination_addresses.length !== 0 || binding.destination_address) {
+    throw new Error(`CI: il binding email staging ${name} deve essere presente ma senza destinatari autorizzati`);
+  }
+}
+console.log("/configurazione-staging: D1 separato, cron disattivato, AI esplicita, email staging presenti ma senza destinatari autorizzati");
 
 await writeFile(generatedUrl, normalizedSmoke, "utf8");
 try {
