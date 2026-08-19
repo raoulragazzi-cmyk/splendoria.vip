@@ -2,6 +2,7 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-https://www.splendoria.vip}"
+BASE_URL="${BASE_URL%/}"
 CURL=(curl --silent --show-error --location --max-time 15 --connect-timeout 5)
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -25,7 +26,21 @@ check_redirect_or_200() {
   esac
 }
 
+check_health() {
+  local headers body code
+  headers="$(mktemp)"
+  body="$(mktemp)"
+  code="$(curl --silent --show-error --max-time 15 --connect-timeout 5 -D "$headers" -o "$body" -w '%{http_code}' "$BASE_URL/healthz")" || { rm -f "$headers" "$body"; fail "/healthz non raggiungibile"; }
+  [[ "$code" == "200" ]] || { rm -f "$headers" "$body"; fail "/healthz -> HTTP $code (atteso 200)"; }
+  grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"' "$body" || { rm -f "$headers" "$body"; fail "/healthz non conferma status=ok"; }
+  grep -Eq '"database"[[:space:]]*:[[:space:]]*"ok"' "$body" || { rm -f "$headers" "$body"; fail "/healthz non conferma database=ok"; }
+  grep -qi '^x-robots-tag:.*noindex' "$headers" || { rm -f "$headers" "$body"; fail "/healthz deve essere noindex"; }
+  rm -f "$headers" "$body"
+  pass "/healthz -> servizio e database ok"
+}
+
 echo "Splendoria post-deploy check: $BASE_URL"
+check_health
 check_200 "/"
 check_200 "/accedi"
 check_200 "/registrati"
