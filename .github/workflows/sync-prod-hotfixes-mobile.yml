@@ -25,7 +25,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # ---- Studio wrapper: restore yesterday's autosave/UI behavior + home viewport ----
           p = Path('src/studio-worker.js')
           s = p.read_text(encoding='utf-8')
 
@@ -46,35 +45,25 @@ jobs:
           new_readiness = "    readiness.innerHTML = '<strong>Prima di usare la Musa:</strong> per un capitolo di circa 1.000 parole servono almeno <b>20</b> parole di spunto. Se sono di più è meglio: la Musa userà i dettagli disponibili per scrivere circa 350 parole per ciascuna delle tre sezioni.';"
           s = replace_once(s, old_readiness, new_readiness, 'studio readiness copy')
 
-          safe_anchor = """  const safeFetch = async (url, form) => {
-            if (!url || !form) return;
-            const response = await fetch(url, { method: 'POST', body: new FormData(form), credentials: 'same-origin', headers: { 'X-Splendoria-Preflight': '1' } });
-            if (!response.ok) throw new Error('save_failed');
-          };
-          """
-          safe_replacement = safe_anchor + """
-          const safeChapterFetch = async (actionPath, form) => {
-            if (!actionPath || !form) return;
-            const autosaveUrl = actionPath.replace(/\/(?:genera|rifinisci)$/, '/autosalva');
+          old_chapter_preflight = "      if (isChapterAi) await safeFetch(form.action, form);"
+          new_chapter_preflight = r'''      if (isChapterAi) {
+            const autosaveUrl = pathname.replace(/\/(?:genera|rifinisci)$/, '/autosalva');
             const title = form.querySelector('[name="title"]')?.value || '';
             const content = form.querySelector('[name="content"]')?.value || '';
-            const response = await fetch(autosaveUrl, {
+            const saveResponse = await fetch(autosaveUrl, {
               method: 'POST',
               credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json', 'X-Splendoria-Preflight': '1' },
               body: JSON.stringify({ title, content })
             });
-            if (!response.ok) throw new Error('save_failed');
-          };
-          """
-          if "const safeChapterFetch = async" not in s:
-              s = replace_once(s, safe_anchor, safe_replacement, 'chapter autosave helper')
-          s = replace_once(s, "      if (isChapterAi) await safeFetch(form.action, form);", "      if (isChapterAi) await safeChapterFetch(pathname, form);", 'chapter preflight autosave call')
+            if (!saveResponse.ok) throw new Error('save_failed');
+          }'''
+          s = replace_once(s, old_chapter_preflight, new_chapter_preflight, 'chapter preflight autosave')
 
           viewport_marker = 'data-spl-mobile-viewport-patch'
           if viewport_marker not in s:
               viewport_anchor = "  const contentType = response.headers.get('content-type') || '';\n"
-              viewport_block = viewport_anchor + """
+              viewport_block = viewport_anchor + r'''
 
             if (url.pathname === '/' && contentType.includes('text/html')) {
               const html = await response.text();
@@ -84,15 +73,13 @@ jobs:
               const patched = /<meta\s+name=["']viewport["']/i.test(html) ? html : html.replace(/<head([^>]*)>/i, '<head$1>' + viewport);
               return new Response(patched, { status: response.status, statusText: response.statusText, headers });
             }
-          """
+          '''
               s = replace_once(s, viewport_anchor, viewport_block, 'home viewport')
 
           p.write_text(s, encoding='utf-8')
 
-          # ---- Base worker: restore the chapter-generation behavior already validated in production yesterday ----
           p = Path('src/worker.js')
           w = p.read_text(encoding='utf-8')
-
           pattern = re.compile(
               r"async function generateAdaptiveChapter\(request, projectId, chapterId, user, env\) \{.*?\n\}\n\nasync function refineChapterV2",
               re.S,
@@ -208,10 +195,9 @@ jobs:
 
           async function refineChapterV2'''
 
-          w = pattern.sub(new_function, w, count=1)
+          w = pattern.sub(lambda m: new_function, w, count=1)
           p.write_text(w, encoding='utf-8')
 
-          # ---- Static guardrails: prove only intended behaviors exist ----
           studio = Path('src/studio-worker.js').read_text(encoding='utf-8')
           worker = Path('src/worker.js').read_text(encoding='utf-8')
           checks = {
@@ -219,7 +205,7 @@ jobs:
               'mobile viewport value': 'width=device-width, initial-scale=1' in studio,
               '20-word UI': 'const requiredMuseWords = 20;' in studio,
               '350-word UI': 'const sectionTarget = 350;' in studio,
-              'chapter autosave': 'safeChapterFetch(pathname, form)' in studio,
+              'chapter autosave': "pathname.replace(/\\/(?:genera|rifinisci)$/, '/autosalva')" in studio,
               '20-word backend': 'sourceWords < 20' in worker,
               'Qwen chapter model': '@cf/qwen/qwen3.8-27b' in worker,
               'thinking disabled': 'enable_thinking: false' in worker,
