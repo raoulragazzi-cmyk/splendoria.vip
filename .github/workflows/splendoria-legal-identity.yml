@@ -1,0 +1,89 @@
+name: Splendoria legal identity update
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/splendoria-legal-identity.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout production branch
+        uses: actions/checkout@v4
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+
+      - name: Update legal identity only
+        shell: python
+        run: |
+          from pathlib import Path
+
+          worker_path = Path('src/worker.js')
+          studio_path = Path('src/studio-worker.js')
+          worker = worker_path.read_text(encoding='utf-8')
+          studio = studio_path.read_text(encoding='utf-8')
+
+          old_address_js = 'var LEGAL_ADDRESS = "Via Settala 22\\u201324, Milano (MI)";'
+          new_address_js = 'var LEGAL_ADDRESS = "Via Goethe 42, Merano e Via Settala 1, Milano";'
+          if old_address_js not in worker:
+              raise SystemExit('LEGAL_ADDRESS old value not found')
+          worker = worker.replace(old_address_js, new_address_js, 1)
+
+          # Base legal pages: replace the legal subject name only where rendered as provider/controller.
+          worker = worker.replace('<strong>Raoul Ragazzi</strong>', '<strong>AI Arena di Raoul Ragazzi</strong>')
+          worker = worker.replace('Raoul Ragazzi \\xB7 Partita IVA ${VAT_NUMBER}', 'AI Arena di Raoul Ragazzi \\xB7 Partita IVA ${VAT_NUMBER}', 1)
+
+          # Privacy-first override pages added on 29 Aug 2026.
+          studio = studio.replace(
+              'Il Titolare è <strong>Raoul Ragazzi</strong>, Partita IVA 02950290219, Via Settala 22–24, Milano (MI).',
+              'Il Titolare è <strong>AI Arena di Raoul Ragazzi</strong>, Partita IVA 02950290219, Via Goethe 42, Merano e Via Settala 1, Milano.'
+          )
+          studio = studio.replace(
+              'Titolare: Raoul Ragazzi, Partita IVA 02950290219, Via Settala 22–24, Milano (MI).',
+              'Titolare: AI Arena di Raoul Ragazzi, Partita IVA 02950290219, Via Goethe 42, Merano e Via Settala 1, Milano.'
+          )
+
+          worker_path.write_text(worker, encoding='utf-8')
+          studio_path.write_text(studio, encoding='utf-8')
+
+          combined = worker + '\n' + studio
+          required = [
+              'AI Arena di Raoul Ragazzi',
+              '02950290219',
+              'Via Goethe 42, Merano e Via Settala 1, Milano',
+              'contatti@splendoria.vip',
+          ]
+          missing = [x for x in required if x not in combined]
+          if missing:
+              raise SystemExit('Required identity values missing: ' + ', '.join(missing))
+          forbidden = [
+              'Via Settala 22\\u201324, Milano (MI)',
+              'Via Settala 22–24, Milano (MI)',
+          ]
+          stale = [x for x in forbidden if x in combined]
+          if stale:
+              raise SystemExit('Old legal address still present: ' + ', '.join(stale))
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wrangler dry run
+        run: npm run check
+
+      - name: Commit legal identity only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/worker.js src/studio-worker.js
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "legal: set AI Arena as Splendoria legal subject"
+          git push origin HEAD:splendoria.vip
