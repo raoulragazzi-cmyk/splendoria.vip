@@ -140,13 +140,13 @@ const STUDIO_JS_PATCH = String.raw`
     const targetLine = form.closest('.chapter-card')?.querySelector('.chapter-head .small.muted')?.textContent || '';
     const targetMatch = targetLine.match(/([\d.\s]+)\s*parole/i);
     const chapterTarget = targetMatch ? Number(targetMatch[1].replace(/\D/g, '')) : 1800;
-    const sectionTarget = Math.max(100, Math.round(chapterTarget / 3));
-    const requiredMuseWords = clamp(Math.round(chapterTarget * .24), 260, 460);
+    const sectionTarget = 350;
+    const requiredMuseWords = 20;
     const parts = balancedSplit(original.value);
 
     const readiness = document.createElement('p');
     readiness.className = 'spl-muse-readiness';
-    readiness.innerHTML = '<strong>Prima di usare la Musa:</strong> per un capitolo completo servono circa <b>' + requiredMuseWords + '</b> parole di ricordi concreti e vari nel progetto/intervista (date, luoghi, persone, azioni e conseguenze). Scrivere 20 parole nel capitolo non basta ancora: questo limite evita che l’IA inventi dettagli.';
+    readiness.innerHTML = '<strong>Prima di usare la Musa:</strong> per un capitolo di circa 1.000 parole servono almeno <b>20</b> parole di spunto. Se sono di più è meglio: la Musa userà i dettagli disponibili per scrivere circa 350 parole per ciascuna delle tre sezioni.';
     originalLabel.insertAdjacentElement('beforebegin', readiness);
 
     const editor = document.createElement('div');
@@ -235,7 +235,18 @@ const STUDIO_JS_PATCH = String.raw`
     try {
       if (projectForm && (isProjectAi || isQuestionRefresh || isOutline)) await safeFetch(projectAutosaveUrl, projectForm);
       if (interviewForm && (isInterviewAi || isQuestionRefresh || isOutline)) await safeFetch(interviewForm.action, interviewForm);
-      if (isChapterAi) await safeFetch(form.action, form);
+      if (isChapterAi) {
+  const autosaveUrl = pathname.replace(/\/(?:genera|rifinisci)$/, '/autosalva');
+  const title = form.querySelector('[name="title"]')?.value || '';
+  const content = form.querySelector('[name="content"]')?.value || '';
+  const saveResponse = await fetch(autosaveUrl, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-Splendoria-Preflight': '1' },
+    body: JSON.stringify({ title, content })
+  });
+  if (!saveResponse.ok) throw new Error('save_failed');
+}
       bypass.add(form);
       if (submitter) submitter.disabled = false;
       form.requestSubmit(submitter || undefined);
@@ -243,6 +254,107 @@ const STUDIO_JS_PATCH = String.raw`
       if (submitter) submitter.disabled = false;
       flash('Non sono riuscita a salvare in sicurezza ciò che hai scritto. Le tue parole restano qui: riprova tra un momento.', true);
     }
+
+
+  const SPL_CLIENT_DRAFT_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+  const SPL_CLIENT_DRAFT_PREFIX = 'splendoria:client-draft:v1:';
+  const SPL_CLIENT_DRAFT_KEY = SPL_CLIENT_DRAFT_PREFIX + window.location.pathname;
+  const SPL_CLIENT_DRAFT_SCOPE = '.studio-editor-page';
+  const splDraftRoot = document.querySelector('.studio');
+
+  const splFieldAllowed = field => {
+    if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) return false;
+    if (!splDraftRoot || !splDraftRoot.contains(field)) return false;
+    const type = String(field.type || '').toLowerCase();
+    const name = String(field.name || '').toLowerCase();
+    const autocomplete = String(field.autocomplete || '').toLowerCase();
+    if (['password', 'file', 'hidden', 'submit', 'button', 'reset'].includes(type)) return false;
+    if (/(?:pass|password|token|session|csrf|secret|otp|one.?time)/i.test(name + ' ' + autocomplete)) return false;
+    if (type === 'email' || name === 'email') return false;
+    return Boolean(field.name || field.id);
+  };
+
+  const splFieldKey = field => {
+    const form = field.form;
+    let formPath = window.location.pathname;
+    if (form && form.action) {
+      try { formPath = new URL(form.action, window.location.href).pathname; } catch {}
+    }
+    return formPath + '::' + (field.name ? 'name:' + field.name : 'id:' + field.id);
+  };
+
+  const splFieldValue = field => {
+    if (field instanceof HTMLInputElement && (field.type === 'checkbox' || field.type === 'radio')) return Boolean(field.checked);
+    return String(field.value ?? '');
+  };
+
+  const splApplyFieldValue = (field, value) => {
+    if (field instanceof HTMLInputElement && (field.type === 'checkbox' || field.type === 'radio')) field.checked = Boolean(value);
+    else field.value = String(value ?? '');
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  const splReadDraft = () => {
+    try {
+      const raw = localStorage.getItem(SPL_CLIENT_DRAFT_KEY);
+      if (!raw) return { version: 1, expiresAt: Date.now() + SPL_CLIENT_DRAFT_TTL_MS, fields: {} };
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.fields || Number(parsed.expiresAt || 0) <= Date.now()) {
+        localStorage.removeItem(SPL_CLIENT_DRAFT_KEY);
+        return { version: 1, expiresAt: Date.now() + SPL_CLIENT_DRAFT_TTL_MS, fields: {} };
+      }
+      return parsed;
+    } catch {
+      return { version: 1, expiresAt: Date.now() + SPL_CLIENT_DRAFT_TTL_MS, fields: {} };
+    }
+  };
+
+  let splDraft = splReadDraft();
+  const splInitial = new Map();
+  const splFields = () => [...document.querySelectorAll('input,textarea,select')].filter(splFieldAllowed);
+
+  splFields().forEach(field => {
+    const key = splFieldKey(field);
+    const serverValue = splFieldValue(field);
+    splInitial.set(key, serverValue);
+    const saved = splDraft.fields[key];
+    if (!saved) return;
+    if (serverValue === saved.value) {
+      saved.base = serverValue;
+      return;
+    }
+    if (serverValue === saved.base) splApplyFieldValue(field, saved.value);
+  });
+
+  let splDraftTimer = 0;
+  const splSaveDraft = field => {
+    if (!splFieldAllowed(field)) return;
+    const key = splFieldKey(field);
+    const current = splFieldValue(field);
+    const previous = splDraft.fields[key];
+    const base = previous ? previous.base : (splInitial.has(key) ? splInitial.get(key) : current);
+    splDraft.fields[key] = { value: current, base, savedAt: Date.now() };
+    splDraft.expiresAt = Date.now() + SPL_CLIENT_DRAFT_TTL_MS;
+    splDraft.updatedAt = Date.now();
+    window.clearTimeout(splDraftTimer);
+    splDraftTimer = window.setTimeout(() => {
+      try { localStorage.setItem(SPL_CLIENT_DRAFT_KEY, JSON.stringify(splDraft)); } catch {}
+    }, 220);
+  };
+
+  if (splDraftRoot) {
+    splDraftRoot.addEventListener('input', event => splSaveDraft(event.target), { passive: true });
+    splDraftRoot.addEventListener('change', event => splSaveDraft(event.target), { passive: true });
+    window.addEventListener('pagehide', () => {
+      window.clearTimeout(splDraftTimer);
+      try { localStorage.setItem(SPL_CLIENT_DRAFT_KEY, JSON.stringify(splDraft)); } catch {}
+    });
+    if (navigator.storage && typeof navigator.storage.persist === 'function') {
+      navigator.storage.persist().catch(() => {});
+    }
+  }
+
   }, true);
 })();
 `;
@@ -269,11 +381,41 @@ async function patchedFetch(request, env, ctx) {
   const response = await baseWorker.fetch(request, env, ctx);
   const contentType = response.headers.get('content-type') || '';
 
+
+  const isLongLivedAsset = request.method === 'GET' && (
+    /^\/assets\/(?:gentium-book-plus|eb-garamond)-.+\.woff2$/i.test(url.pathname) ||
+    url.pathname === '/favicon.svg' || url.pathname === '/favicon.ico'
+  );
+  const isImageAsset = request.method === 'GET' && /^\/assets\/.+\.(?:webp|png|jpe?g|svg)$/i.test(url.pathname);
+  if ((isLongLivedAsset || isImageAsset) && response.ok) {
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    if (isLongLivedAsset) {
+      headers.set('cache-control', 'public, max-age=31536000, immutable');
+      headers.set('cdn-cache-control', 'public, max-age=31536000, immutable');
+    } else {
+      headers.set('cache-control', 'public, max-age=2592000, stale-while-revalidate=604800');
+      headers.set('cdn-cache-control', 'public, max-age=2592000, stale-while-revalidate=604800');
+    }
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  }
+
+
+  if (url.pathname === '/' && contentType.includes('text/html')) {
+    const html = await response.text();
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1" data-spl-mobile-viewport-patch>';
+    const patched = /<meta\s+name=["']viewport["']/i.test(html) ? html : html.replace(/<head([^>]*)>/i, '<head$1>' + viewport);
+    return new Response(patched, { status: response.status, statusText: response.statusText, headers });
+  }
+
   if (url.pathname === '/assets/studio.js' && contentType.includes('javascript')) {
     const source = await response.text();
     const headers = new Headers(response.headers);
     headers.delete('content-length');
-    headers.set('cache-control', 'no-store');
+    headers.set('cache-control', 'public, max-age=31536000, immutable');
+    headers.set('cdn-cache-control', 'public, max-age=31536000, immutable');
     return new Response(patchStudioScript(source), { status: response.status, statusText: response.statusText, headers });
   }
 
