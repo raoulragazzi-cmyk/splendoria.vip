@@ -1,0 +1,157 @@
+name: Splendoria privacy-first legal refresh
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/splendoria-privacy-first.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout production branch
+        uses: actions/checkout@v4
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+
+      - name: Patch banner and legal pages only
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          worker_path = Path('src/worker.js')
+          worker = worker_path.read_text(encoding='utf-8')
+          studio_path = Path('src/studio-worker.js')
+          studio = studio_path.read_text(encoding='utf-8')
+
+          # Updated notice version so existing users see the revised privacy notice once.
+          if 'splendoria-cookie-notice-v1' in worker:
+              worker = worker.replace('splendoria-cookie-notice-v1', 'splendoria-cookie-notice-v2')
+
+          banner_fn = '''function cookieNotice() {
+            return `<aside class="cookie-banner privacy-first" data-cookie-banner role="region" aria-labelledby="cookie-banner-title" aria-describedby="cookie-banner-description"><button class="cookie-close" type="button" data-cookie-accept aria-label="Chiudi l’informativa privacy">×</button><span class="privacy-mark" aria-hidden="true">◌</span><div class="privacy-copy"><p class="eyebrow" id="cookie-banner-title">Privacy, senza sorprese</p><p id="cookie-banner-description">Usiamo solo strumenti tecnici necessari. Niente pubblicità, niente profilazione. Le bozze possono restare sul tuo dispositivo fino a 12 mesi come copia di sicurezza.</p><nav aria-label="Informazioni privacy"><a href="/privacy-policy" data-cookie-accept>Privacy</a><a href="/cookie-policy" data-cookie-accept>Cookie e dati locali</a><a href="/trasparenza-ai" data-cookie-accept>Trasparenza IA</a></nav></div><button class="button privacy-ok" type="button" data-cookie-accept>Ho capito</button></aside>`;
+          }'''
+          pat = re.compile(r'function cookieNotice\(\) \{.*?\n\}(?=\nfunction )', re.S)
+          worker, n = pat.subn(banner_fn, worker, count=1)
+          if n != 1:
+              raise SystemExit(f'cookieNotice patch: expected 1 function, found {n}')
+
+          css_marker = '/* privacy-first-banner-v2 */'
+          if css_marker not in worker:
+              css = r'''
+/* privacy-first-banner-v2 */
+.cookie-banner.privacy-first{right:18px!important;bottom:18px!important;display:flex!important;grid-template-columns:none!important;align-items:center!important;gap:14px!important;width:min(540px,calc(100% - 36px))!important;padding:15px 16px!important;border:1px solid rgba(214,173,99,.28)!important;border-radius:18px!important;background:rgba(16,45,41,.97)!important;color:#fff!important;box-shadow:0 16px 52px rgba(4,18,16,.28)!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.cookie-banner.privacy-first .privacy-mark{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:1px solid rgba(255,255,255,.18);border-radius:50%;color:#e2c488;font-size:20px}
+.cookie-banner.privacy-first .privacy-copy{min-width:0;flex:1}
+.cookie-banner.privacy-first .eyebrow{margin:0 28px 3px 0!important;color:#e2c488!important;font-size:11px!important;letter-spacing:.12em!important}
+.cookie-banner.privacy-first p:not(.eyebrow){margin:0!important;color:#e2ece8!important;font-size:13px!important;line-height:1.42!important}
+.cookie-banner.privacy-first nav{display:flex!important;gap:7px 14px!important;flex-wrap:wrap!important;margin-top:7px!important}
+.cookie-banner.privacy-first nav a{color:#fff!important;font-size:12px!important;font-weight:750!important;text-decoration:none!important;border-bottom:1px solid rgba(255,255,255,.35)}
+.cookie-banner.privacy-first .privacy-ok{flex:0 0 auto!important;margin:0!important;padding:9px 13px!important;border-radius:999px!important;background:#d6ad63!important;color:#102d29!important;font-size:12px!important;white-space:nowrap!important}
+.cookie-banner.privacy-first .cookie-close{top:5px!important;right:8px!important;width:28px;height:28px;color:#dce9e4!important;font-size:20px!important}
+@media(max-width:640px){.cookie-banner.privacy-first{right:10px!important;bottom:10px!important;display:grid!important;grid-template-columns:30px 1fr!important;gap:10px!important;width:calc(100% - 20px)!important;padding:13px 14px!important;border-radius:16px!important}.cookie-banner.privacy-first .privacy-mark{width:30px;height:30px}.cookie-banner.privacy-first .privacy-ok{grid-column:1/-1!important;width:100%!important}.cookie-banner.privacy-first p:not(.eyebrow){font-size:12.5px!important}.cookie-banner.privacy-first nav a{font-size:12px!important}}
+'''
+              anchor = '\n@media print{'
+              if worker.count(anchor) != 1:
+                  raise SystemExit(f'privacy banner CSS anchor expected 1, found {worker.count(anchor)}')
+              worker = worker.replace(anchor, '\n' + css + anchor, 1)
+
+          worker_path.write_text(worker, encoding='utf-8')
+
+          legal_marker = 'const SPL_PRIVACY_CENTER_PAGES = {'
+          if legal_marker not in studio:
+              legal = r'''
+const SPL_PRIVACY_CENTER_PAGES = {
+  '/privacy-policy': `<section class="legal-page"><header class="legal-hero"><div class="legal-reading"><p class="eyebrow">Protezione dei dati personali</p><h1>Privacy Policy</h1><p>Informativa ai sensi degli articoli 12 e 13 del Regolamento (UE) 2016/679. Abbiamo scelto di raccontare in modo semplice che cosa trattiamo, perché e per quanto tempo.</p><p class="legal-updated">Ultimo aggiornamento: 29 agosto 2026</p></div></header><div class="legal-content"><div class="legal-reading">
+<section><h2>1. Titolare del trattamento</h2><p>Il Titolare è <strong>Raoul Ragazzi</strong>, Partita IVA 02950290219, Via Settala 22–24, Milano (MI). Per privacy, esercizio dei diritti o segnalazioni: <a href="mailto:contatti@splendoria.vip">contatti@splendoria.vip</a>.</p></section>
+<section><h2>2. Quali dati trattiamo</h2><ul><li>dati di account, contatto, autenticazione e sicurezza;</li><li>richieste commerciali, ordini e dati amministrativi;</li><li>ricordi, interviste, capitoli, materiali e preferenze editoriali inseriti dall’utente;</li><li>dati tecnici necessari a proteggere il servizio;</li><li>copie locali delle bozze salvate nel browser, sul dispositivo dell’utente, per proteggerle da perdite accidentali.</li></ul><p>Splendoria non vende dati personali e non li usa per pubblicità comportamentale o profilazione commerciale.</p></section>
+<section><h2>3. Finalità e basi giuridiche</h2><div class="legal-table-wrap"><table><thead><tr><th>Finalità</th><th>Base giuridica</th></tr></thead><tbody><tr><td>Account, Studio, scrittura, assistenza e consegna del servizio</td><td>Contratto o misure precontrattuali, art. 6.1.b GDPR</td></tr><tr><td>Contatti, preventivi e richieste</td><td>Misure precontrattuali e legittimo interesse a rispondere, artt. 6.1.b e 6.1.f</td></tr><tr><td>Fatturazione e obblighi amministrativi</td><td>Contratto e obblighi di legge, artt. 6.1.b e 6.1.c</td></tr><tr><td>Sicurezza, prevenzione abusi e tutela dei diritti</td><td>Legittimo interesse, art. 6.1.f</td></tr><tr><td>Funzioni della Musa e strumenti IA richiesti dall’utente</td><td>Esecuzione del servizio, art. 6.1.b; consenso esplicito quando siano necessari dati particolari dell’utente, art. 9.2.a</td></tr></tbody></table></div></section>
+<section><h2>4. Ricordi sensibili e dati di altre persone</h2><p>Una storia personale può contenere dati particolari, ad esempio salute, convinzioni religiose o politiche, origine etnica, vita o orientamento sessuale. L’utente decide che cosa raccontare e deve limitarsi a ciò che è pertinente. Quando inserisce informazioni, fotografie o documenti riguardanti terzi, deve poterli utilizzare lecitamente e rispettarne dignità, riservatezza e diritti.</p></section>
+<section><h2>5. Intelligenza artificiale e controllo umano</h2><p>Le funzioni chiamate “Musa” usano sistemi di intelligenza artificiale per formulare domande, organizzare materiale, generare bozze e proporre revisioni. L’utente viene informato dell’interazione con l’IA, può modificare o rifiutare ogni output e mantiene il controllo dell’opera. Non vengono adottate decisioni esclusivamente automatizzate con effetti giuridici o analogamente significativi sulla persona. Maggiori dettagli sono disponibili nella <a href="/trasparenza-ai">pagina Trasparenza IA</a>.</p></section>
+<section><h2>6. Copia di sicurezza nel browser</h2><p>Nello Studio, testi e campi editoriali possono essere conservati anche nel <strong>local storage del dispositivo fino a 365 giorni dall’ultima modifica</strong>. Questa copia è tecnica, resta sul browser e non viene inviata automaticamente a Splendoria. Password, token, sessioni, email e file non vengono inclusi. Il browser o l’utente possono cancellarla in qualsiasi momento.</p></section>
+<section><h2>7. Destinatari e trasferimenti</h2><p>I dati possono essere trattati, nei limiti necessari, da fornitori di infrastruttura cloud, database, sicurezza, email e IA, da professionisti autorizzati per revisione e lavorazione editoriale, da consulenti e dalle autorità quando previsto dalla legge. Quando un trattamento comporta trasferimenti fuori dallo Spazio Economico Europeo, sono utilizzati gli strumenti previsti dal Capo V GDPR, come decisioni di adeguatezza o clausole contrattuali standard.</p></section>
+<section><h2>8. Conservazione</h2><p>Account e progetti sono conservati per la durata del rapporto e, quando necessario, per i successivi termini di legge o di tutela dei diritti. Le sessioni durano al massimo 30 giorni; i link di recupero password 30 minuti; eventi tecnici di sicurezza e audit fino a 365 giorni. La copia locale delle bozze ha una durata applicativa massima di 365 giorni dall’ultima modifica, salvo cancellazione anticipata dal browser.</p></section>
+<section><h2>9. Sicurezza</h2><p>Splendoria applica misure tecniche e organizzative proporzionate: connessioni cifrate, password derivate crittograficamente, cookie di sessione HttpOnly e Secure, separazione degli accessi, limitazione dei tentativi e registrazione degli eventi critici. I contenuti editoriali sono trattati secondo principi di minimizzazione e riservatezza.</p></section>
+<section><h2>10. Diritti</h2><p>L’interessato può chiedere accesso, rettifica, cancellazione, limitazione, portabilità, opposizione e revoca del consenso quando applicabili, scrivendo a <a href="mailto:contatti@splendoria.vip">contatti@splendoria.vip</a>. La risposta avviene senza ingiustificato ritardo e di regola entro un mese. È sempre possibile proporre reclamo al <strong>Garante per la protezione dei dati personali</strong>.</p></section>
+<section><h2>11. Minori e aggiornamenti</h2><p>Il servizio è destinato a persone maggiorenni. I dati riguardanti minori devono essere inseriti solo quando l’utente ne sia legittimato e nella misura strettamente necessaria. Questa informativa viene aggiornata quando cambiano il servizio, i fornitori o la normativa applicabile.</p></section>
+</div></div></section>`,
+  '/cookie-policy': `<section class="legal-page"><header class="legal-hero"><div class="legal-reading"><p class="eyebrow">Cookie e tecnologie locali</p><h1>Cookie Policy</h1><p>Splendoria usa soltanto strumenti tecnici necessari al servizio. Niente advertising, niente profilazione, niente tracker sociali.</p><p class="legal-updated">Ultimo aggiornamento: 29 agosto 2026</p></div></header><div class="legal-content"><div class="legal-reading">
+<section><h2>1. In breve</h2><p>I cookie sono piccoli identificatori conservati dal browser. Tecnologie analoghe, come il local storage, possono ricordare preferenze o bozze direttamente sul dispositivo. Gli strumenti tecnici necessari possono essere usati senza consenso preventivo; per eventuali strumenti non tecnici Splendoria chiederà prima un consenso libero, specifico e revocabile.</p></section>
+<section><h2>2. Strumenti utilizzati</h2><div class="legal-table-wrap"><table><thead><tr><th>Nome</th><th>Tipo e finalità</th><th>Durata</th></tr></thead><tbody><tr><td><code>spl_session</code></td><td>Cookie tecnico di prima parte. Mantiene l’accesso all’account e protegge la sessione; HttpOnly, Secure e SameSite=Lax.</td><td>Massimo 30 giorni; eliminato al logout</td></tr><tr><td><code>splendoria-voice-language</code></td><td>Local storage tecnico. Ricorda la lingua scelta per la dettatura.</td><td>Fino a modifica o cancellazione dal browser</td></tr><tr><td><code>splendoria-cookie-notice-v2</code></td><td>Local storage tecnico. Ricorda che l’informativa breve è stata chiusa.</td><td>Fino alla prossima versione sostanziale o cancellazione dal browser</td></tr><tr><td><code>splendoria:client-draft:v1:&lt;pagina&gt;</code></td><td>Local storage tecnico. Copia di sicurezza locale dei campi editoriali dello Studio. Non include password, token, sessioni, email o file e non viene inviata automaticamente al server.</td><td>Fino a 365 giorni dall’ultima modifica</td></tr></tbody></table></div></section>
+<section><h2>3. Perché non chiediamo “Accetta tutto”</h2><p>Nella configurazione attuale non esistono cookie pubblicitari, di profilazione o analytics di terze parti. Chiedere un consenso per tracker inesistenti sarebbe inutile e poco trasparente. Il piccolo banner serve quindi solo a informare. Se in futuro verranno introdotti strumenti non tecnici, resteranno disattivati fino a una scelta preventiva dell’utente, con possibilità equivalente di rifiutare o accettare.</p></section>
+<section><h2>4. Copie locali delle bozze</h2><p>Per ridurre il rischio di perdita accidentale, lo Studio può mantenere sul dispositivo una copia locale dei testi e dei campi editoriali fino a 12 mesi. Splendoria chiede al browser, quando disponibile, di trattare questo spazio come persistente; il browser mantiene comunque il controllo e può eliminarlo per impostazioni dell’utente, modalità privata o necessità di spazio.</p></section>
+<section><h2>5. Come gestire cookie e dati locali</h2><p>Dal browser è possibile eliminare cookie e local storage in qualsiasi momento. La cancellazione di <code>spl_session</code> comporta la disconnessione; la cancellazione delle bozze locali non elimina la versione eventualmente già salvata sui server Splendoria. Le autorizzazioni del microfono e della dettatura si gestiscono separatamente nelle impostazioni del browser.</p></section>
+<section><h2>6. Nessun tracciamento incrociato</h2><p>Splendoria non usa gli strumenti sopra indicati per creare profili pubblicitari, seguire l’utente su siti diversi o incrociare la navigazione tra dispositivi a fini commerciali.</p></section>
+<section><h2>7. Titolare e diritti</h2><p>Titolare: Raoul Ragazzi, Partita IVA 02950290219, Via Settala 22–24, Milano (MI). Contatto: <a href="mailto:contatti@splendoria.vip">contatti@splendoria.vip</a>. Per finalità, basi giuridiche, destinatari e diritti si rinvia alla <a href="/privacy-policy">Privacy Policy</a>.</p></section>
+</div></div></section>`
+};
+
+function splPatchPrivacyCenterPage(html, pathname) {
+  const body = SPL_PRIVACY_CENTER_PAGES[pathname];
+  if (!body) return html;
+  return html.replace(/<main id="main-content" tabindex="-1">[\s\S]*?<\/main>/i, `<main id="main-content" tabindex="-1">${body}</main>`);
+}
+'''
+              anchor = 'async function patchedFetch(request, env, ctx) {'
+              if studio.count(anchor) != 1:
+                  raise SystemExit(f'legal page injection anchor expected 1, found {studio.count(anchor)}')
+              studio = studio.replace(anchor, legal + '\n' + anchor, 1)
+
+          branch_marker = "  const contentType = response.headers.get('content-type') || '';\n"
+          privacy_branch = branch_marker + r'''
+
+  if ((url.pathname === '/privacy-policy' || url.pathname === '/cookie-policy') && contentType.includes('text/html')) {
+    const html = await response.text();
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    headers.set('cache-control', 'no-cache');
+    return new Response(splPatchPrivacyCenterPage(html, url.pathname), { status: response.status, statusText: response.statusText, headers });
+  }
+'''
+          if "splPatchPrivacyCenterPage(html, url.pathname)" not in studio:
+              if studio.count(branch_marker) != 1:
+                  raise SystemExit(f'privacy route branch anchor expected 1, found {studio.count(branch_marker)}')
+              studio = studio.replace(branch_marker, privacy_branch, 1)
+
+          studio_path.write_text(studio, encoding='utf-8')
+
+          checks = {
+              'privacy notice v2': 'splendoria-cookie-notice-v2' in worker,
+              'privacy banner': 'Privacy, senza sorprese' in worker,
+              'no profiling banner': 'Niente pubblicità, niente profilazione' in worker,
+              'privacy banner css': 'privacy-first-banner-v2' in worker,
+              'privacy policy date': 'Ultimo aggiornamento: 29 agosto 2026' in studio,
+              'GDPR rights': 'accesso, rettifica, cancellazione, limitazione, portabilità, opposizione' in studio,
+              'Garante': 'Garante per la protezione dei dati personali' in studio,
+              '365 day local draft': '365 giorni dall’ultima modifica' in studio,
+              'cookie technical only': 'strumenti tecnici necessari' in studio,
+              'AI transparency link': '/trasparenza-ai' in studio,
+          }
+          failed = [name for name, ok in checks.items() if not ok]
+          print(checks)
+          if failed:
+              raise SystemExit('Privacy guardrails failed: ' + ', '.join(failed))
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wrangler dry run
+        run: npm run check
+
+      - name: Commit only legal/privacy application changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/worker.js src/studio-worker.js
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "legal: privacy-first notice and current GDPR cookie disclosures"
+          git push origin HEAD:splendoria.vip
