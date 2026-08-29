@@ -1,0 +1,64 @@
+name: Fix Splendoria 365-day draft initialization
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/splendoria-fix-draft-init.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout production branch
+        uses: actions/checkout@v4
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+
+      - name: Move draft persistence outside submit listener
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/studio-worker.js')
+          s = p.read_text(encoding='utf-8')
+          start_marker = "  const SPL_CLIENT_DRAFT_TTL_MS = 365 * 24 * 60 * 60 * 1000;"
+          start = s.index(start_marker)
+          listener_end = s.index("  }, true);\n})();\n`;", start)
+          block = s[start:listener_end]
+          s = s[:start] + s[listener_end:]
+          anchor = "  }, true);\n})();\n`;"
+          replacement = "  }, true);\n\n" + block.rstrip() + "\n})();\n`;"
+          if s.count(anchor) != 1:
+              raise SystemExit(f'listener end anchor: expected 1 occurrence, found {s.count(anchor)}')
+          s = s.replace(anchor, replacement, 1)
+
+          submit_start = s.index("  document.addEventListener('submit', async event => {")
+          persistence_start = s.index(start_marker)
+          submit_end = s.index("  }, true);", submit_start)
+          if not (persistence_start > submit_end):
+              raise SystemExit('Persistence is still inside submit listener')
+          if "navigator.storage.persist()" not in s or "serverValue === saved.base" not in s:
+              raise SystemExit('Persistence guardrails missing')
+          p.write_text(s, encoding='utf-8')
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wrangler dry run
+        run: npm run check
+
+      - name: Commit only corrected Studio source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/studio-worker.js
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "fix: initialize one-year client drafts on page load"
+          git push origin HEAD:splendoria.vip
