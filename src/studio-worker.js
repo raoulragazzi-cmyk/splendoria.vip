@@ -256,6 +256,8 @@ const STUDIO_JS_PATCH = String.raw`
     }
 
 
+  }, true);
+
   const SPL_CLIENT_DRAFT_TTL_MS = 365 * 24 * 60 * 60 * 1000;
   const SPL_CLIENT_DRAFT_PREFIX = 'splendoria:client-draft:v1:';
   const SPL_CLIENT_DRAFT_KEY = SPL_CLIENT_DRAFT_PREFIX + window.location.pathname;
@@ -354,8 +356,6 @@ const STUDIO_JS_PATCH = String.raw`
       navigator.storage.persist().catch(() => {});
     }
   }
-
-  }, true);
 })();
 `;
 
