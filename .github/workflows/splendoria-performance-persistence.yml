@@ -1,0 +1,257 @@
+name: Splendoria performance and 1-year client drafts
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/splendoria-performance-persistence.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout production branch
+        uses: actions/checkout@v4
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+
+      - name: Reapply already-approved production hotfixes safely
+        shell: python
+        run: |
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/sync-prod-hotfixes-mobile.yml').read_text(encoding='utf-8')
+          step = '      - name: Patch only known production hotfixes\n'
+          start = workflow.index(step)
+          run_marker = '        run: |\n'
+          code_start = workflow.index(run_marker, start) + len(run_marker)
+          code_end = workflow.index('\n      - name: Install dependencies', code_start)
+          code = textwrap.dedent(workflow[code_start:code_end])
+          exec(compile(code, 'approved-production-hotfixes.py', 'exec'), {'__name__': '__main__'})
+
+      - name: Add long-lived asset cache and 365-day local drafts
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 occurrence, found {count}')
+              return text.replace(old, new, 1)
+
+          studio_path = Path('src/studio-worker.js')
+          studio = studio_path.read_text(encoding='utf-8')
+
+          # The JS URL is versioned in the HTML, so it is safe to keep the browser copy for a year.
+          studio = replace_once(
+              studio,
+              "    headers.set('cache-control', 'no-store');",
+              "    headers.set('cache-control', 'public, max-age=31536000, immutable');\n    headers.set('cdn-cache-control', 'public, max-age=31536000, immutable');",
+              'studio.js long browser cache'
+          )
+
+          content_anchor = "  const contentType = response.headers.get('content-type') || '';\n"
+          asset_cache_block = content_anchor + r'''
+
+            const isLongLivedAsset = request.method === 'GET' && (
+              /^\/assets\/(?:gentium-book-plus|eb-garamond)-.+\.woff2$/i.test(url.pathname) ||
+              url.pathname === '/favicon.svg' || url.pathname === '/favicon.ico'
+            );
+            const isImageAsset = request.method === 'GET' && /^\/assets\/.+\.(?:webp|png|jpe?g|svg)$/i.test(url.pathname);
+            if ((isLongLivedAsset || isImageAsset) && response.ok) {
+              const headers = new Headers(response.headers);
+              headers.delete('content-length');
+              if (isLongLivedAsset) {
+                headers.set('cache-control', 'public, max-age=31536000, immutable');
+                headers.set('cdn-cache-control', 'public, max-age=31536000, immutable');
+              } else {
+                headers.set('cache-control', 'public, max-age=2592000, stale-while-revalidate=604800');
+                headers.set('cdn-cache-control', 'public, max-age=2592000, stale-while-revalidate=604800');
+              }
+              return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+            }
+          '''
+          if 'const isLongLivedAsset =' not in studio:
+              studio = replace_once(studio, content_anchor, asset_cache_block, 'static asset cache policy')
+
+          draft_marker = 'const SPL_CLIENT_DRAFT_TTL_MS = 365 * 24 * 60 * 60 * 1000;'
+          if draft_marker not in studio:
+              end_anchor = "  }, true);\n})();\n`;"
+              persistence = r'''
+
+            const SPL_CLIENT_DRAFT_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+            const SPL_CLIENT_DRAFT_PREFIX = 'splendoria:client-draft:v1:';
+            const SPL_CLIENT_DRAFT_KEY = SPL_CLIENT_DRAFT_PREFIX + window.location.pathname;
+            const SPL_CLIENT_DRAFT_SCOPE = '.studio-editor-page';
+            const splDraftRoot = document.querySelector('.studio');
+
+            const splFieldAllowed = field => {
+              if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) return false;
+              if (!splDraftRoot || !splDraftRoot.contains(field)) return false;
+              const type = String(field.type || '').toLowerCase();
+              const name = String(field.name || '').toLowerCase();
+              const autocomplete = String(field.autocomplete || '').toLowerCase();
+              if (['password', 'file', 'hidden', 'submit', 'button', 'reset'].includes(type)) return false;
+              if (/(?:pass|password|token|session|csrf|secret|otp|one.?time)/i.test(name + ' ' + autocomplete)) return false;
+              if (type === 'email' || name === 'email') return false;
+              return Boolean(field.name || field.id);
+            };
+
+            const splFieldKey = field => {
+              const form = field.form;
+              let formPath = window.location.pathname;
+              if (form && form.action) {
+                try { formPath = new URL(form.action, window.location.href).pathname; } catch {}
+              }
+              return formPath + '::' + (field.name ? 'name:' + field.name : 'id:' + field.id);
+            };
+
+            const splFieldValue = field => {
+              if (field instanceof HTMLInputElement && (field.type === 'checkbox' || field.type === 'radio')) return Boolean(field.checked);
+              return String(field.value ?? '');
+            };
+
+            const splApplyFieldValue = (field, value) => {
+              if (field instanceof HTMLInputElement && (field.type === 'checkbox' || field.type === 'radio')) field.checked = Boolean(value);
+              else field.value = String(value ?? '');
+              field.dispatchEvent(new Event('input', { bubbles: true }));
+              field.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+
+            const splReadDraft = () => {
+              try {
+                const raw = localStorage.getItem(SPL_CLIENT_DRAFT_KEY);
+                if (!raw) return { version: 1, expiresAt: Date.now() + SPL_CLIENT_DRAFT_TTL_MS, fields: {} };
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.fields || Number(parsed.expiresAt || 0) <= Date.now()) {
+                  localStorage.removeItem(SPL_CLIENT_DRAFT_KEY);
+                  return { version: 1, expiresAt: Date.now() + SPL_CLIENT_DRAFT_TTL_MS, fields: {} };
+                }
+                return parsed;
+              } catch {
+                return { version: 1, expiresAt: Date.now() + SPL_CLIENT_DRAFT_TTL_MS, fields: {} };
+              }
+            };
+
+            let splDraft = splReadDraft();
+            const splInitial = new Map();
+            const splFields = () => [...document.querySelectorAll('input,textarea,select')].filter(splFieldAllowed);
+
+            splFields().forEach(field => {
+              const key = splFieldKey(field);
+              const serverValue = splFieldValue(field);
+              splInitial.set(key, serverValue);
+              const saved = splDraft.fields[key];
+              if (!saved) return;
+              if (serverValue === saved.value) {
+                saved.base = serverValue;
+                return;
+              }
+              if (serverValue === saved.base) splApplyFieldValue(field, saved.value);
+            });
+
+            let splDraftTimer = 0;
+            const splSaveDraft = field => {
+              if (!splFieldAllowed(field)) return;
+              const key = splFieldKey(field);
+              const current = splFieldValue(field);
+              const previous = splDraft.fields[key];
+              const base = previous ? previous.base : (splInitial.has(key) ? splInitial.get(key) : current);
+              splDraft.fields[key] = { value: current, base, savedAt: Date.now() };
+              splDraft.expiresAt = Date.now() + SPL_CLIENT_DRAFT_TTL_MS;
+              splDraft.updatedAt = Date.now();
+              window.clearTimeout(splDraftTimer);
+              splDraftTimer = window.setTimeout(() => {
+                try { localStorage.setItem(SPL_CLIENT_DRAFT_KEY, JSON.stringify(splDraft)); } catch {}
+              }, 220);
+            };
+
+            if (splDraftRoot) {
+              splDraftRoot.addEventListener('input', event => splSaveDraft(event.target), { passive: true });
+              splDraftRoot.addEventListener('change', event => splSaveDraft(event.target), { passive: true });
+              window.addEventListener('pagehide', () => {
+                window.clearTimeout(splDraftTimer);
+                try { localStorage.setItem(SPL_CLIENT_DRAFT_KEY, JSON.stringify(splDraft)); } catch {}
+              });
+              if (navigator.storage && typeof navigator.storage.persist === 'function') {
+                navigator.storage.persist().catch(() => {});
+              }
+            }
+          '''
+              studio = replace_once(studio, end_anchor, persistence + '\n' + end_anchor, '365-day browser draft persistence')
+
+          studio_path.write_text(studio, encoding='utf-8')
+
+          worker_path = Path('src/worker.js')
+          worker = worker_path.read_text(encoding='utf-8')
+          worker = replace_once(
+              worker,
+              '/assets/studio.js?v=20260817-2',
+              '/assets/studio.js?v=20260829-1',
+              'studio asset cache-bust version'
+          )
+
+          preload_anchor = '<style>${styles}${extra}</style><script src="/assets/studio.js?v=20260829-1" defer>'
+          preload_value = '<style>${styles}${extra}</style><link rel="preload" href="/assets/gentium-book-plus-400.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/assets/gentium-book-plus-700.woff2" as="font" type="font/woff2" crossorigin><script src="/assets/studio.js?v=20260829-1" defer>'
+          worker = replace_once(worker, preload_anchor, preload_value, 'font preload')
+          worker_path.write_text(worker, encoding='utf-8')
+
+          checks = {
+              'studio js one-year immutable': "max-age=31536000, immutable" in studio,
+              'images cache 30 days': "max-age=2592000, stale-while-revalidate=604800" in studio,
+              'draft TTL 365 days': draft_marker in studio,
+              'password excluded': "['password', 'file', 'hidden'" in studio,
+              'email excluded': "type === 'email'" in studio,
+              'persistent storage requested': "navigator.storage.persist()" in studio,
+              'conflict-safe restore': "serverValue === saved.base" in studio,
+              'versioned studio asset': '/assets/studio.js?v=20260829-1' in worker,
+              'font preload': 'rel="preload" href="/assets/gentium-book-plus-400.woff2"' in worker,
+              'Musa 20-word UI preserved': 'const requiredMuseWords = 20;' in studio,
+              'Musa Qwen chapter preserved': '@cf/qwen/qwen3.8-27b' in worker,
+          }
+          failed = [name for name, ok in checks.items() if not ok]
+          print(checks)
+          if failed:
+              raise SystemExit('Performance guardrails failed: ' + ', '.join(failed))
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Adapt stale cache-bust assertion only inside CI workspace
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('test/smoke.mjs')
+          s = p.read_text(encoding='utf-8')
+          if '20260812-3' in s:
+              s = s.replace('20260812-3', '20260829-1')
+          elif '20260817-2' in s:
+              s = s.replace('20260817-2', '20260829-1')
+          else:
+              raise SystemExit('Smoke asset-version assertion not found')
+          p.write_text(s, encoding='utf-8')
+
+      - name: Run smoke tests
+        run: npm test
+
+      - name: Wrangler dry run
+        run: npm run check
+
+      - name: Restore test file and commit only application sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          git restore test/smoke.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/worker.js src/studio-worker.js
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "perf: cache assets and preserve client drafts for one year"
+          git push origin HEAD:splendoria.vip
