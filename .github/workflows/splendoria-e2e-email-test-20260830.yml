@@ -1,0 +1,43 @@
+name: Splendoria E2E email test 2026-08-30
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/splendoria-e2e-email-test-20260830.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Health check DB AI email bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 https://www.splendoria.vip/healthz -o health.json
+          cat health.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('health.json','utf8'));
+          if(j.status!=='ok') throw new Error('health status='+j.status);
+          if(j.checks?.database!=='ok') throw new Error('database='+j.checks?.database);
+          if(j.checks?.email!=='configured') throw new Error('email='+j.checks?.email);
+          console.log('HEALTH_OK database='+j.checks.database+' ai='+j.checks.ai+' email='+j.checks.email);
+          NODE
+
+      - name: Trigger password reset transactional email
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl --silent --show-error --max-time 25 \
+            -o reset-response.html -w '%{http_code}' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'email=raoulragazzi@gmail.com' \
+            https://www.splendoria.vip/password-dimenticata)
+          echo "HTTP_STATUS=$code"
+          test "$code" = "200"
+          grep -q "riceverai un collegamento valido per 30 minuti" reset-response.html
+          echo "RESET_REQUEST_ACCEPTED"
