@@ -27,6 +27,9 @@ const STUDIO_CSS = `
 .studio-editor-page .spl-section-card textarea{width:100%;min-height:260px;resize:vertical;padding:18px 20px;border:1px solid #bfd4cd;border-radius:14px;background:#fff;color:var(--ink);font:400 var(--studio-type-reading)/1.7 var(--font-editorial)!important}
 .studio-editor-page .spl-section-card.is-over-limit{border-color:#c8913a;background:#fffaf0}
 .studio-editor-page .spl-section-card.is-over-limit .spl-section-meta{color:#8a6226}
+.studio-editor-page .spl-section-actions{display:flex;justify-content:flex-end;margin-top:12px} /* spl-section-muse-v1 */
+.studio-editor-page .spl-section-muse{min-height:42px;padding:10px 16px;font-size:14px!important}
+@media(max-width:700px){.studio-editor-page .spl-section-actions{justify-content:stretch}.studio-editor-page .spl-section-muse{width:100%}}
 .studio-editor-page .spl-original-chapter-field{display:none!important}
 .studio-editor-page .spl-delete-at-bottom{margin-top:34px!important}
 .studio-editor-page .spl-action-message{position:fixed;right:22px;bottom:22px;z-index:80;max-width:min(430px,calc(100vw - 44px));padding:14px 17px;border:1px solid #c8ded6;border-radius:14px;background:#fff;color:#153f37;box-shadow:0 18px 50px rgba(16,45,41,.18);font-size:15px;font-weight:700}
@@ -157,6 +160,9 @@ const STUDIO_JS_PATCH = String.raw`
       ['3. Chiusura', 'Chiudi il movimento narrativo: cosa cambia, cosa resta, dove porta.']
     ];
     const sectionAreas = [];
+    const sectionHiddenInputs = [];
+    const chapterMuseButton = form.querySelector('.muse-draft-button[formaction*="/genera"]');
+    const chapterMuseAction = chapterMuseButton ? chapterMuseButton.formAction : form.action.replace(/\/salva$/, '/genera');
     labels.forEach((entry, index) => {
       const card = document.createElement('section');
       card.className = 'spl-section-card';
@@ -168,6 +174,25 @@ const STUDIO_JS_PATCH = String.raw`
       area.value = parts[index] || '';
       area.placeholder = index === 0 ? 'Inizia dalla scena o dal ricordo che apre il capitolo…' : index === 1 ? 'Sviluppa ciò che accade e ciò che cambia…' : 'Porta il capitolo a una conclusione naturale…';
       card.append(area);
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'museSection' + index;
+      hidden.value = area.value;
+      form.append(hidden);
+      sectionHiddenInputs.push(hidden);
+      area.addEventListener('input', () => { hidden.value = area.value; });
+      const sectionActions = document.createElement('div');
+      sectionActions.className = 'spl-section-actions';
+      const sectionMuse = document.createElement('button');
+      sectionMuse.type = 'submit';
+      sectionMuse.className = 'button secondary muse-draft-button spl-section-muse';
+      sectionMuse.name = 'museSection';
+      sectionMuse.value = String(index);
+      sectionMuse.formAction = chapterMuseAction;
+      sectionMuse.formNoValidate = true;
+      sectionMuse.textContent = 'Affidati alla Musa per questa sezione';
+      sectionActions.append(sectionMuse);
+      card.append(sectionActions);
       editor.append(card);
       sectionAreas.push(area);
     });
@@ -194,7 +219,7 @@ const STUDIO_JS_PATCH = String.raw`
     original.addEventListener('input', () => {
       if (syncing) return;
       const nextParts = balancedSplit(original.value);
-      sectionAreas.forEach((area, index) => { area.value = nextParts[index] || ''; });
+      sectionAreas.forEach((area, index) => { area.value = nextParts[index] || ''; if (sectionHiddenInputs[index]) sectionHiddenInputs[index].value = area.value; });
       updateCounters();
     });
     updateCounters();
