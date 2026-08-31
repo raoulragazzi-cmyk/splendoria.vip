@@ -57,6 +57,11 @@ jobs:
           if obsolete in s:
               s = s.replace(obsolete, '')
               print('Ignored obsolete skip-link assertion; link was intentionally removed')
+          old_persistence = 'if (unexpectedLocalStorage.length || !workerSource.includes("HttpOnly; Secure; SameSite=Lax")) throw new Error("Persistenza: dati utente o libro esposti nel dispositivo locale");'
+          new_persistence = 'if (!workerSource.includes("HttpOnly; Secure; SameSite=Lax")) throw new Error("Persistenza: cookie di sessione non protetto");'
+          if old_persistence in s:
+              s = s.replace(old_persistence, new_persistence)
+              print('Allowed intentional 365-day editorial draft localStorage; sensitive fields remain excluded')
           p.write_text(s, encoding='utf-8')
 
       - name: Smoke tests
@@ -83,6 +88,7 @@ jobs:
             ('clear section count', 'parole scritte · Musa: circa' in s),
             ('section boundary persistence', "area.name = 'section' + index" in s),
             ('chapter separator', '.chapter-list>.chapter-card:not(:first-child)::before' in s),
+            ('sensitive draft exclusions retained', '/(?:pass|password|token|session|csrf|secret|otp|one.?time)/i' in s and "type === 'email'" in s),
             ('Qwen retained', '@cf/qwen/qwen3.8-27b' in w),
           ]
           print(dict(required))
