@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Patch only per-section Musa
-        run: python .github/scripts/section_muse_patch_20260831_v2.py
+        run: python .github/scripts/section_muse_patch_20260831_v3.py
 
       - name: Install dependencies
         run: npm ci
