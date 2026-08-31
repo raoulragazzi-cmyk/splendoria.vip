@@ -27,6 +27,12 @@ const STUDIO_CSS = `
 .studio-editor-page .spl-section-card textarea{width:100%;min-height:260px;resize:vertical;padding:18px 20px;border:1px solid #bfd4cd;border-radius:14px;background:#fff;color:var(--ink);font:400 var(--studio-type-reading)/1.7 var(--font-editorial)!important}
 .studio-editor-page .spl-section-card.is-over-limit{border-color:#c8913a;background:#fffaf0}
 .studio-editor-page .spl-section-card.is-over-limit .spl-section-meta{color:#8a6226}
+.studio-editor-page .chapter-list{row-gap:46px!important}
+.studio-editor-page .chapter-list>.chapter-card:not(:first-child){position:relative;margin-top:22px}
+.studio-editor-page .chapter-list>.chapter-card:not(:first-child)::before{content:"";position:absolute;left:7%;right:7%;top:-35px;height:1px;background:linear-gradient(90deg,transparent,#c7a15b,transparent)}
+.studio-editor-page .spl-restore-book{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 20px;padding:13px 15px;border:1px solid #d6e2dd;border-radius:14px;background:#fff}
+.cookie-banner.privacy-first[hidden]{display:none!important}
+@media(max-width:700px){.studio-editor-page .spl-restore-book .button{width:100%}}
 .studio-editor-page .spl-section-actions{display:flex;justify-content:flex-end;margin-top:12px} /* spl-section-muse-v1 */
 .studio-editor-page .spl-section-muse{min-height:42px;padding:10px 16px;font-size:14px!important}
 @media(max-width:700px){.studio-editor-page .spl-section-actions{justify-content:stretch}.studio-editor-page .spl-section-muse{width:100%}}
@@ -144,12 +150,14 @@ const STUDIO_JS_PATCH = String.raw`
     const targetMatch = targetLine.match(/([\d.\s]+)\s*parole/i);
     const chapterTarget = targetMatch ? Number(targetMatch[1].replace(/\D/g, '')) : 1800;
     const sectionTarget = 350;
-    const requiredMuseWords = 20;
-    const parts = balancedSplit(original.value);
+    const requiredMuseWords = 50;
+    const persistedParts = [0, 1, 2].map(index => form.querySelector('[data-chapter-section-source="' + index + '"]')?.value || '');
+    const hasPersistedParts = form.dataset.splSectionState === '1';
+    const parts = hasPersistedParts ? persistedParts : balancedSplit(original.value);
 
     const readiness = document.createElement('p');
     readiness.className = 'spl-muse-readiness';
-    readiness.innerHTML = '<strong>Prima di usare la Musa:</strong> per un capitolo di circa 1.000 parole servono almeno <b>20</b> parole di spunto. Se sono di più è meglio: la Musa userà i dettagli disponibili per scrivere circa 350 parole per ciascuna delle tre sezioni.';
+    readiness.innerHTML = '<strong>Prima di usare la Musa:</strong> servono almeno <b>50 parole di spunto complessive</b> nelle tre sezioni. Non devi scriverne 350: circa 350 è la lunghezza che la Musa può sviluppare per una singola sezione.';
     originalLabel.insertAdjacentElement('beforebegin', readiness);
 
     const editor = document.createElement('div');
@@ -160,7 +168,6 @@ const STUDIO_JS_PATCH = String.raw`
       ['3. Chiusura', 'Chiudi il movimento narrativo: cosa cambia, cosa resta, dove porta.']
     ];
     const sectionAreas = [];
-    const sectionHiddenInputs = [];
     const chapterMuseButton = form.querySelector('.muse-draft-button[formaction*="/genera"]');
     const chapterMuseAction = chapterMuseButton ? chapterMuseButton.formAction : form.action.replace(/\/salva$/, '/genera');
     labels.forEach((entry, index) => {
@@ -171,16 +178,11 @@ const STUDIO_JS_PATCH = String.raw`
       const area = document.createElement('textarea');
       area.id = headingId + '-text';
       area.setAttribute('aria-labelledby', headingId);
+      area.name = 'section' + index;
+      area.dataset.splSectionIndex = String(index);
       area.value = parts[index] || '';
       area.placeholder = index === 0 ? 'Inizia dalla scena o dal ricordo che apre il capitolo…' : index === 1 ? 'Sviluppa ciò che accade e ciò che cambia…' : 'Porta il capitolo a una conclusione naturale…';
       card.append(area);
-      const hidden = document.createElement('input');
-      hidden.type = 'hidden';
-      hidden.name = 'museSection' + index;
-      hidden.value = area.value;
-      form.append(hidden);
-      sectionHiddenInputs.push(hidden);
-      area.addEventListener('input', () => { hidden.value = area.value; });
       const sectionActions = document.createElement('div');
       sectionActions.className = 'spl-section-actions';
       const sectionMuse = document.createElement('button');
@@ -200,28 +202,36 @@ const STUDIO_JS_PATCH = String.raw`
 
     let syncing = false;
     const updateCounters = () => {
+      const total = sectionAreas.reduce((sum, area) => sum + wordCount(area.value), 0);
       sectionAreas.forEach(area => {
         const count = wordCount(area.value);
         const card = area.closest('.spl-section-card');
         const meta = card.querySelector('[data-spl-section-count]');
-        meta.textContent = count + ' / circa ' + sectionTarget + ' parole';
-        card.classList.toggle('is-over-limit', count > Math.round(sectionTarget * 1.12));
+        meta.textContent = count + ' parole scritte · Musa: circa ' + sectionTarget;
+        card.classList.remove('is-over-limit');
       });
+      const remaining = Math.max(0, requiredMuseWords - total);
+      readiness.innerHTML = total >= requiredMuseWords
+        ? '<strong>Musa pronta:</strong> hai ' + total + ' parole di spunto complessive. Circa 350 parole è l’obiettivo di scrittura della Musa per ciascuna sezione, non un minimo da digitare.'
+        : '<strong>Prima di usare la Musa:</strong> hai ' + total + ' parole di spunto; ne servono almeno <b>50</b> complessive. Te ne mancano ' + remaining + '. Non devi scriverne 350: quello è l’obiettivo della Musa per una sezione.';
     };
     const syncOriginal = () => {
       syncing = true;
-      original.value = sectionAreas.map(area => area.value.trim()).filter(Boolean).join('\n\n');
+      original.value = sectionAreas.map(area => area.value.trim()).join('\n\n');
       original.dispatchEvent(new Event('input', { bubbles: true }));
       syncing = false;
       updateCounters();
     };
     sectionAreas.forEach(area => area.addEventListener('input', syncOriginal));
+    let acceptLegacyOriginalOnce = !hasPersistedParts;
     original.addEventListener('input', () => {
-      if (syncing) return;
+      if (syncing || !acceptLegacyOriginalOnce) return;
       const nextParts = balancedSplit(original.value);
-      sectionAreas.forEach((area, index) => { area.value = nextParts[index] || ''; if (sectionHiddenInputs[index]) sectionHiddenInputs[index].value = area.value; });
+      sectionAreas.forEach((area, index) => { area.value = nextParts[index] || ''; });
+      acceptLegacyOriginalOnce = false;
       updateCounters();
     });
+    queueMicrotask(() => { acceptLegacyOriginalOnce = false; });
     updateCounters();
 
     const voiceButton = form.querySelector('[data-voice-target]');
@@ -229,6 +239,10 @@ const STUDIO_JS_PATCH = String.raw`
       if (voiceButton) voiceButton.dataset.voiceTarget = area.id;
     }));
   });
+
+  document.querySelectorAll('[data-restore-book-form]').forEach(form => form.addEventListener('submit', event => {
+    if (!window.confirm('Ripristinare l’ultima versione salvata del libro? Lo stato attuale verrà conservato come versione precedente, quindi potrai tornare indietro.')) event.preventDefault();
+  }));
 
   const bypass = new WeakSet();
   const projectAutosaveUrl = bookId ? '/libro/' + bookId + '/autosalva-progetto' : '';
@@ -268,7 +282,7 @@ const STUDIO_JS_PATCH = String.raw`
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', 'X-Splendoria-Preflight': '1' },
-    body: JSON.stringify({ title, content })
+    body: JSON.stringify({ title, content, section0: form.querySelector('[name="section0"]')?.value || '', section1: form.querySelector('[name="section1"]')?.value || '', section2: form.querySelector('[name="section2"]')?.value || '' })
   });
   if (!saveResponse.ok) throw new Error('save_failed');
 }
@@ -392,6 +406,9 @@ function patchStudioScript(source) {
   else {
     patched = patched.replace("document.documentElement.classList.add('js');", "document.documentElement.classList.add('js'); const _splActionMatch = window.location.pathname.match(/^\\/libro\\/([^/]+)\\/(?:migliora|affidati|struttura|intervista|risposte(?:\\/[^/]+)?|capitolo\\/[^/]+\\/(?:genera|rifinisci))$/); if (_splActionMatch) { try { history.replaceState(history.state, '', '/libro/' + _splActionMatch[1]); } catch {} }");
   }
+  const autosavePayload = "body: JSON.stringify({ title: titleInput?.value || '', content: writingField?.value || '' })";
+  const autosaveWithSections = "body: JSON.stringify({ title: titleInput?.value || '', content: writingField?.value || '', section0: form.querySelector('[name=\"section0\"]')?.value || '', section1: form.querySelector('[name=\"section1\"]')?.value || '', section2: form.querySelector('[name=\"section2\"]')?.value || '' })";
+  if (patched.includes(autosavePayload)) patched = patched.replace(autosavePayload, autosaveWithSections);
   return patched + "\n" + STUDIO_JS_PATCH;
 }
 
