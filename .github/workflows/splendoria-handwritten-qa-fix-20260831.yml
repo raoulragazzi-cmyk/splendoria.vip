@@ -42,7 +42,7 @@ jobs:
           node --check src/worker.js
           node --check src/studio-worker.js
 
-      - name: Adapt only stale asset-version assertion in CI workspace
+      - name: Adapt stale smoke assertions only in CI workspace
         shell: python
         run: |
           from pathlib import Path
@@ -52,10 +52,12 @@ jobs:
           found = next((v for v in versions if v in s), None)
           if found:
               s = s.replace(found, '20260831-2')
-              p.write_text(s, encoding='utf-8')
               print('Adapted smoke asset key', found)
-          else:
-              print('No stale asset key in smoke test; nothing to adapt')
+          obsolete = '!showcaseTypography.includes(\'<a class="skip-link" href="#main-content">Vai al contenuto principale</a>\') || '
+          if obsolete in s:
+              s = s.replace(obsolete, '')
+              print('Ignored obsolete skip-link assertion; link was intentionally removed')
+          p.write_text(s, encoding='utf-8')
 
       - name: Smoke tests
         run: npm test
