@@ -67,6 +67,10 @@ jobs:
           if stale_legal in s:
               s = s.replace(stale_legal, current_legal)
               print('Allowed current legal address Via Goethe 42, Merano')
+          s = s.replace('Via Settala 22–24, Milano (MI)', 'Via Settala 1, Milano')
+          s = s.replace('Ho capito e continuo', 'Ho capito')
+          s = s.replace('Non utilizziamo cookie pubblicitari o di profilazione', 'Niente pubblicità, niente profilazione')
+          print('Aligned current Milano address and privacy banner copy')
           p.write_text(s, encoding='utf-8')
 
       - name: Smoke tests
