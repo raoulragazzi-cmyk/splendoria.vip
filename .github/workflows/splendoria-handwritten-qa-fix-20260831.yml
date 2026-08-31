@@ -21,6 +21,16 @@ jobs:
           ref: splendoria.vip
           fetch-depth: 0
 
+      - name: Make compiled-string matches literal
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('.github/scripts/splendoria_handwritten_qa_fix_20260831.py')
+          s = p.read_text(encoding='utf-8')
+          for name in ['gen_prelude_old','gen_prelude_new','content_old','content_new']:
+              s = s.replace(name + " = '''", name + " = r'''", 1)
+          p.write_text(s, encoding='utf-8')
+
       - name: Apply only handwritten QA fixes
         run: python .github/scripts/splendoria_handwritten_qa_fix_20260831.py
 
@@ -82,6 +92,7 @@ jobs:
         run: |
           set -euo pipefail
           git restore test/smoke.mjs || true
+          git restore .github/scripts/splendoria_handwritten_qa_fix_20260831.py || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/worker.js src/studio-worker.js
