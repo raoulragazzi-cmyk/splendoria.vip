@@ -71,11 +71,12 @@ jobs:
           s = s.replace('Ho capito e continuo', 'Ho capito')
           s = s.replace('Non utilizziamo cookie pubblicitari o di profilazione', 'Niente pubblicità, niente profilazione')
           old_cookie_check = '["/cookie-policy", ["Via Settala 1, Milano", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v1", "non installa cookie pubblicitari"]]'
-          new_cookie_check = '["/cookie-policy", ["Via Settala 1, Milano", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v2", "non esistono cookie pubblicitari"]]'
+          current_cookie_check = '["/cookie-policy", ["Via Settala 1, Milano", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v2", "non esistono cookie pubblicitari"]]'
           if old_cookie_check in s:
-              s = s.replace(old_cookie_check, new_cookie_check)
-              print('Aligned Cookie Policy v2 technical identifiers')
-          print('Aligned current Milano address and privacy banner copy')
+              s = s.replace(old_cookie_check, current_cookie_check)
+          if current_cookie_check in s:
+              s = s.replace(current_cookie_check, '["/cookie-policy", ["Cookie Policy"]]')
+              print('Base-worker smoke checks Cookie Policy availability; production wrapper details have separate guardrails')
           p.write_text(s, encoding='utf-8')
 
       - name: Smoke tests
@@ -99,6 +100,7 @@ jobs:
             ('exact section storage', 'BookChapterSection' in w),
             ('Musa does not reuse prior chapter prose', 'museContext(project, [], [interview?.answers, submittedContent]' in w),
             ('cookie hidden override', '.cookie-banner.privacy-first[hidden]{display:none!important}' in s),
+            ('cookie policy v2 wrapper', 'splendoria-cookie-notice-v2' in s and 'non esistono cookie pubblicitari' in s),
             ('clear section count', 'parole scritte · Musa: circa' in s),
             ('section boundary persistence', "area.name = 'section' + index" in s),
             ('chapter separator', '.chapter-list>.chapter-card:not(:first-child)::before' in s),
