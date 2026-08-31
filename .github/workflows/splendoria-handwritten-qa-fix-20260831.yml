@@ -70,6 +70,11 @@ jobs:
           s = s.replace('Via Settala 22–24, Milano (MI)', 'Via Settala 1, Milano')
           s = s.replace('Ho capito e continuo', 'Ho capito')
           s = s.replace('Non utilizziamo cookie pubblicitari o di profilazione', 'Niente pubblicità, niente profilazione')
+          old_cookie_check = '["/cookie-policy", ["Via Settala 1, Milano", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v1", "non installa cookie pubblicitari"]]'
+          new_cookie_check = '["/cookie-policy", ["Via Settala 1, Milano", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v2", "non esistono cookie pubblicitari"]]'
+          if old_cookie_check in s:
+              s = s.replace(old_cookie_check, new_cookie_check)
+              print('Aligned Cookie Policy v2 technical identifiers')
           print('Aligned current Milano address and privacy banner copy')
           p.write_text(s, encoding='utf-8')
 
