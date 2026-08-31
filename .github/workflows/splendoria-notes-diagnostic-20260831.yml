@@ -1,0 +1,41 @@
+name: Splendoria notes diagnostic 2026-08-31
+
+on:
+  push:
+    branches:
+      - splendoria.vip
+    paths:
+      - .github/workflows/splendoria-notes-diagnostic-20260831.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: splendoria.vip
+      - name: Print relevant source blocks
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p = Path('src/worker.js').read_text(encoding='utf-8')
+          names = ['generateOutline','saveChapter','autosaveChapter','saveBook','autosaveBook','studioScript']
+          for name in names:
+              marker = ('async function ' if name != 'studioScript' else 'function ') + name + '('
+              start = p.find(marker)
+              if start < 0:
+                  print('\n###', name, 'NOT FOUND')
+                  continue
+              m = re.search(r'\n(?:async )?function [A-Za-z0-9_]+\(', p[start+1:])
+              end = start+1+m.start() if m else min(len(p), start+12000)
+              print('\n###', name, '###\n')
+              print(p[start:end][:16000])
+          s = Path('src/studio-worker.js').read_text(encoding='utf-8')
+          for needle in ['const STUDIO_JS_PATCH', 'function patchStudioScript']:
+              start = s.find(needle)
+              print('\n### STUDIO', needle, '###\n')
+              print(s[start:start+18000])
