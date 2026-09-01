@@ -1,0 +1,24 @@
+name: Verify public Splendoria UI release
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/splendoria-ui-public-check-20260901.yml"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for Cloudflare build
+        run: sleep 30
+      - name: Verify public HTML and JS
+        run: |
+          set -euo pipefail
+          html=$(curl -fsSL --retry 4 --retry-delay 5 https://www.splendoria.vip/)
+          echo "$html" | grep -Fq '/assets/studio.js?v=20260901-1'
+          js=$(curl -fsSL --retry 4 --retry-delay 5 'https://www.splendoria.vip/assets/studio.js?v=20260901-1')
+          echo "$js" | grep -Fq 'data-spl-back-to-top'
+          echo "$js" | grep -Fq "chapterMuseButton.remove()"
+          echo "$js" | grep -Fq "style.setProperty('display', 'none', 'important')"
+          echo 'PUBLIC_UI_RELEASE_OK'
