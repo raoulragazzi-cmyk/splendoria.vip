@@ -3462,7 +3462,7 @@ function studioScript() {
       saveStatus.className = 'project-save-status';
       saveStatus.setAttribute('role', 'status');
       saveStatus.setAttribute('aria-live', 'polite');
-      saveStatus.textContent = consent?.checked ? 'Salvataggio automatico dei ricordi attivo' : 'Conferma la dichiarazione sui contenuti per attivare il salvataggio automatico';
+      saveStatus.textContent = consent?.checked ? 'Salvataggio online automatico attivo nel tuo account' : 'Conferma la dichiarazione sui contenuti per attivare il salvataggio automatico';
       submitButton?.insertAdjacentElement('beforebegin', saveStatus);
       const signature = () => JSON.stringify(fields.map(field => [field.name, field.type === 'checkbox' ? field.checked : field.value]));
       let lastSaved = signature();
@@ -3486,13 +3486,13 @@ function studioScript() {
           data.specialDataConsent = Boolean(consent.checked);
           show('is-saving', 'Sto custodendo i tuoi ricordi\u2026');
           try {
-            const response = await fetch(String(projectForm.getAttribute('action') || '').replace('/salva', '/autosalva-progetto'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
+            const response = await fetch(String(projectForm.getAttribute('action') || '').replace('/salva', '/autosalva-progetto'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data), keepalive: true });
             const result = response.ok ? await response.json() : null;
             if (!result?.ok) throw new Error('Salvataggio non riuscito');
             lastSaved = currentSignature;
             if (signature() === currentSignature) {
               const time = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(new Date(result.savedAt || Date.now()));
-              show('is-saved', 'Ricordi al sicuro \xB7 Salvato alle ' + time);
+              show('is-saved', 'Salvato online nel tuo account \xB7 ' + time);
             } else scheduleSave();
             return true;
           } catch {
@@ -4287,7 +4287,7 @@ async function saveBook(request, id, user, env) {
   if (f.specialDataConsent !== "yes") return bookEditor(id, user, env, "Per salvare i ricordi devi confermare la liceit\xE0 dei contenuti e l\u2019eventuale consenso ai dati particolari.");
   const now = (/* @__PURE__ */ new Date()).toISOString();
   await captureBookBackup(id, user.id, env, { force: true, reason: "manual_project_save" });
-  await env.DB.prepare('UPDATE "BookProject" SET title=?,tone=?,audience=?,targetPages=?,sourceMaterial=?,story=?,people=?,events=?,message=?,specialDataConsentAt=COALESCE(specialDataConsentAt,?),updatedAt=? WHERE id=?').bind(clean(f.title, 160), clean(f.tone, 80), clean(f.audience, 160), normalizeTargetPages(f.targetPages), clean(f.sourceMaterial, 12e3), clean(f.story, 7e3), clean(f.people, 4e3), clean(f.events, 4e3), clean(f.message, 3e3), now, now, id).run();
+  await env.DB.prepare('UPDATE "BookProject" SET title=?,tone=?,audience=?,targetPages=?,sourceMaterial=?,story=?,people=?,events=?,message=?,specialDataConsentAt=COALESCE(specialDataConsentAt,?),updatedAt=? WHERE id=? AND userId=?').bind(clean(f.title, 160), clean(f.tone, 80), clean(f.audience, 160), normalizeTargetPages(f.targetPages), clean(f.sourceMaterial, 12e3), clean(f.story, 7e3), clean(f.people, 4e3), clean(f.events, 4e3), clean(f.message, 3e3), now, now, id, user.id).run();
   return redirect(`/libro/${id}`);
 }
 async function autosaveBook(request, id, user, env) {

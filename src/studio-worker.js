@@ -46,6 +46,11 @@ const STUDIO_CSS = `
   .studio-editor-page .spl-section-meta{margin-top:5px;text-align:left}
   .studio-editor-page .spl-section-card textarea{min-height:220px}
 }
+/* spl-source-material-readable-v1 */
+.studio-editor-page .source-material-panel>p.muted{max-width:none!important;width:100%!important;font-size:calc(var(--studio-type-body) + 2px)!important;line-height:1.55!important}
+.studio-editor-page .source-material-panel .field{width:100%!important;max-width:none!important}
+.studio-editor-page .source-material-panel textarea[name="sourceMaterial"]{display:block!important;width:100%!important;max-width:none!important;font-size:calc(var(--studio-type-reading) + 2px)!important;line-height:1.62!important;white-space:pre-wrap!important;overflow-wrap:break-word!important;word-break:normal!important}
+
 `;
 
 const STUDIO_JS_PATCH = String.raw`
