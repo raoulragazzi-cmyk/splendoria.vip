@@ -50,6 +50,49 @@ const STUDIO_CSS = `
 
 const STUDIO_JS_PATCH = String.raw`
 ;(() => {
+  const COOKIE_NOTICE_KEY = 'splendoria-cookie-notice-v2';
+  const privacyBanner = document.querySelector('[data-cookie-banner]');
+  const hidePrivacyBanner = () => {
+    if (!privacyBanner) return;
+    try { localStorage.setItem(COOKIE_NOTICE_KEY, 'acknowledged'); } catch {}
+    privacyBanner.hidden = true;
+    privacyBanner.setAttribute('hidden', '');
+    privacyBanner.style.setProperty('display', 'none', 'important');
+  };
+  if (privacyBanner) {
+    let acknowledged = false;
+    try { acknowledged = localStorage.getItem(COOKIE_NOTICE_KEY) === 'acknowledged'; } catch {}
+    if (acknowledged) hidePrivacyBanner();
+    privacyBanner.addEventListener('click', event => {
+      if (event.target.closest('[data-cookie-accept]')) hidePrivacyBanner();
+    }, true);
+  }
+
+  if (!document.getElementById('spl-back-to-top-style')) {
+    const style = document.createElement('style');
+    style.id = 'spl-back-to-top-style';
+    style.textContent = '.spl-back-to-top{position:fixed;right:18px;bottom:18px;z-index:70;display:flex;align-items:center;gap:7px;min-height:42px;padding:9px 14px;border:1px solid rgba(16,45,41,.18);border-radius:999px;background:rgba(255,255,255,.96);color:#153f37;box-shadow:0 10px 34px rgba(16,45,41,.16);font:750 13px/1.1 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;cursor:pointer;opacity:0;visibility:hidden;transform:translateY(8px);transition:opacity .18s ease,transform .18s ease,visibility .18s ease}.spl-back-to-top.is-visible{opacity:1;visibility:visible;transform:none}.spl-back-to-top:hover{background:#f3faf7}.spl-back-to-top:focus-visible{outline:3px solid #f0bd58;outline-offset:3px}@media(max-width:640px){.spl-back-to-top{right:10px;bottom:10px;padding:9px 12px}.spl-back-to-top span{display:none}}';
+    document.head.append(style);
+  }
+  let backToTop = document.querySelector('[data-spl-back-to-top]');
+  if (!backToTop) {
+    backToTop = document.createElement('button');
+    backToTop.type = 'button';
+    backToTop.className = 'spl-back-to-top';
+    backToTop.dataset.splBackToTop = '1';
+    backToTop.setAttribute('aria-label', 'Torna all’inizio della pagina');
+    backToTop.innerHTML = '<b aria-hidden="true">↑</b><span>Torna su</span>';
+    document.body.append(backToTop);
+    backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+  const updateBackToTop = () => {
+    const bannerVisible = privacyBanner && !privacyBanner.hidden && getComputedStyle(privacyBanner).display !== 'none';
+    backToTop.classList.toggle('is-visible', window.scrollY > 520 && !bannerVisible);
+  };
+  window.addEventListener('scroll', updateBackToTop, { passive: true });
+  if (privacyBanner) privacyBanner.addEventListener('click', () => setTimeout(updateBackToTop, 0), true);
+  updateBackToTop();
+
   if (!document.body || !document.body.classList.contains('studio-editor-page')) return;
   if (document.documentElement.dataset.splNotesPatch === '1') return;
   document.documentElement.dataset.splNotesPatch = '1';
@@ -170,6 +213,7 @@ const STUDIO_JS_PATCH = String.raw`
     const sectionAreas = [];
     const chapterMuseButton = form.querySelector('.muse-draft-button[formaction*="/genera"]');
     const chapterMuseAction = chapterMuseButton ? chapterMuseButton.formAction : form.action.replace(/\/salva$/, '/genera');
+    if (chapterMuseButton) chapterMuseButton.remove();
     labels.forEach((entry, index) => {
       const card = document.createElement('section');
       card.className = 'spl-section-card';
