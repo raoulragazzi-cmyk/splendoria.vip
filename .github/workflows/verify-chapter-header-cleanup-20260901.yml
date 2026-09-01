@@ -1,0 +1,25 @@
+name: Verify Splendoria chapter header cleanup
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/verify-chapter-header-cleanup-20260901.yml"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for Cloudflare build
+        run: sleep 25
+      - name: Verify public release
+        run: |
+          set -euo pipefail
+          html=$(curl -fsSL --retry 4 --retry-delay 4 https://www.splendoria.vip/)
+          [[ "$html" == *'/assets/studio.js?v=20260901-5'* ]]
+          js=$(curl -fsSL --retry 4 --retry-delay 4 'https://www.splendoria.vip/assets/studio.js?v=20260901-5')
+          [[ "$js" == *"navigatorTitle.textContent = title"* ]]
+          [[ "$js" != *"navigatorTitle.textContent = 'Capitolo ' +"* ]]
+          health=$(curl -fsSL --retry 4 --retry-delay 4 https://www.splendoria.vip/healthz)
+          [[ "$health" == *'"status":"ok"'* ]]
+          echo 'CHAPTER_HEADER_CLEANUP_OK'
