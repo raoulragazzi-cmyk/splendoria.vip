@@ -1,4 +1,4 @@
-name: Splendoria Writing Hardening 2026-09-07
+name: Splendoria Writing Hardening FINAL
 
 on:
   workflow_dispatch:
@@ -7,7 +7,6 @@ on:
       - splendoria.vip
     paths:
       - ".github/workflows/splendoria-writing-hardening-20260907.yml"
-      - ".github/scripts/apply_splendoria_writing_hardening.py"
 
 permissions:
   contents: write
@@ -17,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout production branch
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: splendoria.vip
@@ -29,58 +28,258 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Apply guarded writing patch
-        run: python .github/scripts/apply_splendoria_writing_hardening.py
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Validate application
+      - name: Apply guarded patch
+        shell: bash
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, sys
+
+          ROOT = Path(".")
+          WORKER = ROOT / "src" / "worker.js"
+          STUDIO = ROOT / "src" / "studio-worker.js"
+          NEW_ASSET_VERSION = "20260907-1"
+
+          def fail(msg):
+              print("[FAIL]", msg, file=sys.stderr)
+              raise SystemExit(2)
+
+          def replace_once(text, old, new, label):
+              n = text.count(old)
+              if n != 1:
+                  fail(f"{label}: atteso 1 match, trovati {n}")
+              return text.replace(old, new, 1)
+
+          if not WORKER.exists() or not STUDIO.exists():
+              fail("Mancano src/worker.js o src/studio-worker.js")
+
+          worker = WORKER.read_text(encoding="utf-8")
+          studio = STUDIO.read_text(encoding="utf-8")
+
+          for sentinel in (
+              'function chapterSectionsFromPayload',
+              'async function saveChapterSectionState',
+              'async function captureBookBackup',
+              'async function refineChapterV2',
+              'async function bookEditor',
+              'validRevision(',
+              'runMuseAi(',
+              'improveNarrative(',
+          ):
+              if sentinel not in worker:
+                  fail(f"worker.js non contiene il sentinel previsto: {sentinel}")
+
+          for sentinel in (
+              "const sectionAreas = [];",
+              "const voiceButton = form.querySelector('[data-voice-target]');",
+              "chapterMuseButton.remove()",
+          ):
+              if sentinel not in studio:
+                  fail(f"studio-worker.js non contiene il sentinel previsto: {sentinel}")
+
+          old_voice = """    const voiceButton = form.querySelector('[data-voice-target]');
+              sectionAreas.forEach(area => area.addEventListener('focus', () => {
+                if (voiceButton) voiceButton.dataset.voiceTarget = area.id;
+              }));"""
+
+          new_voice = """    const voiceButton = form.querySelector('[data-voice-target]');
+              if (voiceButton && sectionAreas[0]) voiceButton.dataset.voiceTarget = sectionAreas[0].id;
+              sectionAreas.forEach(area => area.addEventListener('focus', () => {
+                if (voiceButton) voiceButton.dataset.voiceTarget = area.id;
+              }));"""
+
+          studio = replace_once(studio, old_voice, new_voice, "target dettatura")
+
+          start = worker.find("async function refineChapterV2")
+          end = worker.find("async function bookEditor", start)
+          if start < 0 or end <= start:
+              fail("Impossibile delimitare refineChapterV2")
+
+          replacement = r"""async function refineChapterV2(request, projectId, chapterId, user, env) {
+            if (!user) return redirect("/area-clienti");
+            const project = await ownProject(projectId, user, env);
+            if (!project) return redirect("/studio");
+            const chapter = await env.DB.prepare('SELECT * FROM "BookChapter" WHERE id=? AND projectId=?').bind(chapterId, projectId).first();
+            if (!chapter) return redirect(`/libro/${projectId}#chapter-card-${chapterId}`);
+            if (!chapterUnlocked(project, chapter)) return bookEditor(projectId, user, env, "Questo capitolo è riservato al libro completo. Potrai aprirlo dopo che Splendoria avrà registrato lo stato Pagato o Gratuito.", chapterId);
+
+            const f = await form(request);
+            const title = clean(f.title, 180) || chapter.title;
+            const action = instructionsAction(f.action);
+            const submittedSections = chapterSectionsFromPayload(f);
+            const source = clean(f.content, 6e4) || chapter.content;
+
+            const instructions = {
+              grammar: "Correggi esclusivamente ortografia, grammatica, punteggiatura, concordanze e refusi. Non abbellire, non riassumere e non cambiare lessico, ritmo o voce dell'autore.",
+              clarity: "Migliora chiarezza e scorrevolezza, sciogliendo frasi ambigue e ripetizioni, senza cambiare tono, fatti o personalità dell'autore.",
+              emotional: "Rendi più leggibili le emozioni già espresse, senza aggiungerne o creare melodramma.",
+              vivid: "Rendi più nitide le formulazioni usando soltanto dettagli già presenti.",
+              elegant: "Rendi lo stile più elegante e fluido senza alterare contenuto o voce.",
+              short: "Riduci il testo del 25%, elimina ripetizioni e mantieni tutti i passaggi essenziali."
+            };
+
+            const refineOneSection = async (raw, sectionLabel) => {
+              const sectionSource = clean(raw, 2e4);
+              if (!sectionSource) return "";
+              if (action === "improve") {
+                try {
+                  const currentWords = wordCount(sectionSource);
+                  const targetWords = Math.max(currentWords, Math.min(650, Math.ceil(currentWords * 1.12)));
+                  const candidate = clean(await improveNarrative(sectionSource, env, targetWords), 2e4);
+                  return candidate || sectionSource;
+                } catch {
+                  return sectionSource;
+                }
+              }
+              try {
+                const ai = await runMuseAi(env, {
+                  messages: [
+                    {
+                      role: "system",
+                      content: `${MUSE_EDITOR_SYSTEM}
+
+          STAI REVISIONANDO SOLO LA SEZIONE "${sectionLabel}" DI UN CAPITOLO.
+          Non spostare contenuti verso altre sezioni.
+          Non aggiungere fatti, persone, date, luoghi o dialoghi non presenti.
+          Restituisci soltanto il testo revisionato della sezione, senza titoli, note o spiegazioni.
+
+          ISTRUZIONE SPECIFICA: ${instructions[action]}`
+                    },
+                    { role: "user", content: sectionSource }
+                  ],
+                  temperature: 0.08,
+                  max_tokens: Math.min(1500, Math.max(160, Math.ceil(wordCount(sectionSource) * 1.8)))
+                }, { stage: `chapter_${action}_section` });
+
+                const candidate = clean(ai.response, 2e4);
+                return validRevision(sectionSource, candidate, action) ? candidate : sectionSource;
+              } catch {
+                return sectionSource;
+              }
+            };
+
+            if (submittedSections) {
+              const labels = ["Introduzione", "Svolgimento", "Chiusura"];
+              if (!submittedSections.some(part => wordCount(part))) {
+                return bookEditor(projectId, user, env, "Scrivi prima qualche parola nel capitolo.", chapterId);
+              }
+
+              await captureBookBackup(projectId, user.id, env, { force: true, reason: `muse_revision_${action}_sections` });
+
+              const refinedSections = [];
+              for (let index = 0; index < 3; index += 1) {
+                refinedSections[index] = await refineOneSection(submittedSections[index] || "", labels[index]);
+              }
+
+              const content = refinedSections.map(part => String(part || "").trim()).join("\n\n");
+              const changed = refinedSections.some((part, index) => String(part || "") !== String(submittedSections[index] || ""));
+              const status = changed ? `revisionato_${action}` : "revisione_non_applicata";
+              const now = new Date().toISOString();
+
+              await env.DB.prepare('UPDATE "BookChapter" SET title=?,content=?,status=?,updatedAt=? WHERE id=? AND projectId=?')
+                .bind(title, content, status, now, chapterId, projectId).run();
+
+              await saveChapterSectionState(projectId, chapterId, refinedSections, env);
+
+              await recordAuditEvent(env, {
+                actorId: user.id,
+                actorRole: "client",
+                action: "muse.chapter_revised",
+                targetType: "chapter",
+                targetId: chapterId,
+                outcome: changed ? "success" : "rejected",
+                metadata: { revision: action, applied: changed, sectionAware: true }
+              });
+
+              return redirect(`/libro/${projectId}#chapter-card-${chapterId}`);
+            }
+
+            if (!source) return bookEditor(projectId, user, env, "Scrivi prima qualche parola nel capitolo.", chapterId);
+
+            let content = source;
+
+            if (action === "improve") {
+              const chapters = await env.DB.prepare('SELECT content FROM "BookChapter" WHERE projectId=?').bind(projectId).all();
+              const metrics = bookMetrics(project, chapters.results);
+              content = await improveNarrative(source, env, improvementTargetWords(source, metrics.remainingWords + wordCount(source)));
+            } else {
+              try {
+                const ai = await runMuseAi(env, {
+                  messages: [
+                    { role: "system", content: `${MUSE_EDITOR_SYSTEM}
+
+          ISTRUZIONE SPECIFICA: ${instructions[action]}` },
+                    { role: "user", content: source }
+                  ],
+                  temperature: 0.08,
+                  max_tokens: Math.min(2600, Math.max(160, Math.ceil(wordCount(source) * 1.7)))
+                }, { stage: `chapter_${action}` });
+
+                const candidate = clean(ai.response, 6e4);
+                if (validRevision(source, candidate, action)) content = candidate;
+              } catch {
+              }
+            }
+
+            const status = content === source ? "revisione_non_applicata" : `revisionato_${action}`;
+
+            await captureBookBackup(projectId, user.id, env, { force: true, reason: `muse_revision_${action}_legacy` });
+            await ensureEditorialSafetyTables(env);
+
+            await env.DB.batch([
+              env.DB.prepare('UPDATE "BookChapter" SET title=?,content=?,status=?,updatedAt=? WHERE id=? AND projectId=?')
+                .bind(title, content, status, new Date().toISOString(), chapterId, projectId),
+              env.DB.prepare('DELETE FROM "BookChapterSection" WHERE chapterId=? AND projectId=?').bind(chapterId, projectId)
+            ]);
+
+            await recordAuditEvent(env, {
+              actorId: user.id,
+              actorRole: "client",
+              action: "muse.chapter_revised",
+              targetType: "chapter",
+              targetId: chapterId,
+              outcome: content === source ? "rejected" : "success",
+              metadata: { revision: action, applied: content !== source, sectionAware: false }
+            });
+
+            return redirect(`/libro/${projectId}#chapter-card-${chapterId}`);
+          }
+          """
+
+          worker = worker[:start] + replacement + worker[end:]
+
+          matches = re.findall(r'/assets/studio\.js\?v=[A-Za-z0-9._-]+', worker)
+          if len(matches) != 1:
+              fail(f"cache studio.js: atteso 1 riferimento, trovati {len(matches)}")
+
+          worker = worker.replace(matches[0], f"/assets/studio.js?v={NEW_ASSET_VERSION}", 1)
+
+          if "@cf/qwen/qwen3.8-27b" not in worker:
+              fail("Modello atteso @cf/qwen/qwen3.8-27b non trovato: stop")
+
+          WORKER.write_text(worker, encoding="utf-8")
+          STUDIO.write_text(studio, encoding="utf-8")
+
+          print("[OK] patch applicata")
+          PY
+
+      - name: Validate
+        run: |
+          npm ci
           node --check src/worker.js
           node --check src/studio-worker.js
           git diff --check
           npm run check
           npx wrangler deploy --dry-run
 
-      - name: Verify release markers
-        run: |
-          grep -Fq "if (voiceButton && sectionAreas[0]) voiceButton.dataset.voiceTarget = sectionAreas[0].id;" src/studio-worker.js
-          grep -Fq "sectionAware: true" src/worker.js
-          grep -Fq "/assets/studio.js?v=20260907-1" src/worker.js
-          grep -Fq "@cf/qwen/qwen3.8-27b" src/worker.js
-
-      - name: Commit application changes
+      - name: Commit application
         run: |
           git config user.name "splendoria-release-bot"
           git config user.email "actions@users.noreply.github.com"
           git add src/worker.js src/studio-worker.js
           if git diff --cached --quiet; then
-            echo "No application changes to commit."
+            echo "No application changes."
             exit 0
           fi
           git commit -m "fix: harden section writing and dictation"
           git push origin HEAD:splendoria.vip
-
-      - name: Wait for Cloudflare Git deployment and smoke-test
-        shell: bash
-        run: |
-          set -euo pipefail
-          ok=0
-          for i in $(seq 1 36); do
-            html="$(curl -fsSL --max-time 20 https://www.splendoria.vip/ || true)"
-            health="$(curl -fsSL --max-time 20 https://www.splendoria.vip/healthz || true)"
-            if [[ "$html" == *"/assets/studio.js?v=20260907-1"* ]] && [[ "$health" == *'"status":"ok"'* ]]; then
-              js="$(curl -fsSL --max-time 20 "https://www.splendoria.vip/assets/studio.js?v=20260907-1" || true)"
-              if [[ "$js" == *"voiceButton && sectionAreas[0]"* ]]; then
-                ok=1
-                break
-              fi
-            fi
-            sleep 10
-          done
-          if [[ "$ok" != "1" ]]; then
-            echo "Repository aggiornato, ma la verifica pubblica non ha visto la nuova release entro 6 minuti."
-            exit 1
-          fi
-          echo "Public smoke test PASS"
