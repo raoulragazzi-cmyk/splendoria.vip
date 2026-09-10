@@ -2629,7 +2629,7 @@ function editorialHome(user, url) {
       <div class="wrap">
         <p class="legacy-kicker">La forza della tradizione</p>
         <div class="legacy-section-heading legacy-heading-split">
-          <h2 id="advantages-title">Il diritto di non essere dimenticati.</h2>
+          <h2 id="advantages-title">Il diritto di essere ricordati.</h2>
           <p>Una vita non \xE8 una successione di date. \xC8 un patrimonio di scelte, gesti, fallimenti, errori e visioni che pu\xF2 continuare a orientare chi verr\xE0 dopo.</p>
         </div>
         <div class="legacy-three-grid">
@@ -2836,6 +2836,7 @@ function editorialHome(user, url) {
           <details><summary>Chi possiede l\u2019opera?</summary><p>L\u2019autore conserva i diritti sui materiali originali. Diritti e facolt\xE0 d\u2019uso dell\u2019opera finale sono precisati nella conferma contrattuale, nel rispetto del diritto d\u2019autore.</p></details>
           <details><summary>La Scuola Holden \xE8 sempre inclusa?</summary><p>No. Un eventuale accompagnamento pu\xF2 essere concordato soltanto per Signature, in base al progetto e alla disponibilit\xE0, e deve risultare dalla proposta scritta.</p></details>
           <details><summary>Il libro viene stampato?</summary><p>Digital e Premium prevedono il PDF editoriale; le copie possono essere richieste separatamente. Signature include 10 copie cartacee, con caratteristiche definite nella proposta.</p></details>
+          <details><summary>Posso inserire fotografie?</summary><p>Sì, per avere un risultato di qualità l’inserimento delle foto è semi automatico. Componi il tuo PDF scritto, e poi scrivici. Inseriremo manualmente le tue foto, gratuitamente.</p></details>
         </div>
       </div>
     </section>
