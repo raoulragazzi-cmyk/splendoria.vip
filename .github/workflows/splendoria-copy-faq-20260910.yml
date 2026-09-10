@@ -1,0 +1,114 @@
+name: Splendoria homepage copy and photo FAQ
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/splendoria-copy-faq-20260910.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout production branch
+        uses: actions/checkout@v4
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+
+      - name: Apply requested homepage copy changes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('src/worker.js')
+          s = p.read_text(encoding='utf-8')
+
+          old_heading = 'Il diritto di non essere dimenticati.'
+          new_heading = 'Il diritto di essere ricordati.'
+          if old_heading in s:
+              if s.count(old_heading) != 1:
+                  raise SystemExit(f'heading anchor: expected 1 occurrence, found {s.count(old_heading)}')
+              s = s.replace(old_heading, new_heading, 1)
+          elif new_heading not in s:
+              raise SystemExit('heading anchor not found')
+
+          faq_summary = 'Posso inserire fotografie?'
+          faq_anchor = '<details><summary>Il libro viene stampato?</summary><p>Digital e Premium prevedono il PDF editoriale; le copie possono essere richieste separatamente. Signature include 10 copie cartacee, con caratteristiche definite nella proposta.</p></details>'
+          faq_item = '<details><summary>Posso inserire fotografie?</summary><p>Sì, per avere un risultato di qualità l\u2019inserimento delle foto è semi automatico. Componi il tuo PDF scritto, e poi scrivici. Inseriremo manualmente le tue foto, gratuitamente.</p></details>'
+
+          if faq_summary not in s:
+              if s.count(faq_anchor) != 1:
+                  raise SystemExit(f'FAQ anchor: expected 1 occurrence, found {s.count(faq_anchor)}')
+              s = s.replace(faq_anchor, faq_anchor + '\n          ' + faq_item, 1)
+
+          if old_heading in s:
+              raise SystemExit('old heading still present after patch')
+          if new_heading not in s or faq_summary not in s:
+              raise SystemExit('requested copy missing after patch')
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate source and tests
+        run: |
+          node --check src/worker.js
+          node --check src/studio-worker.js
+          npm test
+          npm run check
+          grep -Fq 'Il diritto di essere ricordati.' src/worker.js
+          ! grep -Fq 'Il diritto di non essere dimenticati.' src/worker.js
+          grep -Fq 'Posso inserire fotografie?' src/worker.js
+          grep -Fq 'Inseriremo manualmente le tue foto, gratuitamente.' src/worker.js
+
+      - name: Commit only requested copy changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/worker.js
+          git diff --cached --check
+          git diff --cached --stat
+          if git diff --cached --quiet; then
+            echo 'No source changes required.'
+          else
+            git commit -m "copy: update remembered headline and photo FAQ"
+            git push origin HEAD:splendoria.vip
+          fi
+
+      - name: Check Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Cloudflare API token missing'; exit 78; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Cloudflare account id missing'; exit 78; }
+
+      - name: Deploy patched Splendoria Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy
+
+      - name: Smoke production copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            html="$(curl -fsSL --max-time 20 https://www.splendoria.vip/ || true)"
+            if printf '%s' "$html" | grep -Fq 'Il diritto di essere ricordati.' \
+              && printf '%s' "$html" | grep -Fq 'Posso inserire fotografie?' \
+              && printf '%s' "$html" | grep -Fq 'Inseriremo manualmente le tue foto, gratuitamente.'; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" -eq 1 || { echo 'Production smoke check did not observe the new copy'; exit 1; }
