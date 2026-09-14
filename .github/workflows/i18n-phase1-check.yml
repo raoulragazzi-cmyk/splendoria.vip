@@ -6,7 +6,9 @@ on:
     paths:
       - "src/i18n-worker.js"
       - "src/i18n-guard-worker.js"
+      - "src/i18n-public-worker.js"
       - "test/i18n-smoke.mjs"
+      - "test/i18n-public-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
 
@@ -36,7 +38,9 @@ jobs:
           node --check src/studio-worker.js
           node --check src/i18n-worker.js
           node --check src/i18n-guard-worker.js
+          node --check src/i18n-public-worker.js
           node --check test/i18n-smoke.mjs
+          node --check test/i18n-public-smoke.mjs
 
       - name: Guard Italian application source
         run: |
@@ -52,11 +56,14 @@ jobs:
           grep -Fq 'The right to be remembered.' src/i18n-worker.js
           grep -Fq 'localizeHomepageScript' src/i18n-guard-worker.js
           grep -Fq 'repairSemanticFormValues' src/i18n-guard-worker.js
-          grep -Fq 'PUBLIC_LOCALES' src/i18n-guard-worker.js
-          ! grep -Fq '/admin' src/i18n-guard-worker.js
+          grep -Fq 'PUBLIC_GUIDE' src/i18n-public-worker.js
+          ! grep -Fq '"/admin"' src/i18n-public-worker.js
 
       - name: Localized showcase smoke suite
         run: node test/i18n-smoke.mjs
+
+      - name: Public pages deep-pass smoke suite
+        run: node test/i18n-public-smoke.mjs
 
       - name: Existing smoke suite with guarded baseline
         shell: bash
