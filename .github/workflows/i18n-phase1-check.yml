@@ -15,6 +15,7 @@ on:
       - "test/i18n-public-smoke.mjs"
       - "test/i18n-legal-smoke.mjs"
       - "test/i18n-entry-smoke.mjs"
+      - "test/i18n-seo-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
 
@@ -53,6 +54,7 @@ jobs:
           node --check test/i18n-public-smoke.mjs
           node --check test/i18n-legal-smoke.mjs
           node --check test/i18n-entry-smoke.mjs
+          node --check test/i18n-seo-smoke.mjs
 
       - name: Guard Italian application source
         run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
@@ -67,6 +69,7 @@ jobs:
           grep -Fq 'LEGAL_PATHS' src/i18n-legal-worker.js
           grep -Fq 'PRIVACY_CENTER_PATHS' src/i18n-privacy-center-worker.js
           grep -Fq 'LOCALIZED_PUBLIC' src/i18n-entry-worker.js
+          grep -Fq 'localizeSitemap' src/i18n-entry-worker.js
           grep -Fq '"main": "src/i18n-entry-worker.js"' wrangler.jsonc
           ! grep -Fq '"/admin"' src/i18n-entry-worker.js
 
@@ -81,6 +84,9 @@ jobs:
 
       - name: Public composition entry smoke
         run: node test/i18n-entry-smoke.mjs
+
+      - name: Sitemap robots and HEAD deep-pass
+        run: node test/i18n-seo-smoke.mjs
 
       - name: Existing smoke suite with guarded baseline
         shell: bash
