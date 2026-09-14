@@ -50,6 +50,14 @@ if (!source.includes(newFetch)) {
   if (count !== 1) throw new Error(`Unexpected patchedFetch anchor count: ${count}`);
   source = source.replace(oldFetch, newFetch);
 }
-
 writeFileSync(path, source, 'utf8');
-console.log('Showcase i18n routing wired safely into src/studio-worker.js');
+
+const i18nPath = 'src/i18n-showcase.js';
+let i18n = readFileSync(i18nPath, 'utf8');
+const oldSelectorAnchor = 'html = html.replace(/(<nav class=\\"nav\\"\\b)/, `${selector(locale)}$1`);';
+const newSelectorAnchor = 'html = html.replace(/(<nav class=\\"nav\\")/, `${selector(locale)}$1`);';
+if (i18n.includes(oldSelectorAnchor)) i18n = i18n.replace(oldSelectorAnchor, newSelectorAnchor);
+else if (!i18n.includes(newSelectorAnchor)) throw new Error('Language selector insertion anchor not found');
+writeFileSync(i18nPath, i18n, 'utf8');
+
+console.log('Showcase i18n routing and selector anchor wired safely');
