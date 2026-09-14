@@ -1,4 +1,4 @@
-import worker from "../src/i18n-client-worker.js";
+import worker from "../src/i18n-session-worker.js";
 
 const USER = {
   id: "user-1",
@@ -61,6 +61,7 @@ const cases = {
     studio: ["Mein Studio", "Hallo, Anna", "Hier kannst du deine Bücher selbstständig erstellen", "Neues Buch erstellen", "Arbeitstitel", "Kostenloses Projekt erstellen"],
     account: ["Mein Konto", "Profil und Datenschutz", "Wie möchtest du genannt werden?", "E-Mail-Adresse ändern", "Meine Daten exportieren", "Mein Konto endgültig löschen"],
     profileSuccess: "Name wurde erfolgreich aktualisiert.",
+    logoutMessage: "Du hast dein Studio verlassen. Du kannst dich mit denselben Zugangsdaten erneut anmelden.",
     month: "Januar",
     genre: "Autobiografie"
   },
@@ -68,6 +69,7 @@ const cases = {
     studio: ["My Studio", "Hello, Anna", "Here you can create, edit and complete your books independently", "Create a new book", "Working title", "Create free project"],
     account: ["My account", "Profile and privacy", "How would you like to be addressed?", "Change email address", "Export my data", "Permanently delete my account"],
     profileSuccess: "Name updated successfully.",
+    logoutMessage: "You have signed out of your Studio. You can sign in again with the same credentials.",
     month: "January",
     genre: "Autobiography"
   }
@@ -81,13 +83,13 @@ for (const [locale, expected] of Object.entries(cases)) {
   if (studioResponse.headers.get("x-robots-tag") !== "noindex, nofollow, noarchive") throw new Error(`client ${locale}: studio indicizzabile`);
   for (const marker of [
     `<html lang="${locale}">`, ...expected.studio,
-    `href="/${locale}/account"`, `href="/${locale}/logout"`,
+    `href="/${locale}/account"`, `action="/${locale}/esci"`,
     `href="/${locale}/privacy-policy"`, `class="brand" href="/${locale}/"`,
     `src="/assets/studio.js?`, `lang=${locale}`,
     `value="Autobiografia">${expected.genre}</option>`,
     'value="84"', 'value="117"'
   ]) if (!studio.includes(marker)) throw new Error(`client ${locale}: studio manca ${marker}`);
-  for (const residual of ["Il tuo Studio", "Crea un nuovo libro", ">Autobiografia</option>"]) {
+  for (const residual of ["Il tuo Studio", "Crea un nuovo libro", ">Autobiografia</option>", 'action="/esci"']) {
     if (studio.includes(residual)) throw new Error(`client ${locale}: residuo italiano nello studio: ${residual}`);
   }
   if (!studio.includes('action="/nuovo-libro"')) throw new Error(`client ${locale}: il confine verso l'editor non deve essere falsamente localizzato prima del deep-pass editor`);
@@ -99,7 +101,7 @@ for (const [locale, expected] of Object.entries(cases)) {
     ...expected.account, expected.month,
     `href="/${locale}/studio"`, `href="/${locale}/account/esporta.json"`,
     `action="/${locale}/account/profilo"`, `action="/${locale}/account/email"`, `action="/${locale}/account/cancella"`,
-    `href="/${locale}/privacy-policy"`,
+    `action="/${locale}/esci"`, `href="/${locale}/privacy-policy"`,
     'pattern="CANCELLA"', "CANCELLA"
   ]) if (!account.includes(marker)) throw new Error(`client ${locale}: account manca ${marker}`);
   for (const residual of ["Il mio account", "Torna allo Studio", "Cancellazione permanente", "Account creato</span>"]) {
@@ -113,6 +115,13 @@ for (const [locale, expected] of Object.entries(cases)) {
 
   const exportResponse = await send(`/${locale}/account/esporta.json`);
   if (exportResponse.status !== 200 || !(exportResponse.headers.get("content-type") || "").includes("application/json")) throw new Error(`client ${locale}: export JSON non raggiungibile dal percorso localizzato`);
+
+  const logoutResponse = await send(`/${locale}/esci`, { method: "POST" });
+  if (logoutResponse.status < 300 || logoutResponse.status >= 400) throw new Error(`client ${locale}: logout non reindirizza`);
+  const logoutLocation = new URL(logoutResponse.headers.get("location"));
+  if (logoutLocation.pathname !== `/${locale}/area-clienti` || logoutLocation.searchParams.get("e") !== expected.logoutMessage) throw new Error(`client ${locale}: logout perde lingua o messaggio`);
+  const clearCookie = logoutResponse.headers.get("set-cookie") || "";
+  if (!clearCookie.includes("spl_session=") || !clearCookie.includes("Max-Age=0")) throw new Error(`client ${locale}: logout non invalida il cookie`);
 
   const unauthStudio = await send(`/${locale}/studio`, {}, false);
   if (unauthStudio.status < 300 || unauthStudio.status >= 400 || unauthStudio.headers.get("location") !== `https://www.splendoria.vip/${locale}/area-clienti`) throw new Error(`client ${locale}: redirect studio anonimo esce dalla lingua`);
@@ -131,4 +140,4 @@ for (const locale of ["de", "en"]) {
   if (script.includes("Torna all’inizio della pagina") || script.includes("Torna su")) throw new Error(`client ${locale}: script globale contiene residui italiani`);
 }
 
-console.log("client i18n: account e studio shell DE/EN verificati; valori genere canonici; editor volutamente fuori scope finché non passa il deep-pass dedicato");
+console.log("client i18n: account, Studio shell e logout DE/EN verificati; valori genere canonici; editor volutamente fuori scope finché non passa il deep-pass dedicato");
