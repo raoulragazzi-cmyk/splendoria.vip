@@ -10,6 +10,7 @@ on:
       - src/studio-worker.js
       - public/assets/i18n-showcase.js
       - test/i18n-showcase.mjs
+      - scripts/i18n-showcase-coverage.mjs
       - .github/workflows/splendoria-i18n-showcase-test.yml
 
 permissions:
@@ -33,7 +34,10 @@ jobs:
           node --check src/studio-worker.js
           node --check public/assets/i18n-showcase.js
           node --check test/i18n-showcase.mjs
+          node --check scripts/i18n-showcase-coverage.mjs
       - name: Multilingual showcase tests
         run: node test/i18n-showcase.mjs
+      - name: Visible-text translation coverage
+        run: node scripts/i18n-showcase-coverage.mjs
       - name: Wrangler dry run
         run: npm run check
