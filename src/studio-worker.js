@@ -1,4 +1,5 @@
 import baseWorker from "./worker.js";
+import { enhanceItalianShowcaseHtml, localizeShowcaseHtml, localizedShowcaseRoute, rewriteLocalizedContactResponse, toBaseShowcaseRequest } from "./i18n-showcase.js";
 
 const STUDIO_CSS = `
 /* Splendoria Studio patch — handwritten QA notes 2026-08-27 */
@@ -501,8 +502,31 @@ function splPatchPrivacyCenterPage(html, pathname) {
 
 async function patchedFetch(request, env, ctx) {
   const url = new URL(request.url);
-  const response = await baseWorker.fetch(request, env, ctx);
+  const showcaseRoute = localizedShowcaseRoute(url);
+  if (showcaseRoute?.kind === 'home' && !url.pathname.endsWith('/')) {
+    const canonicalLocaleUrl = new URL(request.url);
+    canonicalLocaleUrl.pathname = '/' + showcaseRoute.locale + '/';
+    return Response.redirect(canonicalLocaleUrl.toString(), 308);
+  }
+  const upstreamRequest = showcaseRoute ? toBaseShowcaseRequest(request, showcaseRoute) : request;
+  const response = await baseWorker.fetch(upstreamRequest, env, ctx);
+  if (showcaseRoute?.kind === 'contact') return rewriteLocalizedContactResponse(response, showcaseRoute.locale);
   const contentType = response.headers.get('content-type') || '';
+
+  if (showcaseRoute?.kind === 'home' && contentType.includes('text/html')) {
+    const html = await response.text();
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    headers.set('cache-control', 'no-cache');
+    return new Response(localizeShowcaseHtml(html, showcaseRoute.locale), { status: response.status, statusText: response.statusText, headers });
+  }
+
+  if (url.pathname === '/' && contentType.includes('text/html')) {
+    const html = await response.text();
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    return new Response(enhanceItalianShowcaseHtml(html), { status: response.status, statusText: response.statusText, headers });
+  }
 
 
   if ((url.pathname === '/privacy-policy' || url.pathname === '/cookie-policy') && contentType.includes('text/html')) {
