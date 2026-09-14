@@ -5,8 +5,10 @@ function localizedLocale(pathname) {
   return match?.[1] || "";
 }
 
-function localizeLogoutAction(html, locale) {
-  return String(html || "").split('action="/esci"').join(`action="/${locale}/esci"`);
+function localizeClientActions(html, locale) {
+  return String(html || "")
+    .split('action="/esci"').join(`action="/${locale}/esci"`)
+    .split('href="/account/esporta.json"').join(`href="/${locale}/account/esporta.json"`);
 }
 
 function translateLogoutMessage(value, locale) {
@@ -47,7 +49,7 @@ async function fetchSession(request, env, ctx) {
   if (!locale || request.method !== "GET" || !response.ok || !(response.headers.get("content-type") || "").includes("text/html")) return response;
   const headers = new Headers(response.headers);
   headers.delete("content-length");
-  return new Response(localizeLogoutAction(await response.text(), locale), {
+  return new Response(localizeClientActions(await response.text(), locale), {
     status: response.status,
     statusText: response.statusText,
     headers
