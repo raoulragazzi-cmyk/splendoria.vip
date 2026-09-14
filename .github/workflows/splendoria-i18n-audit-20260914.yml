@@ -1,0 +1,54 @@
+name: Splendoria multilingual deep audit
+
+on:
+  push:
+    branches: ["feature/splendoria-i18n-vetrina-20260914"]
+    paths:
+      - "scripts/i18n-audit.mjs"
+      - ".github/workflows/splendoria-i18n-audit-20260914.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout i18n branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/splendoria-i18n-vetrina-20260914
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate multilingual page inventory
+        run: node scripts/i18n-audit.mjs
+
+      - name: Verify current application baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/worker.js
+          node --check src/studio-worker.js
+          npm run check
+          test -s docs/i18n-audit-2026-09-14.md
+          grep -Fq 'Homepage vetrina' docs/i18n-audit-2026-09-14.md
+          grep -Fq 'Area amministratore esclusa' docs/i18n-audit-2026-09-14.md
+
+      - name: Commit audit report only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/i18n-audit-2026-09-14.md
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'Audit report unchanged.'
+          else
+            git commit -m "docs: inventory Splendoria public pages for i18n"
+            git push origin HEAD:feature/splendoria-i18n-vetrina-20260914
+          fi
