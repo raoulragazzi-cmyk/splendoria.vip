@@ -1,4 +1,4 @@
-import legalWorker from "./i18n-legal-worker.js";
+import legalWorker from "./i18n-privacy-center-worker.js";
 
 const LOCALIZED_PUBLIC = new Set([
   "/", "/guida", "/privacy-policy", "/cookie-policy", "/termini-condizioni", "/note-legali", "/trasparenza-ai"
