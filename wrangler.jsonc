@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "splendoria-v2",
-  "main": "src/i18n-worker.js",
+  "main": "src/i18n-guard-worker.js",
   "addresses": [
     "contatti@splendoria.vip"
   ],
