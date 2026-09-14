@@ -4,91 +4,50 @@ const path = 'src/studio-worker.js';
 let source = readFileSync(path, 'utf8');
 
 const importAnchor = 'import baseWorker from "./worker.js";\n';
-const importLine = 'import { enhanceItalianShowcaseHtml, localizeShowcaseHtml, localizedShowcaseRoute, rewriteLocalizedContactResponse, toBaseShowcaseRequest } from "./i18n-showcase.js";\n';
+const showcaseImport = 'import { enhanceItalianShowcaseHtml, localizeShowcaseHtml, localizedShowcaseRoute, rewriteLocalizedContactResponse, toBaseShowcaseRequest } from "./i18n-showcase.js";\n';
 const selectorImport = 'import { ensureShowcaseSelector } from "./i18n-selector.js";\n';
-if (!source.includes(importLine)) {
+const publicImport = 'import { enhanceItalianPublicHtml, localizedPublicRoute, localizePublicHtml, toBasePublicRequest } from "./i18n-public.js";\n';
+
+if (!source.includes(showcaseImport)) {
   if (source.split(importAnchor).length - 1 !== 1) throw new Error('Unexpected baseWorker import anchor');
-  source = source.replace(importAnchor, importAnchor + importLine);
+  source = source.replace(importAnchor, importAnchor + showcaseImport);
 }
 if (!source.includes(selectorImport)) {
-  if (source.split(importLine).length - 1 !== 1) throw new Error('Unexpected i18n import anchor');
-  source = source.replace(importLine, importLine + selectorImport);
+  if (source.split(showcaseImport).length - 1 !== 1) throw new Error('Unexpected showcase import anchor');
+  source = source.replace(showcaseImport, showcaseImport + selectorImport);
+}
+if (!source.includes(publicImport)) {
+  if (source.split(selectorImport).length - 1 !== 1) throw new Error('Unexpected selector import anchor');
+  source = source.replace(selectorImport, selectorImport + publicImport);
 }
 
-const oldFetch = `async function patchedFetch(request, env, ctx) {
-  const url = new URL(request.url);
-  const response = await baseWorker.fetch(request, env, ctx);
-  const contentType = response.headers.get('content-type') || '';
-`;
+const routeAnchor = "  const showcaseRoute = localizedShowcaseRoute(url);\n";
+const routeWithPublic = routeAnchor + "  const publicRoute = localizedPublicRoute(url);\n";
+if (!source.includes(routeWithPublic)) {
+  if (source.split(routeAnchor).length - 1 !== 1) throw new Error('Unexpected showcase route anchor');
+  source = source.replace(routeAnchor, routeWithPublic);
+}
 
-const newFetch = `async function patchedFetch(request, env, ctx) {
-  const url = new URL(request.url);
-  const showcaseRoute = localizedShowcaseRoute(url);
-  if (showcaseRoute?.kind === 'home' && !url.pathname.endsWith('/')) {
-    const canonicalLocaleUrl = new URL(request.url);
-    canonicalLocaleUrl.pathname = '/' + showcaseRoute.locale + '/';
-    return Response.redirect(canonicalLocaleUrl.toString(), 308);
-  }
-  const upstreamRequest = showcaseRoute ? toBaseShowcaseRequest(request, showcaseRoute) : request;
-  const response = await baseWorker.fetch(upstreamRequest, env, ctx);
-  if (showcaseRoute?.kind === 'contact') return rewriteLocalizedContactResponse(response, showcaseRoute.locale);
-  const contentType = response.headers.get('content-type') || '';
+const upstreamOld = "  const upstreamRequest = showcaseRoute ? toBaseShowcaseRequest(request, showcaseRoute) : request;\n";
+const upstreamNew = "  const upstreamRequest = publicRoute ? toBasePublicRequest(request, publicRoute) : showcaseRoute ? toBaseShowcaseRequest(request, showcaseRoute) : request;\n";
+if (!source.includes(upstreamNew)) {
+  if (source.split(upstreamOld).length - 1 !== 1) throw new Error('Unexpected upstream request anchor');
+  source = source.replace(upstreamOld, upstreamNew);
+}
 
-  if (showcaseRoute?.kind === 'home' && contentType.includes('text/html')) {
-    const html = await response.text();
-    const headers = new Headers(response.headers);
-    headers.delete('content-length');
-    headers.set('cache-control', 'no-cache');
-    const localizedHtml = localizeShowcaseHtml(html, showcaseRoute.locale);
-    return new Response(ensureShowcaseSelector(localizedHtml, showcaseRoute.locale), { status: response.status, statusText: response.statusText, headers });
-  }
+const typeAnchor = "  const contentType = response.headers.get('content-type') || '';\n";
+const localizedPublicBlock = `${typeAnchor}\n  if (publicRoute && contentType.includes('text/html')) {\n    const html = await response.text();\n    const headers = new Headers(response.headers);\n    headers.delete('content-length');\n    headers.set('cache-control', 'no-cache');\n    return new Response(localizePublicHtml(html, publicRoute), { status: response.status, statusText: response.statusText, headers });\n  }\n`;
+if (!source.includes("if (publicRoute && contentType.includes('text/html'))")) {
+  if (source.split(typeAnchor).length - 1 !== 1) throw new Error('Unexpected content-type anchor');
+  source = source.replace(typeAnchor, localizedPublicBlock);
+}
 
-  if (url.pathname === '/' && contentType.includes('text/html')) {
-    const html = await response.text();
-    const headers = new Headers(response.headers);
-    headers.delete('content-length');
-    const enhancedHtml = enhanceItalianShowcaseHtml(html);
-    return new Response(ensureShowcaseSelector(enhancedHtml, 'it'), { status: response.status, statusText: response.statusText, headers });
-  }
-`;
-
-const previousWiredFetch = `async function patchedFetch(request, env, ctx) {
-  const url = new URL(request.url);
-  const showcaseRoute = localizedShowcaseRoute(url);
-  if (showcaseRoute?.kind === 'home' && !url.pathname.endsWith('/')) {
-    const canonicalLocaleUrl = new URL(request.url);
-    canonicalLocaleUrl.pathname = '/' + showcaseRoute.locale + '/';
-    return Response.redirect(canonicalLocaleUrl.toString(), 308);
-  }
-  const upstreamRequest = showcaseRoute ? toBaseShowcaseRequest(request, showcaseRoute) : request;
-  const response = await baseWorker.fetch(upstreamRequest, env, ctx);
-  if (showcaseRoute?.kind === 'contact') return rewriteLocalizedContactResponse(response, showcaseRoute.locale);
-  const contentType = response.headers.get('content-type') || '';
-
-  if (showcaseRoute?.kind === 'home' && contentType.includes('text/html')) {
-    const html = await response.text();
-    const headers = new Headers(response.headers);
-    headers.delete('content-length');
-    headers.set('cache-control', 'no-cache');
-    return new Response(localizeShowcaseHtml(html, showcaseRoute.locale), { status: response.status, statusText: response.statusText, headers });
-  }
-
-  if (url.pathname === '/' && contentType.includes('text/html')) {
-    const html = await response.text();
-    const headers = new Headers(response.headers);
-    headers.delete('content-length');
-    return new Response(enhanceItalianShowcaseHtml(html), { status: response.status, statusText: response.statusText, headers });
-  }
-`;
-
-if (!source.includes(newFetch)) {
-  if (source.includes(previousWiredFetch)) source = source.replace(previousWiredFetch, newFetch);
-  else {
-    const count = source.split(oldFetch).length - 1;
-    if (count !== 1) throw new Error(`Unexpected patchedFetch anchor count: ${count}`);
-    source = source.replace(oldFetch, newFetch);
-  }
+const italianGuideBlock = `\n  if (url.pathname === '/guida' && contentType.includes('text/html')) {\n    const html = await response.text();\n    const headers = new Headers(response.headers);\n    headers.delete('content-length');\n    return new Response(enhanceItalianPublicHtml(html, url.pathname), { status: response.status, statusText: response.statusText, headers });\n  }\n`;
+const privacyAnchor = "\n\n  if ((url.pathname === '/privacy-policy' || url.pathname === '/cookie-policy') && contentType.includes('text/html')) {";
+if (!source.includes("url.pathname === '/guida' && contentType.includes('text/html')")) {
+  if (source.split(privacyAnchor).length - 1 !== 1) throw new Error('Unexpected privacy branch anchor');
+  source = source.replace(privacyAnchor, italianGuideBlock + privacyAnchor);
 }
 
 writeFileSync(path, source, 'utf8');
-console.log('Showcase i18n routing and selector wired safely');
+console.log('Showcase and public guide i18n routing wired safely');
