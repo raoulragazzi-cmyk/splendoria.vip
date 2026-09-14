@@ -1,7 +1,7 @@
 import baseWorker from "./worker.js";
 import { enhanceItalianShowcaseHtml, localizeShowcaseHtml, localizedShowcaseRoute, rewriteLocalizedContactResponse, toBaseShowcaseRequest } from "./i18n-showcase.js";
 import { ensureShowcaseSelector } from "./i18n-selector.js";
-import { enhanceItalianPublicHtml, localizedPublicRoute, localizePublicHtml, toBasePublicRequest } from "./i18n-public.js";
+import { augmentPublicSitemap, enhanceItalianPublicHtml, italianPublicPath, localizedPublicRoute, localizePublicHtml, toBasePublicRequest } from "./i18n-public.js";
 
 const STUDIO_CSS = `
 /* Splendoria Studio patch — handwritten QA notes 2026-08-27 */
@@ -516,6 +516,13 @@ async function patchedFetch(request, env, ctx) {
   if (showcaseRoute?.kind === 'contact') return rewriteLocalizedContactResponse(response, showcaseRoute.locale);
   const contentType = response.headers.get('content-type') || '';
 
+  if (url.pathname === '/sitemap.xml' && response.ok) {
+    const xml = await response.text();
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    return new Response(augmentPublicSitemap(xml), { status: response.status, statusText: response.statusText, headers });
+  }
+
   if (publicRoute && contentType.includes('text/html')) {
     const html = await response.text();
     const headers = new Headers(response.headers);
@@ -541,10 +548,12 @@ async function patchedFetch(request, env, ctx) {
     return new Response(ensureShowcaseSelector(enhancedHtml, 'it'), { status: response.status, statusText: response.statusText, headers });
   }
 
-  if (url.pathname === '/guida' && contentType.includes('text/html')) {
-    const html = await response.text();
+  if (italianPublicPath(url.pathname) && contentType.includes('text/html')) {
+    let html = await response.text();
+    if (url.pathname === '/privacy-policy' || url.pathname === '/cookie-policy') html = splPatchPrivacyCenterPage(html, url.pathname);
     const headers = new Headers(response.headers);
     headers.delete('content-length');
+    headers.set('cache-control', 'no-cache');
     return new Response(enhanceItalianPublicHtml(html, url.pathname), { status: response.status, statusText: response.statusText, headers });
   }
 
