@@ -38,7 +38,10 @@ Il deep-pass automatico del branch copre attualmente e con CI verde:
 - scansione automatica delle stringhe italiane visibili su un insieme rappresentativo di pagine pubbliche, autenticazione, Studio, account, editor, anteprima e 404;
 - sicurezza responsive per etichette DE/EN lunghe: wrapping di navigazione, CTA e footer, contenimento tabelle e azioni editor su mobile;
 - integrità dei contenuti scritti dall'autore anche quando contengono parole uguali alle stringhe UI;
-- esclusione completa dell'area amministrativa dal routing localizzato.
+- esclusione completa dell'area amministrativa dal routing localizzato;
+- ambiente Wrangler `staging` isolato con Worker, D1 e URL distinti, cron disabilitato ed email reali bloccate per default;
+- dry-run Wrangler sia per produzione sia per staging;
+- workflow manuale di accettazione staging, workflow di deploy produzione con SHA esatto e conferma esplicita, e workflow di rollback guardato.
 
 La versione italiana `src/worker.js` / `src/studio-worker.js` resta protetta da un gate CI che fallisce in caso di modifica rispetto al ramo di produzione.
 
@@ -157,23 +160,30 @@ Una fase può essere collegata alla produzione solo se:
 1. i test di sintassi passano;
 2. `worker.js` e `studio-worker.js` non risultano modificati rispetto al ramo italiano di produzione;
 3. il test dedicato i18n passa per IT, DE ed EN;
-4. il dry-run Wrangler passa;
+4. il dry-run Wrangler passa sia per produzione sia per staging;
 5. non restano stringhe italiane visibili nelle pagine DE/EN della fase;
 6. i valori semantici dei form restano invariati;
 7. non esistono route localizzate per l'area amministrativa;
 8. viene eseguito uno smoke test finale sulla build destinata al deploy;
 9. viene completato un controllo visuale manuale almeno su desktop e mobile per IT/DE/EN;
 10. vengono verificati stampa/PDF, sessione reale, cookie, invio email reale e flussi critici con dati di staging;
-11. il PR di rilascio non è in conflitto con il ramo di produzione e la CI è verde sull'HEAD da distribuire.
+11. il PR di rilascio non è in conflitto con il ramo di produzione e la CI è verde sull'HEAD da distribuire;
+12. lo SHA candidato viene congelato e il deploy produzione accetta solo quello SHA esatto.
 
 ## Decisione deploy
 
 Non effettuare il deploy direttamente dal branch di sviluppo. Prima del rilascio:
 
-1. mantenere il PR in Draft durante il deep-pass;
-2. eseguire il controllo visuale e i test reali su ambiente non produttivo o preview;
-3. verificare la consegna reale delle email transazionali DE/EN e i relativi link;
-4. verificare stampa/PDF e comportamento responsive su browser reali;
-5. congelare l'HEAD candidato al rilascio;
-6. rieseguire l'intera pipeline CI sul commit candidato;
-7. solo a quel punto rendere il PR pronto, fare merge controllato e deploy con smoke test immediato e piano di rollback.
+1. mantenere il PR in Draft durante il deep-pass e l'accettazione staging;
+2. usare il workflow manuale di staging con deploy produzione impossibile per costruzione;
+3. eseguire il controllo visuale e i test reali su staging;
+4. verificare la consegna reale delle email transazionali DE/EN e i relativi link usando un solo destinatario di test esplicitamente autorizzato;
+5. verificare stampa/PDF e comportamento responsive su browser reali;
+6. confrontare nuovamente il branch con `splendoria.vip` e richiedere `behind_by = 0`;
+7. congelare l'HEAD candidato al rilascio;
+8. rieseguire l'intera pipeline CI sul commit candidato;
+9. solo a quel punto rendere il PR pronto e fare merge controllato;
+10. eseguire il deploy con il workflow produzione passando lo SHA esatto, quindi smoke test immediato;
+11. in caso di regressione usare il workflow rollback con il last-known-good SHA precedente.
+
+Il runbook operativo completo è in `docs/I18N_RELEASE_RUNBOOK.md`.
