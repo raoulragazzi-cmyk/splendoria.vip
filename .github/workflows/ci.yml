@@ -1,0 +1,53 @@
+name: Pull Request Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - splendoria.vip
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Smoke tests
+        run: node test/ci-smoke.mjs
+
+      - name: Validate operational scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' script; do
+            echo "Checking $script"
+            bash -n "$script"
+          done < <(find scripts -maxdepth 1 -type f -name '*.sh' -print0)
+
+      - name: Cloudflare production dry run
+        run: npx wrangler deploy --dry-run --env="" --outdir dist
+
+      - name: Cloudflare staging dry run
+        run: npx wrangler deploy --dry-run --env staging --outdir dist-staging

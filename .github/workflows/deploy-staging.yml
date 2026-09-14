@@ -1,0 +1,84 @@
+name: Deploy Splendoria Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_migrations:
+        description: Apply pending D1 migrations to staging before deploy
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    name: Validate and deploy staging only
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Require Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing staging secret CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing staging secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Smoke tests
+        run: node test/ci-smoke.mjs
+
+      - name: Validate operational scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+          done < <(find scripts -maxdepth 1 -type f -name '*.sh' -print0)
+
+      - name: Staging Wrangler dry run
+        run: npx wrangler deploy --dry-run --env staging --outdir dist-staging
+
+      - name: List pending staging migrations
+        run: npx wrangler d1 migrations list DB --remote --env staging
+
+      - name: Apply staging migrations
+        if: ${{ inputs.apply_migrations }}
+        run: npx wrangler d1 migrations apply DB --remote --env staging
+
+      - name: Deploy staging Worker
+        run: npx wrangler deploy --env staging
+
+      - name: Post-deploy acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL="${{ vars.STAGING_BASE_URL }}"
+          if [ -z "$BASE_URL" ]; then
+            echo "Staging deployed. Configure GitHub environment variable STAGING_BASE_URL to enable automatic HTTP acceptance checks."
+            exit 0
+          fi
+          BASE_URL="$BASE_URL" bash scripts/postdeploy-check.sh

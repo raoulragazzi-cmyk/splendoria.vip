@@ -1,0 +1,9 @@
+# Default owner
+* @raoulragazzi-cmyk
+
+# Security-sensitive areas
+/src/ @raoulragazzi-cmyk
+/migrations/ @raoulragazzi-cmyk
+/wrangler.toml @raoulragazzi-cmyk
+/.github/workflows/ @raoulragazzi-cmyk
+/scripts/ @raoulragazzi-cmyk
