@@ -1,0 +1,51 @@
+name: Validate Splendoria public i18n phase 1
+
+on:
+  push:
+    branches: ["i18n/public-de-en-phase1"]
+    paths:
+      - "src/i18n-worker.js"
+      - "wrangler.jsonc"
+      - ".github/workflows/i18n-phase1-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout i18n branch
+        uses: actions/checkout@v4
+        with:
+          ref: i18n/public-de-en-phase1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax checks
+        run: |
+          node --check src/worker.js
+          node --check src/studio-worker.js
+          node --check src/i18n-worker.js
+
+      - name: Guard Italian source
+        run: |
+          git diff origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
+          test -z "$(git diff --name-only origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js)"
+
+      - name: Validate locale architecture
+        run: |
+          grep -Fq '"/de/"' src/i18n-worker.js
+          grep -Fq '"/en/"' src/i18n-worker.js
+          grep -Fq 'hreflang="x-default"' src/i18n-worker.js
+          grep -Fq 'spl-language-switcher' src/i18n-worker.js
+          grep -Fq 'Das Recht, in Erinnerung zu bleiben.' src/i18n-worker.js
+          grep -Fq 'The right to be remembered.' src/i18n-worker.js
+
+      - name: Existing smoke suite
+        run: npm test
+
+      - name: Wrangler dry run
+        run: npm run check
