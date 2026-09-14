@@ -83,7 +83,7 @@ jobs:
           grep -Fq 'CUSTOMER_AUTH_PATHS' src/i18n-auth-worker.js
           grep -Fq 'CLIENT_PATHS' src/i18n-client-worker.js
           grep -Fq 'preserveGenreValues' src/i18n-client-worker.js
-          grep -Fq 'localizeLogoutAction' src/i18n-session-worker.js
+          grep -Fq 'localizeClientActions' src/i18n-session-worker.js
           grep -Fq '"main": "src/i18n-session-worker.js"' wrangler.jsonc
           ! grep -Fq '"/admin"' src/i18n-client-worker.js
           ! grep -Fq '"/area-amministratore"' src/i18n-client-worker.js
