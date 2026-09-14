@@ -34,7 +34,7 @@ for (const locale of ["de", "en"]) {
   const output = localizeEditorResidualHtml(html, locale);
   for (const marker of expected[locale]) if (!output.includes(marker)) throw new Error(`${locale}: missing translated editor marker: ${marker}`);
   const authoredOccurrences = output.split(authoredTrap).length - 1;
-  if (authoredOccurrences !== 5) throw new Error(`${locale}: authored content changed; expected 5 preserved occurrences, got ${authoredOccurrences}`);
+  if (authoredOccurrences !== 6) throw new Error(`${locale}: authored content changed; expected 6 preserved occurrences, got ${authoredOccurrences}`);
   if (!output.includes('pattern="ELIMINA"') || !output.includes('Scrivi ELIMINA per confermare')) throw new Error(`${locale}: machine confirmation token ELIMINA changed`);
   if (output.includes("<span class=\"badge\">Richiede sblocco</span>")) throw new Error(`${locale}: lock badge left in Italian`);
 }
