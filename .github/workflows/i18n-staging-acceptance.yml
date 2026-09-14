@@ -135,13 +135,15 @@ jobs:
           const config = JSON.parse(fs.readFileSync(path, 'utf8'));
           const email = process.env.TEST_EMAIL?.trim();
           if (!email || !email.includes('@')) throw new Error('invalid staging test email');
-          const staging = config.env.staging;
+          const staging = config.env?.staging;
+          if (!staging) throw new Error('staging env missing');
           staging.vars.ADMIN_EMAIL = email;
-          for (const binding of staging.send_email || []) {
-            binding.allowed_destination_addresses = [email];
-          }
+          staging.send_email = [
+            { name: 'CONTACT_EMAIL', allowed_destination_addresses: [email] },
+            { name: 'ADMIN_EMAIL_NOTIFICATION', allowed_destination_addresses: [email] }
+          ];
           fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
-          console.log('Staging email delivery restricted to one explicit test recipient.');
+          console.log('Staging email bindings enabled only for the explicit test recipient.');
           NODE
 
       - name: List pending staging migrations
