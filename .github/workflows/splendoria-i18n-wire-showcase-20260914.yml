@@ -1,9 +1,12 @@
-name: Wire Splendoria showcase i18n layer
+name: Wire Splendoria showcase i18n
 
 on:
   push:
-    branches: ["feature/splendoria-i18n-vetrina-20260914"]
-    paths: [".github/workflows/splendoria-i18n-wire-showcase-20260914.yml"]
+    branches:
+      - feature/splendoria-i18n-vetrina-20260914
+    paths:
+      - .github/workflows/splendoria-i18n-wire-showcase-20260914.yml
+      - scripts/wire-showcase-i18n.mjs
 
 permissions:
   contents: write
@@ -19,74 +22,21 @@ jobs:
           ref: feature/splendoria-i18n-vetrina-20260914
           fetch-depth: 0
 
-      - name: Patch only Studio wrapper routing
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('src/studio-worker.js')
-          s = p.read_text(encoding='utf-8')
-
-          import_anchor = 'import baseWorker from "./worker.js";\n'
-          import_line = 'import { enhanceItalianShowcaseHtml, localizeShowcaseHtml, localizedShowcaseRoute, rewriteLocalizedContactResponse, toBaseShowcaseRequest } from "./i18n-showcase.js";\n'
-          if import_line not in s:
-              if s.count(import_anchor) != 1:
-                  raise SystemExit(f'import anchor count: {s.count(import_anchor)}')
-              s = s.replace(import_anchor, import_anchor + import_line, 1)
-
-          old = '''async function patchedFetch(request, env, ctx) {
-  const url = new URL(request.url);
-  const response = await baseWorker.fetch(request, env, ctx);
-  const contentType = response.headers.get('content-type') || '';
-'''
-          new = '''async function patchedFetch(request, env, ctx) {
-  const url = new URL(request.url);
-  const showcaseRoute = localizedShowcaseRoute(url);
-  if (showcaseRoute?.kind === 'home' && !url.pathname.endsWith('/')) {
-    const canonicalLocaleUrl = new URL(request.url);
-    canonicalLocaleUrl.pathname = `/${showcaseRoute.locale}/`;
-    return Response.redirect(canonicalLocaleUrl.toString(), 308);
-  }
-  const upstreamRequest = showcaseRoute ? toBaseShowcaseRequest(request, showcaseRoute) : request;
-  const response = await baseWorker.fetch(upstreamRequest, env, ctx);
-  if (showcaseRoute?.kind === 'contact') return rewriteLocalizedContactResponse(response, showcaseRoute.locale);
-  const contentType = response.headers.get('content-type') || '';
-
-  if (showcaseRoute?.kind === 'home' && contentType.includes('text/html')) {
-    const html = await response.text();
-    const headers = new Headers(response.headers);
-    headers.delete('content-length');
-    headers.set('cache-control', 'no-cache');
-    return new Response(localizeShowcaseHtml(html, showcaseRoute.locale), { status: response.status, statusText: response.statusText, headers });
-  }
-
-  if (url.pathname === '/' && contentType.includes('text/html')) {
-    const html = await response.text();
-    const headers = new Headers(response.headers);
-    headers.delete('content-length');
-    return new Response(enhanceItalianShowcaseHtml(html), { status: response.status, statusText: response.statusText, headers });
-  }
-'''
-          if new not in s:
-              if s.count(old) != 1:
-                  raise SystemExit(f'patchedFetch anchor count: {s.count(old)}')
-              s = s.replace(old, new, 1)
-
-          p.write_text(s, encoding='utf-8')
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate wrapper and dry run
+      - name: Wire isolated routing layer
+        run: node scripts/wire-showcase-i18n.mjs
+
+      - name: Validate sources and dry run
         run: |
           node --check src/i18n-showcase.js
           node --check src/studio-worker.js
           node --check public/assets/i18n-showcase.js
           npm run check
-          grep -Fq 'localizedShowcaseRoute' src/studio-worker.js
-          grep -Fq "url.pathname === '/'" src/studio-worker.js
+          grep -Fq localizedShowcaseRoute src/studio-worker.js
 
-      - name: Commit wrapper only
-        shell: bash
+      - name: Commit wrapper change
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -94,7 +44,7 @@ jobs:
           git add src/studio-worker.js
           git diff --cached --check
           if git diff --cached --quiet; then
-            echo 'Wrapper already wired.'
+            echo "Wrapper already wired."
           else
             git commit -m "feat: route DE EN showcase without changing Italian source"
             git push origin HEAD:feature/splendoria-i18n-vetrina-20260914
