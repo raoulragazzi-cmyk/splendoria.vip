@@ -53,6 +53,15 @@ for (const locale of ["de", "en"]) {
   const bareHead = await request(`/${locale}`, "HEAD");
   if (bareHead.status !== 308 || bareHead.headers.get("location") !== `https://www.splendoria.vip/${locale}/`) throw new Error(`seo: HEAD /${locale} non segue il redirect canonico`);
 
+  const query = "utm_source=i18n-qa&formula=premium&name=J%C3%BCrgen";
+  for (const method of ["GET", "HEAD"]) {
+    const redirected = await request(`/${locale}?${query}`, method);
+    const expected = `https://www.splendoria.vip/${locale}/?${query}`;
+    if (redirected.status !== 308) throw new Error(`seo: ${method} /${locale} con query non restituisce 308`);
+    if (redirected.headers.get("location") !== expected) throw new Error(`seo: ${method} /${locale} perde o altera query string/Unicode: ${redirected.headers.get("location")} != ${expected}`);
+    if (method === "HEAD" && await redirected.text()) throw new Error(`seo: HEAD /${locale} con query contiene body`);
+  }
+
   for (const basePath of publicPaths) {
     const path = localized(locale, basePath);
     const getResponse = await request(path);
@@ -63,4 +72,4 @@ for (const locale of ["de", "en"]) {
   }
 }
 
-console.log("seo i18n: sitemap multilingua, robots e HEAD semantics verificati");
+console.log("seo i18n: sitemap multilingua, robots, HEAD semantics e query-string preservation verificati");
