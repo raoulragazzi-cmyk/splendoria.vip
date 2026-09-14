@@ -74,7 +74,8 @@ for (const [locale, expected] of Object.entries(cases)) {
   if (!html.includes(expected.success)) throw new Error(`i18n ${locale}: stato dinamico del contatto non tradotto`);
   if (!html.includes(`rel="canonical" href="https://www.splendoria.vip/${locale}/"`) || !html.includes('hreflang="x-default"')) throw new Error(`i18n ${locale}: canonical/hreflang incompleti`);
   if (!html.includes(`href="/${locale}/" hreflang="${locale}" lang="${locale}" aria-current="page"`)) throw new Error(`i18n ${locale}: stato del selettore lingua non corretto`);
-  if (!/src="\/assets\/studio\.js\?[^\"]*lang=${locale}/.test(html)) throw new Error(`i18n ${locale}: script dinamico non riceve la lingua`);
+  const scriptPattern = new RegExp(`src="/assets/studio\\.js\\?[^\"]*lang=${locale}`);
+  if (!scriptPattern.test(html)) throw new Error(`i18n ${locale}: script dinamico non riceve la lingua`);
 
   for (const value of ["Una stagione decisiva", "Una vita intera", "Una storia generazionale", "Un’impresa e la sua visione"]) {
     if (!html.includes(`name="legacyScope" value="${value}"`)) throw new Error(`i18n ${locale}: valore semantico scope alterato: ${value}`);
