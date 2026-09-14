@@ -22,12 +22,12 @@ const get = path => worker.fetch(new Request(`https://www.splendoria.vip${path}`
 
 const pages = {
   "/privacy-policy": {
-    de: ["Datenschutzerklärung — Splendoria", "1. Verantwortlicher", "2. Verarbeitete Daten", "3. Zwecke und Rechtsgrundlagen", "4. Erzählungen, besondere Kategorien und Daten Dritter", "5. Künstliche Intelligenz und menschliche Aufsicht", "6. Erforderlichkeit der Bereitstellung", "7. Empfänger und Auftragsverarbeiter", "8. Übermittlungen außerhalb des Europäischen Wirtschaftsraums", "9. Speicherdauer", "10. Sicherheit", "11. Rechte betroffener Personen", "12. Minderjährige", "13. Änderungen"],
-    en: ["Privacy Policy — Splendoria", "1. Data controller", "2. Data processed", "3. Purposes and legal bases", "4. Stories, special-category data and third-party data", "5. Artificial intelligence and human supervision", "6. Nature of data provision", "7. Recipients and processors", "8. Transfers outside the European Economic Area", "9. Retention", "10. Security", "11. Data-subject rights", "12. Minors", "13. Changes"]
+    de: ["Datenschutzerklärung — Splendoria", "1. Verantwortlicher", "2. Welche Daten wir verarbeiten", "3. Zwecke und Rechtsgrundlagen", "4. Sensible Erinnerungen und Daten anderer Personen", "5. Künstliche Intelligenz und menschliche Kontrolle", "6. Backup copy in the browser", "7. Empfänger und Übermittlungen", "8. Speicherdauer", "9. Sicherheit", "10. Rechte", "11. Minderjährige und Aktualisierungen"],
+    en: ["Privacy Policy — Splendoria", "1. Data controller", "2. Data we process", "3. Purposes and legal bases", "4. Sensitive memories and other people’s data", "5. Artificial intelligence and human control", "6. Backup copy in the browser", "7. Recipients and transfers", "8. Retention", "9. Security", "10. Rights", "11. Minors and updates"]
   },
   "/cookie-policy": {
-    de: ["Cookie-Richtlinie — Splendoria", "1. Was sie sind", "2. Verwendete Werkzeuge", "3. Informationsbanner und Einwilligung", "4. Verwaltung im Browser", "5. Verantwortlicher und Rechte", "6. Aktualisierungen"],
-    en: ["Cookie Policy — Splendoria", "1. What they are", "2. Tools used", "3. Information banner and consent", "4. Managing them in the browser", "5. Controller and rights", "6. Updates"]
+    de: ["Cookie-Richtlinie — Splendoria", "1. Kurz gesagt", "2. Verwendete Werkzeuge", "3. Warum wir nicht „Alle akzeptieren“ fragen", "4. Lokale Entwurfskopien", "5. Cookies und lokale Daten verwalten", "6. Kein websiteübergreifendes Tracking", "7. Verantwortlicher und Rechte"],
+    en: ["Cookie Policy — Splendoria", "1. In brief", "2. Tools used", "3. Why we do not ask you to “Accept all”", "4. Local draft copies", "5. Managing cookies and local data", "6. No cross-site tracking", "7. Controller and rights"]
   },
   "/termini-condizioni": {
     de: ["Allgemeine Geschäftsbedingungen — Splendoria", "1. Diensteanbieter", "2. Gegenstand", "3. Konto und erstes Kapitel", "4. Programme, Preise und Zusatzleistungen", "5. Vertragsschluss", "6. Widerrufsrecht für Verbraucher", "7. Materialien und Verantwortung des Nutzers", "8. Künstliche Intelligenz und Freigabe", "9. Geistiges Eigentum", "10. Überarbeitungen, Freigabe und Lieferung", "11. Haftung", "12. Aussetzung und Schließung", "13. Anwendbares Recht und Streitigkeiten", "14. Änderungen"],
@@ -64,18 +64,55 @@ for (const [basePath, locales] of Object.entries(pages)) {
     for (const link of ["privacy-policy", "cookie-policy", "termini-condizioni", "note-legali", "trasparenza-ai"]) {
       if (html.includes(`href="/${link}"`)) throw new Error(`${basePath} ${locale}: link pubblico esce dalla lingua verso /${link}`);
     }
-    if (locale === "de" && html.includes("Partita IVA")) throw new Error(`${basePath} de: etichetta fiscale italiana residua`);
-    if (locale === "en" && html.includes("Partita IVA")) throw new Error(`${basePath} en: etichetta fiscale italiana residua`);
+    if (html.includes("Partita IVA")) throw new Error(`${basePath} ${locale}: etichetta fiscale italiana residua`);
   }
 }
 
 const privacyDe = await (await get("/de/privacy-policy")).text();
-if (!privacyDe.includes("Art. 6 Abs. 1 lit. b DSGVO") || !privacyDe.includes("Art. 9 Abs. 2 lit. a DSGVO")) throw new Error("privacy de: basi giuridiche GDPR non localizzate correttamente");
+for (const marker of [
+  "Wir erklären in verständlicher Form, welche Daten wir verarbeiten",
+  "lokale Sicherungskopien von Entwürfen",
+  "Art. 6 Abs. 1 lit. b DSGVO",
+  "Art. 9 Abs. 2 lit. a DSGVO",
+  "bis zu 365 Tage nach der letzten Änderung",
+  "italienischen Datenschutzaufsichtsbehörde"
+]) if (!privacyDe.includes(marker)) throw new Error(`privacy de: current-source marker missing: ${marker}`);
+for (const residual of ["Quali dati trattiamo", "Ricordi sensibili e dati di altre persone", "Copia di sicurezza nel browser", "Destinatari e trasferimenti", "Minori e aggiornamenti", "Splendoria non vende dati personali"]) {
+  if (privacyDe.includes(residual)) throw new Error(`privacy de: residuo italiano: ${residual}`);
+}
+
 const privacyEn = await (await get("/en/privacy-policy")).text();
-if (!privacyEn.includes("Art. 6(1)(b) GDPR") || !privacyEn.includes("Art. 9(2)(a)")) throw new Error("privacy en: legal bases not localised correctly");
+for (const marker of [
+  "We explain in plain language what data we process",
+  "local backup copies of drafts",
+  "Art. 6(1)(b) GDPR",
+  "Art. 9(2)(a) GDPR",
+  "up to 365 days after the last change",
+  "Italian Data Protection Authority"
+]) if (!privacyEn.includes(marker)) throw new Error(`privacy en: current-source marker missing: ${marker}`);
+for (const residual of ["Quali dati trattiamo", "Ricordi sensibili e dati di altre persone", "Copia di sicurezza nel browser", "Destinatari e trasferimenti", "Minori e aggiornamenti", "Splendoria non vende dati personali"]) {
+  if (privacyEn.includes(residual)) throw new Error(`privacy en: residuo italiano: ${residual}`);
+}
+
+const cookieDe = await (await get("/de/cookie-policy")).text();
+for (const marker of ["keine Social-Tracker", "Lokale Entwurfskopien", "365 Tage nach der letzten Änderung", "Kein websiteübergreifendes Tracking"]) {
+  if (!cookieDe.includes(marker)) throw new Error(`cookie de: current-source marker missing: ${marker}`);
+}
+for (const residual of ["Perché non chiediamo", "Copie locali delle bozze", "Come gestire cookie e dati locali", "Nessun tracciamento incrociato"]) {
+  if (cookieDe.includes(residual)) throw new Error(`cookie de: residuo italiano: ${residual}`);
+}
+
+const cookieEn = await (await get("/en/cookie-policy")).text();
+for (const marker of ["no social trackers", "Local draft copies", "365 days after the last change", "No cross-site tracking"]) {
+  if (!cookieEn.includes(marker)) throw new Error(`cookie en: current-source marker missing: ${marker}`);
+}
+for (const residual of ["Perché non chiediamo", "Copie locali delle bozze", "Come gestire cookie e dati locali", "Nessun tracciamento incrociato"]) {
+  if (cookieEn.includes(residual)) throw new Error(`cookie en: residuo italiano: ${residual}`);
+}
+
 const termsDe = await (await get("/de/termini-condizioni")).text();
 if (!termsDe.includes("italienisches Recht") || !termsDe.includes("14 Tagen")) throw new Error("terms de: legge applicabile o recesso incompleti");
 const termsEn = await (await get("/en/termini-condizioni")).text();
 if (!termsEn.includes("Italian law applies") || !termsEn.includes("within 14 days")) throw new Error("terms en: governing law or withdrawal incomplete");
 
-console.log("legal i18n: privacy, cookie, terms, legal notice and AI transparency DE/EN verified");
+console.log("legal i18n: current privacy center, terms, legal notice and AI transparency DE/EN verified");
