@@ -21,7 +21,13 @@ function polishLegalLabels(html, locale, basePath) {
   if (locale === "de") {
     out = out.split("Partita IVA").join("USt-IdNr.");
     out = out.split("Email:").join("E-Mail:");
-    if (basePath === "/privacy-policy") out = out.split("Privacy Policy").join("Datenschutzerklärung");
+    if (basePath === "/privacy-policy") {
+      out = out.split("Privacy Policy").join("Datenschutzerklärung");
+      out = out.split("6. Backup copy in the browser").join("6. Sicherungskopie im Browser");
+    }
+    if (basePath === "/termini-condizioni") {
+      out = out.split("3. Konto e primo capitolo").join("3. Konto und erstes Kapitel");
+    }
   } else {
     out = out.split("Partita IVA").join("VAT number");
   }
