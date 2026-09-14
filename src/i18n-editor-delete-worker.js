@@ -26,11 +26,15 @@ export function localizeClientDeletePanel(html, locale) {
   });
 }
 
+function eligibleClientPage(pathname) {
+  return /^\/(?:de|en)\/(?:studio|libro\/)/.test(pathname) && !/\/anteprima$/.test(pathname);
+}
+
 async function fetchEditorDeleteCopy(request, env, ctx) {
   const response = await notFoundWorker.fetch(request, env, ctx);
   const url = new URL(request.url);
   const locale = localeFromPath(url.pathname);
-  if (!locale || request.method !== "GET" || !/^\/(?:de|en)\/libro\//.test(url.pathname) || /\/anteprima$/.test(url.pathname) || !response.ok || !(response.headers.get("content-type") || "").includes("text/html")) return response;
+  if (!locale || request.method !== "GET" || !eligibleClientPage(url.pathname) || !response.ok || !(response.headers.get("content-type") || "").includes("text/html")) return response;
 
   const headers = new Headers(response.headers);
   headers.delete("content-length");
