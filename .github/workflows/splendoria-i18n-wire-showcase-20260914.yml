@@ -36,16 +36,16 @@ jobs:
           npm run check
           grep -Fq localizedShowcaseRoute src/studio-worker.js
 
-      - name: Commit wrapper change
+      - name: Commit guarded i18n wiring
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/studio-worker.js
+          git add src/studio-worker.js src/i18n-showcase.js
           git diff --cached --check
           if git diff --cached --quiet; then
-            echo "Wrapper already wired."
+            echo "i18n wiring already current."
           else
-            git commit -m "feat: route DE EN showcase without changing Italian source"
+            git commit -m "fix: harden multilingual showcase routing"
             git push origin HEAD:feature/splendoria-i18n-vetrina-20260914
           fi
