@@ -65,7 +65,12 @@ function visibleText(html) {
 }
 
 function attrValues(html, attr) {
-  return [...html.matchAll(new RegExp(`${attr}=["']([^"']+)["']`, 'gi'))].map(m => m[1]);
+  return [...html.matchAll(new RegExp(`${attr}=["']([^"']+)["']`, 'gi'))].map(m => decode(m[1]).replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+
+function translatableAttributes(html) {
+  const attrs = ['alt', 'aria-label', 'placeholder', 'title'];
+  return Object.fromEntries(attrs.map(attr => [attr, [...new Set(attrValues(html, attr))].filter(value => !/^https?:|^\/|^#/.test(value))]));
 }
 
 const rows = [];
@@ -81,6 +86,7 @@ for (const target of targets) {
     robots: html.match(/<meta\s+name=["']robots["']\s+content=["']([^"']+)/i)?.[1] || '',
     hrefs: [...new Set(attrValues(html, 'href'))].sort(),
     actions: [...new Set(attrValues(html, 'action'))].sort(),
+    attrs: translatableAttributes(html),
     texts: visibleText(html)
   });
 }
@@ -120,6 +126,10 @@ const md = [
     `- Robots: ${r.robots || '—'}`,
     `- Link: ${r.hrefs.map(v => `\`${v}\``).join(', ') || '—'}`,
     `- Form action: ${r.actions.map(v => `\`${v}\``).join(', ') || '—'}`,
+    '',
+    '### Attributi traducibili',
+    '',
+    ...Object.entries(r.attrs).flatMap(([attr, values]) => [`- **${attr}**`, ...(values.length ? values.map(value => `  - ${value}`) : ['  - —'])]),
     '',
     '### Testi visibili',
     '',
