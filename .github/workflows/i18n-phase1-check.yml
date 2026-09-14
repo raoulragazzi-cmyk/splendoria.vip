@@ -7,6 +7,7 @@ on:
       - "src/i18n-worker.js"
       - "src/i18n-guard-worker.js"
       - "src/i18n-public-worker.js"
+      - "src/i18n-release-worker.js"
       - "test/i18n-smoke.mjs"
       - "test/i18n-public-smoke.mjs"
       - "wrangler.jsonc"
@@ -39,6 +40,7 @@ jobs:
           node --check src/i18n-worker.js
           node --check src/i18n-guard-worker.js
           node --check src/i18n-public-worker.js
+          node --check src/i18n-release-worker.js
           node --check test/i18n-smoke.mjs
           node --check test/i18n-public-smoke.mjs
 
@@ -57,7 +59,9 @@ jobs:
           grep -Fq 'localizeHomepageScript' src/i18n-guard-worker.js
           grep -Fq 'repairSemanticFormValues' src/i18n-guard-worker.js
           grep -Fq 'PUBLIC_GUIDE' src/i18n-public-worker.js
+          grep -Fq 'LAST_PARAGRAPH_IT' src/i18n-release-worker.js
           ! grep -Fq '"/admin"' src/i18n-public-worker.js
+          ! grep -Fq '"/admin"' src/i18n-release-worker.js
 
       - name: Localized showcase smoke suite
         run: node test/i18n-smoke.mjs
