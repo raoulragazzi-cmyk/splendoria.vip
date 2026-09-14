@@ -5,6 +5,7 @@ on:
     branches: ["i18n/public-de-en-phase1"]
     paths:
       - "src/i18n-worker.js"
+      - "src/i18n-guard-worker.js"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
 
@@ -20,6 +21,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: i18n/public-de-en-phase1
+          fetch-depth: 0
+
+      - name: Fetch production baseline
+        run: git fetch --no-tags origin splendoria.vip:refs/remotes/origin/splendoria.vip
 
       - name: Install dependencies
         run: npm ci
@@ -29,11 +34,11 @@ jobs:
           node --check src/worker.js
           node --check src/studio-worker.js
           node --check src/i18n-worker.js
+          node --check src/i18n-guard-worker.js
 
-      - name: Guard Italian source
+      - name: Guard Italian application source
         run: |
-          git diff origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
-          test -z "$(git diff --name-only origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js)"
+          git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
 
       - name: Validate locale architecture
         run: |
@@ -43,6 +48,10 @@ jobs:
           grep -Fq 'spl-language-switcher' src/i18n-worker.js
           grep -Fq 'Das Recht, in Erinnerung zu bleiben.' src/i18n-worker.js
           grep -Fq 'The right to be remembered.' src/i18n-worker.js
+          grep -Fq 'localizeHomepageScript' src/i18n-guard-worker.js
+          grep -Fq 'repairSemanticFormValues' src/i18n-guard-worker.js
+          grep -Fq 'PUBLIC_LOCALES' src/i18n-guard-worker.js
+          ! grep -Fq '/admin' src/i18n-guard-worker.js
 
       - name: Existing smoke suite
         run: npm test
