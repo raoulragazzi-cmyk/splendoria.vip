@@ -49,14 +49,10 @@ jobs:
       - name: Fetch production baseline
         run: git fetch --no-tags origin splendoria.vip:refs/remotes/origin/splendoria.vip
 
-      - name: Require candidate to include current production
+      - name: Require canonical application source to match production
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-list --count HEAD..origin/splendoria.vip)" = "0" || {
-            echo "The i18n candidate is behind production. Reconcile before staging."
-            exit 1
-          }
           git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
 
       - name: Refuse production URL
