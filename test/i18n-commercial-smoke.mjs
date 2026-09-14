@@ -16,7 +16,7 @@ const PROJECT = {
   genre: "Autobiografia",
   targetPages: 84,
   plan: "free",
-  status: "bozza",
+  status: "struttura_creata",
   tone: "Intimo e riflessivo",
   audience: "Famiglia",
   sourceMaterial: "Ricordi reali",
@@ -26,6 +26,17 @@ const PROJECT = {
   message: "Per la famiglia",
   specialDataConsentAt: "2026-01-03T10:00:00.000Z",
   createdAt: "2026-01-01T10:00:00.000Z",
+  updatedAt: "2026-01-03T10:00:00.000Z"
+};
+
+const CHAPTER = {
+  id: "chapter-1",
+  projectId: PROJECT.id,
+  position: 1,
+  title: "Le origini",
+  content: "Un breve inizio scritto dall'autrice.",
+  status: "modificato",
+  createdAt: "2026-01-03T10:00:00.000Z",
   updatedAt: "2026-01-03T10:00:00.000Z"
 };
 
@@ -47,8 +58,8 @@ function makeDb() {
           return null;
         },
         async all() {
-          if (sql.includes('FROM "BookChapter"')) return { results: [] };
           if (sql.includes('FROM "BookChapterSection"')) return { results: [] };
+          if (sql.includes('FROM "BookChapter"')) return { results: [{ ...CHAPTER }] };
           if (sql.includes('FROM "Ordine"')) return { results: [] };
           return { results: [] };
         }
@@ -111,7 +122,7 @@ for (const [locale, markers] of Object.entries(cases)) {
   ]) if (html.includes(residual)) throw new Error(`commercial ${locale}: residuo italiano ${residual}`);
   if (!html.includes(`action="/${locale}/libro/book-commercial/acquista"`)) throw new Error(`commercial ${locale}: acquisto esce dal namespace lingua`);
   if (!html.includes(`href="/${locale}/termini-condizioni"`)) throw new Error(`commercial ${locale}: termini escono dal namespace lingua`);
-  if (!html.includes(PROJECT.title)) throw new Error(`commercial ${locale}: titolo autore alterato`);
+  if (!html.includes(PROJECT.title) || !html.includes(CHAPTER.title)) throw new Error(`commercial ${locale}: contenuto autore alterato`);
 }
 
-console.log("commercial i18n: formule, bonifico, termini e namespace acquisto DE/EN verificati");
+console.log("commercial i18n: formule, bonifico, termini e namespace acquisto DE/EN verificati dopo la creazione della struttura");
