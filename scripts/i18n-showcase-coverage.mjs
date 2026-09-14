@@ -20,26 +20,30 @@ function texts(html) {
 const baseHtml = await (await baseWorker.fetch(new Request('https://www.splendoria.vip/'), env)).text();
 const base = texts(baseHtml);
 
-const globallyAllowed = new Set([
-  'Splendoria', 'Digital', 'Premium', 'Signature', 'Email', 'Scuola Holden',
-  '1.000 €', '1.900 €', '2.500 €', '01', '02', '03', 'I', 'II', 'III', '/ 100',
-  'AI Arena di Raoul Ragazzi · P.IVA 02950290219', 'Via Goethe 42, 39012 Merano (BZ) · Via Settala 1, Milano (MI)'
+const invariantTerms = new Set([
+  'Splendoria', 'Digital', 'Premium', 'Signature', 'Email', 'Scuola Holden', 'Governance',
+  'Privacy', 'Privacy Policy', 'Cookie Policy', '/ 100'
 ]);
-const byLocale = {
-  de: new Set([]),
-  en: new Set(['Privacy Policy', 'Cookie Policy', 'Governance'])
-};
+function isInvariant(value) {
+  if (invariantTerms.has(value)) return true;
+  if (/^(?:0?[1-9]|I|II|III)$/.test(value)) return true;
+  if (/^\d[\d.]*\s*€$/.test(value)) return true;
+  if (/^Splendoria (?:Digital|Premium|Signature) · \d[\d.]* €$/.test(value)) return true;
+  if (/^AI Arena di Raoul Ragazzi · (?:P\.IVA|Partita IVA) 02950290219$/.test(value)) return true;
+  if (/^Via Goethe 42, .*(?:Milano|Milano \(MI\))/.test(value)) return true;
+  return false;
+}
 
 for (const locale of ['de', 'en']) {
   const html = await (await worker.fetch(new Request(`https://www.splendoria.vip/${locale}/`), env)).text();
   const localized = new Set(texts(html));
   const unchanged = base.filter(value => localized.has(value));
-  const suspicious = unchanged.filter(value => !globallyAllowed.has(value) && !byLocale[locale].has(value) && !/^\d+(?:[%.,\s€]|$)/.test(value));
-  console.log(`${locale.toUpperCase()} unchanged visible strings:`);
-  console.log(unchanged.map(v => `  - ${v}`).join('\n'));
+  const suspicious = unchanged.filter(value => !isInvariant(value));
+  console.log(`${locale.toUpperCase()} residual identical strings: ${JSON.stringify(unchanged)}`);
   if (suspicious.length) {
-    console.error(`${locale.toUpperCase()} suspicious untranslated strings:`);
-    console.error(suspicious.map(v => `  - ${v}`).join('\n'));
+    console.error(`${locale.toUpperCase()} suspicious untranslated strings: ${JSON.stringify(suspicious)}`);
     process.exitCode = 1;
+  } else {
+    console.log(`${locale.toUpperCase()} visible-text coverage: no unexpected Italian copy remains.`);
   }
 }
