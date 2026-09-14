@@ -83,6 +83,13 @@ const post = (path, data, withUser = true) => send(path, {
   body: new URLSearchParams(data)
 }, withUser);
 
+const escapeHtml = value => String(value)
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#39;");
+
 const cases = {
   de: {
     markers: ["Deine Schreibreise", "Vorschau durchblättern", "Die Seele des Buches", "Buchstruktur", "Deine Muse", "Fortschritt des Buches"],
@@ -110,7 +117,10 @@ for (const [locale, expected] of Object.entries(cases)) {
   ]) if (!editor.includes(marker)) throw new Error(`editor ${locale}: manca ${marker}`);
 
   const authored = [PROJECT.title, PROJECT.sourceMaterial, PROJECT.story, PROJECT.people, PROJECT.events, PROJECT.message];
-  for (const value of authored) if (!editor.includes(value)) throw new Error(`editor ${locale}: contenuto autore alterato: ${value}`);
+  for (const value of authored) {
+    const preserved = editor.includes(value) || editor.includes(escapeHtml(value));
+    if (!preserved) throw new Error(`editor ${locale}: contenuto autore alterato: ${value}`);
+  }
   if (!editor.includes('value="Emozionante e autentico" selected')) throw new Error(`editor ${locale}: valore canonico tono non preservato`);
   if (editor.includes('action="/libro/book-1/salva"')) throw new Error(`editor ${locale}: azione salva esce dal namespace lingua`);
 
