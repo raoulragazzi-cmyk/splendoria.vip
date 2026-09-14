@@ -15,6 +15,28 @@ Branch di lavoro: `i18n/public-de-en-phase1`
 9. Nessuna traduzione globale deve poter modificare testo scritto dall'utente, nomi, titoli, capitoli o dati persistiti.
 10. Ogni fase viene testata prima di essere collegata alla produzione.
 
+## Stato verificato — 14 settembre 2026
+
+Il deep-pass automatico del branch copre attualmente e con CI verde:
+
+- vetrina IT/DE/EN e selettore lingua;
+- Guida e pagine legali/pubbliche;
+- SEO, sitemap, robots, HEAD, canonical e hreflang;
+- registrazione, login cliente, recupero/reset password;
+- Account, Studio, nuovo libro e logout;
+- editor libro e anteprima;
+- scelta Digital/Premium/Signature e bonifico;
+- stati commerciali: prova gratuita attiva, prova scaduta, formula scelta, bonifico in attesa, pagato, gratuito e rimborsato;
+- salvataggio capitolo e autosalvataggio;
+- Affidati alla Musa, Migliora e Correggi grammatica;
+- ripristino ultima versione ed eliminazione libro;
+- redirect dopo POST e messaggi operativi localizzati;
+- sessione scaduta, libro non appartenente all'utente, capitolo bloccato e POST non valido;
+- integrità dei contenuti scritti dall'autore anche quando contengono parole uguali alle stringhe UI;
+- esclusione completa dell'area amministrativa dal routing localizzato.
+
+La versione italiana `src/worker.js` / `src/studio-worker.js` resta protetta da un gate CI che fallisce in caso di modifica rispetto al ramo di produzione.
+
 ## Inventario pagine e fasi
 
 ### Fase 1A — Vetrina principale
@@ -36,7 +58,7 @@ Branch di lavoro: `i18n/public-de-en-phase1`
 - SEO, canonical, hreflang, social metadata
 - stati dinamici dell'Assessment e messaggi di validazione
 
-Stato: in lavorazione sul branch i18n. La produzione italiana resta invariata.
+Stato: deep-pass automatico completato sul branch i18n; non ancora pubblicato in produzione.
 
 ### Fase 1B — Pagine pubbliche informative
 
@@ -47,7 +69,9 @@ Stato: in lavorazione sul branch i18n. La produzione italiana resta invariata.
 - `/note-legali`
 - `/trasparenza-ai`
 
-Per DE/EN verranno usate route prefissate equivalenti. Le pagine legali richiedono traduzione semanticamente fedele; nessuna parafrasi che modifichi obblighi, basi giuridiche, responsabilità o diritti.
+Le route DE/EN prefissate equivalenti sono coperte dai test. Le pagine legali mantengono il significato dell'italiano senza parafrasi che modifichino obblighi, basi giuridiche, responsabilità o diritti.
+
+Stato: deep-pass automatico completato; resta il controllo visuale finale prima del rilascio.
 
 ### Fase 2 — Onboarding e accesso cliente
 
@@ -60,6 +84,8 @@ Per DE/EN verranno usate route prefissate equivalenti. Le pagine legali richiedo
 - messaggi di errore / successo / sessione scaduta
 
 L'accesso amministratore e la verifica amministratore restano solo in italiano e fuori dal routing localizzato.
+
+Stato: deep-pass automatico completato per i flussi web cliente. Le e-mail transazionali richiedono un pass separato prima di dichiarare chiusa l'intera esperienza multilingua end-to-end.
 
 ### Fase 3 — Studio
 
@@ -79,6 +105,8 @@ L'accesso amministratore e la verifica amministratore restano solo in italiano e
 - PDF
 - acquisto / richiesta sblocco
 
+Stato: editor, anteprima, salvataggi, azioni Musa, ripristino, cancellazione e flussi commerciali sono coperti dal deep-pass automatico. Prima del deploy resta il controllo visuale/responsive su browser reali e la verifica della stampa/PDF.
+
 ### Fase 4 — AI e contenuti generati
 
 La locale UI non deve decidere automaticamente la lingua del libro. Vanno mantenuti distinti almeno:
@@ -87,6 +115,8 @@ La locale UI non deve decidere automaticamente la lingua del libro. Vanno manten
 - `bookLanguage`: lingua dell'opera
 - `dictationLanguage`: lingua del riconoscimento vocale
 - `museOutputLanguage`: normalmente allineata al libro, non all'interfaccia
+
+Stato: il deep-pass attuale verifica che la lingua UI non alteri i contenuti dell'autore. La separazione esplicita e persistita di `bookLanguage` / `museOutputLanguage` resta una fase architetturale successiva e non deve essere introdotta implicitamente durante il deploy della sola UI multilingua.
 
 ## Edge case da verificare in ogni fase
 
@@ -121,4 +151,18 @@ Una fase può essere collegata alla produzione solo se:
 5. non restano stringhe italiane visibili nelle pagine DE/EN della fase;
 6. i valori semantici dei form restano invariati;
 7. non esistono route localizzate per l'area amministrativa;
-8. viene eseguito uno smoke test finale sulla build destinata al deploy.
+8. viene eseguito uno smoke test finale sulla build destinata al deploy;
+9. viene completato un controllo visuale manuale almeno su desktop e mobile per IT/DE/EN;
+10. vengono verificati stampa/PDF, sessione reale, cookie e flussi critici con dati di staging;
+11. il PR di rilascio non è in conflitto con il ramo di produzione e la CI è verde sull'HEAD da distribuire.
+
+## Decisione deploy
+
+Non effettuare il deploy direttamente dal branch di sviluppo. Prima del rilascio:
+
+1. mantenere il PR in Draft durante il deep-pass;
+2. eseguire il controllo visuale e i test reali su ambiente non produttivo o preview;
+3. verificare eventuali e-mail transazionali DE/EN;
+4. congelare l'HEAD candidato al rilascio;
+5. rieseguire l'intera pipeline CI sul commit candidato;
+6. solo a quel punto rendere il PR pronto, fare merge controllato e deploy con smoke test immediato e piano di rollback.
