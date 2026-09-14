@@ -43,6 +43,12 @@ const pages = {
   }
 };
 
+function renderedHeadings(html) {
+  return [...html.matchAll(/<h2>([\s\S]*?)<\/h2>/gi)]
+    .map((match) => match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())
+    .join(" | ");
+}
+
 for (const [basePath, locales] of Object.entries(pages)) {
   for (const locale of ["de", "en"]) {
     const response = await get(`/${locale}${basePath}`);
@@ -52,7 +58,9 @@ for (const [basePath, locales] of Object.entries(pages)) {
     if (!html.includes(`<html lang="${locale}">`)) throw new Error(`${basePath} ${locale}: lang HTML errato`);
     if (!html.includes(`rel="canonical" href="https://www.splendoria.vip/${locale}${basePath}"`)) throw new Error(`${basePath} ${locale}: canonical errato`);
     if (!html.includes(`href="/${locale}${basePath}" hreflang="${locale}" lang="${locale}" aria-current="page"`)) throw new Error(`${basePath} ${locale}: language switcher non mantiene pagina`);
-    for (const marker of locales[locale]) if (!html.includes(marker)) throw new Error(`${basePath} ${locale}: manca marker ${marker}`);
+    for (const marker of locales[locale]) {
+      if (!html.includes(marker)) throw new Error(`${basePath} ${locale}: manca marker ${marker}. H2 renderizzati: ${renderedHeadings(html)}`);
+    }
     for (const link of ["privacy-policy", "cookie-policy", "termini-condizioni", "note-legali", "trasparenza-ai"]) {
       if (html.includes(`href="/${link}"`)) throw new Error(`${basePath} ${locale}: link pubblico esce dalla lingua verso /${link}`);
     }
