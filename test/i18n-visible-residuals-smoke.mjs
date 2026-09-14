@@ -1,4 +1,4 @@
-import worker from "../src/i18n-notfound-worker.js";
+import worker from "../src/i18n-editor-delete-worker.js";
 
 const USER = {
   id: "qa-user",
