@@ -63,7 +63,10 @@ jobs:
           grep -Fq 'npx wrangler deploy --env staging' "$file"
           grep -Fq 'npx wrangler d1 migrations apply DB --remote --env staging' "$file"
           ! grep -Eq 'run: (npm run deploy|npx wrangler deploy)$' "$file"
-          ! grep -Eq 'd1 migrations apply .*--remote([^\n]*)(^| )--env( |$)(""|production)?' "$file"
+          if grep -F 'd1 migrations apply' "$file" | grep -Fv -- '--env staging'; then
+            echo 'Found a staging migration command without --env staging.'
+            exit 1
+          fi
 
       - name: Guard production release workflow
         shell: bash
