@@ -1,4 +1,4 @@
-import worker from "../src/i18n-release-worker.js";
+import worker from "../src/i18n-entry-worker.js";
 
 const DB = {
   prepare(sql = "") {
