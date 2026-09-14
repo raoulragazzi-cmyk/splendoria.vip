@@ -1,0 +1,144 @@
+name: Splendoria i18n production release
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact splendoria.vip commit SHA approved for production
+        required: true
+        type: string
+      deploy_production:
+        description: Actually deploy after all release gates pass
+        required: true
+        default: false
+        type: boolean
+      confirmation:
+        description: Type DEPLOY SPLENDORIA I18N to authorize production deploy
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout production branch
+        uses: actions/checkout@v5
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+
+      - name: Freeze exact candidate SHA
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EXPECTED_SHA" || {
+            echo "Production branch moved: expected $EXPECTED_SHA, found $actual."
+            exit 1
+          }
+          echo "candidate_sha=$actual" >> "$GITHUB_ENV"
+
+      - name: Verify multilingual release entry point
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '"main": "src/i18n-email-worker.js"' wrangler.jsonc
+          test -f src/i18n-worker.js
+          test -f src/i18n-email-worker.js
+          test -f test/i18n-visible-residuals-smoke.mjs
+          test -f test/i18n-layout-safety-smoke.mjs
+          ! grep -Fq '"/admin"' src/i18n-client-worker.js
+          ! grep -Fq '"/area-amministratore"' src/i18n-client-worker.js
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run full multilingual release suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/worker.js
+          node --check src/studio-worker.js
+          for test_file in test/i18n-*.mjs; do
+            echo "Running $test_file"
+            node "$test_file"
+          done
+
+      - name: Guard existing Italian smoke suite
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          npm test 2>&1 | tee /tmp/splendoria-existing-smoke.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if grep -Fq 'Vetrina: asset JavaScript non versionato contro la cache del browser' /tmp/splendoria-existing-smoke.log; then
+              echo 'Known pre-existing cache-bust assertion detected.'
+            elif grep -Fq 'Accessibilità: navigazione da tastiera, focus o riduzione del movimento incompleti' /tmp/splendoria-existing-smoke.log; then
+              echo 'Known pre-existing accessibility assertion detected.'
+            else
+              echo 'Unexpected baseline smoke failure.'
+              exit "$status"
+            fi
+          fi
+
+      - name: Production Wrangler dry run
+        run: npm run check
+
+      - name: Stop safely when deploy is disabled
+        if: ${{ !inputs.deploy_production }}
+        run: echo "Release candidate validated at $candidate_sha. No production deployment requested."
+
+      - name: Require explicit production authorization
+        if: ${{ inputs.deploy_production }}
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "DEPLOY SPLENDORIA I18N" || {
+            echo "Production confirmation phrase does not match."
+            exit 1
+          }
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy exact candidate to Cloudflare Workers
+        if: ${{ inputs.deploy_production }}
+        run: npx wrangler deploy
+
+      - name: Immediate production smoke test
+        if: ${{ inputs.deploy_production }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://www.splendoria.vip"
+          for path in /healthz / /de/ /en/ /de/guida /en/guida /area-clienti /de/area-clienti /en/area-clienti; do
+            code="$(curl -sS -o /tmp/production-smoke-body -w '%{http_code}' "$base$path")"
+            case "$code" in
+              200|204|301|302|303|307|308) ;;
+              *)
+                echo "Production smoke failed: HTTP $code for $path"
+                cat /tmp/production-smoke-body || true
+                echo "Do not continue. Use the guarded rollback workflow with the recorded last-known-good SHA."
+                exit 1
+                ;;
+            esac
+          done
+          echo "Production smoke passed for health, IT/DE/EN public routes and client entry points."

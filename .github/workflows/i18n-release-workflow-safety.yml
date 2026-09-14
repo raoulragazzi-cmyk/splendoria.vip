@@ -1,0 +1,96 @@
+name: Guard Splendoria i18n release workflows
+
+on:
+  push:
+    branches: ["i18n/public-de-en-phase1"]
+    paths:
+      - "wrangler.jsonc"
+      - ".github/workflows/i18n-staging-acceptance.yml"
+      - ".github/workflows/i18n-production-release.yml"
+      - ".github/workflows/i18n-production-rollback.yml"
+      - ".github/workflows/i18n-release-workflow-safety.yml"
+  pull_request:
+    branches: ["splendoria.vip"]
+    paths:
+      - "wrangler.jsonc"
+      - ".github/workflows/i18n-staging-acceptance.yml"
+      - ".github/workflows/i18n-production-release.yml"
+      - ".github/workflows/i18n-production-rollback.yml"
+      - ".github/workflows/i18n-release-workflow-safety.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate isolated staging configuration
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const config = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          const staging = config.env?.staging;
+          if (!staging) throw new Error('staging env missing');
+          const prodDb = config.d1_databases?.find(db => db.binding === 'DB');
+          const stageDb = staging.d1_databases?.find(db => db.binding === 'DB');
+          if (!prodDb || !stageDb || prodDb.database_id === stageDb.database_id) throw new Error('staging D1 isolation failed');
+          if (staging.name === config.name) throw new Error('staging Worker must differ from production');
+          if (staging.vars?.APP_URL === config.vars?.APP_URL) throw new Error('staging URL must differ from production');
+          if ((staging.triggers?.crons || []).length) throw new Error('staging cron must remain disabled');
+          for (const binding of staging.send_email || []) {
+            if ((binding.allowed_destination_addresses || []).length) throw new Error('committed staging config must not authorize email recipients');
+            if (binding.destination_address) throw new Error('committed staging config must not contain an email destination');
+          }
+          NODE
+
+      - name: Guard staging workflow against production actions
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=.github/workflows/i18n-staging-acceptance.yml
+          grep -Fq 'workflow_dispatch:' "$file"
+          grep -Fq 'ref: i18n/public-de-en-phase1' "$file"
+          grep -Fq 'npx wrangler deploy --env staging' "$file"
+          grep -Fq 'npx wrangler d1 migrations apply DB --remote --env staging' "$file"
+          ! grep -Eq 'run: (npm run deploy|npx wrangler deploy)$' "$file"
+          if grep -F 'd1 migrations apply' "$file" | grep -Fv -- '--env staging'; then
+            echo 'Found a staging migration command without --env staging.'
+            exit 1
+          fi
+
+      - name: Guard production release workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=.github/workflows/i18n-production-release.yml
+          grep -Fq 'workflow_dispatch:' "$file"
+          grep -Fq 'expected_sha:' "$file"
+          grep -Fq 'DEPLOY SPLENDORIA I18N' "$file"
+          grep -Fq 'ref: splendoria.vip' "$file"
+          grep -Fq 'npx wrangler deploy' "$file"
+          ! grep -Fq 'd1 migrations apply' "$file"
+
+      - name: Guard rollback workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=.github/workflows/i18n-production-rollback.yml
+          grep -Fq 'workflow_dispatch:' "$file"
+          grep -Fq 'ROLLBACK SPLENDORIA' "$file"
+          grep -Fq 'git merge-base --is-ancestor' "$file"
+          grep -Fq 'git checkout --detach' "$file"
+          grep -Fq 'npx wrangler deploy' "$file"
+          ! grep -Fq 'd1 migrations apply' "$file"
+
+      - name: Staging Wrangler dry run
+        run: npx wrangler deploy --dry-run --env staging --outdir dist-staging

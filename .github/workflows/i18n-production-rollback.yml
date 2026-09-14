@@ -1,0 +1,100 @@
+name: Splendoria guarded production rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_sha:
+        description: Last-known-good commit SHA from splendoria.vip history
+        required: true
+        type: string
+      confirmation:
+        description: Type ROLLBACK SPLENDORIA to authorize rollback deploy
+        required: true
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-production-release
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout production history
+        uses: actions/checkout@v5
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+
+      - name: Validate rollback target
+        shell: bash
+        env:
+          ROLLBACK_SHA: ${{ inputs.rollback_sha }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          git cat-file -e "$ROLLBACK_SHA^{commit}" || {
+            echo "Rollback SHA is not a commit in the fetched repository."
+            exit 1
+          }
+          git merge-base --is-ancestor "$ROLLBACK_SHA" HEAD || {
+            echo "Rollback target is not an ancestor of the current production branch."
+            exit 1
+          }
+          test "$CONFIRMATION" = "ROLLBACK SPLENDORIA" || {
+            echo "Rollback confirmation phrase does not match."
+            exit 1
+          }
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          echo "Rollback target validated: $ROLLBACK_SHA"
+
+      - name: Checkout exact last-known-good commit
+        shell: bash
+        env:
+          ROLLBACK_SHA: ${{ inputs.rollback_sha }}
+        run: |
+          set -euo pipefail
+          git checkout --detach "$ROLLBACK_SHA"
+          test "$(git rev-parse HEAD)" = "$ROLLBACK_SHA"
+
+      - name: Install rollback dependencies
+        run: npm ci
+
+      - name: Validate rollback build
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/worker.js
+          node --check src/studio-worker.js
+          npm run check
+
+      - name: Redeploy last-known-good Worker
+        run: npx wrangler deploy
+
+      - name: Verify service after rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://www.splendoria.vip"
+          for path in /healthz / /area-clienti; do
+            code="$(curl -sS -o /tmp/rollback-smoke-body -w '%{http_code}' "$base$path")"
+            case "$code" in
+              200|204|301|302|303|307|308) ;;
+              *)
+                echo "Rollback smoke failed: HTTP $code for $path"
+                cat /tmp/rollback-smoke-body || true
+                exit 1
+                ;;
+            esac
+          done
+          echo "Rollback deployment is responding on core production routes."

@@ -1,0 +1,48 @@
+name: Validate Splendoria visible i18n residuals
+
+on:
+  push:
+    branches: ["i18n/public-de-en-phase1"]
+    paths:
+      - "src/i18n-*.js"
+      - "src/worker.js"
+      - "src/studio-worker.js"
+      - "test/i18n-visible-residuals-smoke.mjs"
+      - ".github/workflows/i18n-visible-residuals.yml"
+  pull_request:
+    branches: ["splendoria.vip"]
+    paths:
+      - "src/i18n-*.js"
+      - "src/worker.js"
+      - "src/studio-worker.js"
+      - "test/i18n-visible-residuals-smoke.mjs"
+      - ".github/workflows/i18n-visible-residuals.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  visible-residuals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout i18n branch
+        uses: actions/checkout@v5
+        with:
+          ref: i18n/public-de-en-phase1
+          fetch-depth: 0
+
+      - name: Fetch production baseline
+        run: git fetch --no-tags origin splendoria.vip:refs/remotes/origin/splendoria.vip
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Guard Italian application source
+        run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
+
+      - name: Syntax check residual scanner
+        run: node --check test/i18n-visible-residuals-smoke.mjs
+
+      - name: Scan representative DE/EN pages for visible Italian residuals
+        run: node test/i18n-visible-residuals-smoke.mjs
