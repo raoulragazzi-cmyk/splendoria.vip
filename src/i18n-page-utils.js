@@ -30,6 +30,13 @@ export function rewriteExactHrefs(html, hrefMap) {
   return html;
 }
 
+export function addReciprocalHreflang(html, paths) {
+  if (html.includes('hreflang="x-default"')) return html;
+  const alternates = ['it', 'de', 'en'].map(code => `<link rel="alternate" hreflang="${code}" href="${ORIGIN}${paths[code]}">`).join('') + `<link rel="alternate" hreflang="x-default" href="${ORIGIN}${paths.it}">`;
+  const canonicalTag = html.match(/<link rel="canonical" href="[^"]+">/i)?.[0];
+  return canonicalTag ? html.replace(canonicalTag, `${canonicalTag}${alternates}`) : html.replace('</head>', `${alternates}</head>`);
+}
+
 export function localizePublicSeo(html, locale, meta, paths) {
   const canonical = `${ORIGIN}${paths[locale]}`;
   const ogLocale = locale === 'de' ? 'de_DE' : locale === 'en' ? 'en_GB' : 'it_IT';
@@ -43,12 +50,7 @@ export function localizePublicSeo(html, locale, meta, paths) {
   html = html.replace(/(<meta property="og:url" content=")[^"]*(">)/i, `$1${canonical}$2`);
   html = html.replace(/(<meta name="twitter:title" content=")[^"]*(">)/i, `$1${meta.title}$2`);
   html = html.replace(/(<meta name="twitter:description" content=")[^"]*(">)/i, `$1${meta.description}$2`);
-  const alternates = ['it', 'de', 'en'].map(code => `<link rel="alternate" hreflang="${code}" href="${ORIGIN}${paths[code]}">`).join('') + `<link rel="alternate" hreflang="x-default" href="${ORIGIN}${paths.it}">`;
-  if (!html.includes('hreflang="x-default"')) {
-    const canonicalTag = html.match(/<link rel="canonical" href="[^"]+">/i)?.[0];
-    html = canonicalTag ? html.replace(canonicalTag, `${canonicalTag}${alternates}`) : html.replace('</head>', `${alternates}</head>`);
-  }
-  return html;
+  return addReciprocalHreflang(html, paths);
 }
 
 export function publicRoute(pathname, routes) {
