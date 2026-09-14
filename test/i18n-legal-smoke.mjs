@@ -22,7 +22,7 @@ const get = path => worker.fetch(new Request(`https://www.splendoria.vip${path}`
 
 const pages = {
   "/privacy-policy": {
-    de: ["Datenschutzerklärung — Splendoria", "1. Verantwortlicher", "2. Welche Daten wir verarbeiten", "3. Zwecke und Rechtsgrundlagen", "4. Sensible Erinnerungen und Daten anderer Personen", "5. Künstliche Intelligenz und menschliche Kontrolle", "6. Backup copy in the browser", "7. Empfänger und Übermittlungen", "8. Speicherdauer", "9. Sicherheit", "10. Rechte", "11. Minderjährige und Aktualisierungen"],
+    de: ["Datenschutzerklärung — Splendoria", "1. Verantwortlicher", "2. Welche Daten wir verarbeiten", "3. Zwecke und Rechtsgrundlagen", "4. Sensible Erinnerungen und Daten anderer Personen", "5. Künstliche Intelligenz und menschliche Kontrolle", "6. Sicherungskopie im Browser", "7. Empfänger und Übermittlungen", "8. Speicherdauer", "9. Sicherheit", "10. Rechte", "11. Minderjährige und Aktualisierungen"],
     en: ["Privacy Policy — Splendoria", "1. Data controller", "2. Data we process", "3. Purposes and legal bases", "4. Sensitive memories and other people’s data", "5. Artificial intelligence and human control", "6. Backup copy in the browser", "7. Recipients and transfers", "8. Retention", "9. Security", "10. Rights", "11. Minors and updates"]
   },
   "/cookie-policy": {
@@ -77,8 +77,8 @@ for (const marker of [
   "bis zu 365 Tage nach der letzten Änderung",
   "italienischen Datenschutzaufsichtsbehörde"
 ]) if (!privacyDe.includes(marker)) throw new Error(`privacy de: current-source marker missing: ${marker}`);
-for (const residual of ["Quali dati trattiamo", "Ricordi sensibili e dati di altre persone", "Copia di sicurezza nel browser", "Destinatari e trasferimenti", "Minori e aggiornamenti", "Splendoria non vende dati personali"]) {
-  if (privacyDe.includes(residual)) throw new Error(`privacy de: residuo italiano: ${residual}`);
+for (const residual of ["Quali dati trattiamo", "Ricordi sensibili e dati di altre persone", "Copia di sicurezza nel browser", "Destinatari e trasferimenti", "Minori e aggiornamenti", "Splendoria non vende dati personali", "Backup copy in the browser"]) {
+  if (privacyDe.includes(residual)) throw new Error(`privacy de: residuo non tedesco: ${residual}`);
 }
 
 const privacyEn = await (await get("/en/privacy-policy")).text();
