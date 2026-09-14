@@ -21,6 +21,7 @@ on:
       - "src/i18n-failsafe-worker.js"
       - "src/i18n-editor-copy-worker.js"
       - "src/i18n-ui-runtime-worker.js"
+      - "src/i18n-editor-legal-copy-worker.js"
       - "test/i18n-smoke.mjs"
       - "test/i18n-public-smoke.mjs"
       - "test/i18n-legal-smoke.mjs"
@@ -34,6 +35,7 @@ on:
       - "test/i18n-failsafe-smoke.mjs"
       - "test/i18n-editor-copy-smoke.mjs"
       - "test/i18n-ui-runtime-smoke.mjs"
+      - "test/i18n-editor-legal-copy-smoke.mjs"
       - "docs/I18N_ROLLOUT.md"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
@@ -79,6 +81,7 @@ jobs:
           node --check src/i18n-failsafe-worker.js
           node --check src/i18n-editor-copy-worker.js
           node --check src/i18n-ui-runtime-worker.js
+          node --check src/i18n-editor-legal-copy-worker.js
           node --check test/i18n-smoke.mjs
           node --check test/i18n-public-smoke.mjs
           node --check test/i18n-legal-smoke.mjs
@@ -92,6 +95,7 @@ jobs:
           node --check test/i18n-failsafe-smoke.mjs
           node --check test/i18n-editor-copy-smoke.mjs
           node --check test/i18n-ui-runtime-smoke.mjs
+          node --check test/i18n-editor-legal-copy-smoke.mjs
 
       - name: Guard Italian application source
         run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
@@ -122,8 +126,9 @@ jobs:
           grep -Fq 'localizeEditorResidualHtml' src/i18n-editor-copy-worker.js
           grep -Fq 'localizeStudioRuntimeScript' src/i18n-editor-copy-worker.js
           grep -Fq 'bindUiMessagesToLocale' src/i18n-ui-runtime-worker.js
+          grep -Fq 'localizeEditorConsent' src/i18n-editor-legal-copy-worker.js
           grep -Fq 'recognition.lang = selectedLanguage();' test/i18n-ui-runtime-smoke.mjs
-          grep -Fq '"main": "src/i18n-ui-runtime-worker.js"' wrangler.jsonc
+          grep -Fq '"main": "src/i18n-editor-legal-copy-worker.js"' wrangler.jsonc
           ! grep -Fq '"/admin"' src/i18n-client-worker.js
           ! grep -Fq '"/area-amministratore"' src/i18n-client-worker.js
           ! grep -Fq '"/admin"' src/i18n-session-worker.js
@@ -167,6 +172,9 @@ jobs:
 
       - name: UI and dictation language separation deep-pass
         run: node test/i18n-ui-runtime-smoke.mjs
+
+      - name: Editor consent copy deep-pass
+        run: node test/i18n-editor-legal-copy-smoke.mjs
 
       - name: Existing smoke suite with guarded baseline
         shell: bash
