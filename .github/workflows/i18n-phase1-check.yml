@@ -40,6 +40,7 @@ on:
       - "test/i18n-editor-legal-copy-smoke.mjs"
       - "test/i18n-notfound-smoke.mjs"
       - "test/i18n-visible-residuals-smoke.mjs"
+      - "test/i18n-layout-safety-smoke.mjs"
       - "docs/I18N_ROLLOUT.md"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
@@ -104,6 +105,7 @@ jobs:
           node --check test/i18n-editor-legal-copy-smoke.mjs
           node --check test/i18n-notfound-smoke.mjs
           node --check test/i18n-visible-residuals-smoke.mjs
+          node --check test/i18n-layout-safety-smoke.mjs
 
       - name: Guard Italian application source
         run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
@@ -192,6 +194,9 @@ jobs:
 
       - name: Visible Italian residual scan
         run: node test/i18n-visible-residuals-smoke.mjs
+
+      - name: Localized layout safety deep-pass
+        run: node test/i18n-layout-safety-smoke.mjs
 
       - name: Existing smoke suite with guarded baseline
         shell: bash
