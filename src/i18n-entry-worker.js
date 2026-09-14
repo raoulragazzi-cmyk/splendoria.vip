@@ -1,5 +1,6 @@
 import legalWorker from "./i18n-privacy-center-worker.js";
 
+const ORIGIN = "https://www.splendoria.vip";
 const LOCALIZED_PUBLIC = new Set([
   "/", "/guida", "/privacy-policy", "/cookie-policy", "/termini-condizioni", "/note-legali", "/trasparenza-ai"
 ]);
@@ -7,6 +8,36 @@ const LOCALIZED_PUBLIC = new Set([
 function routeLocale(pathname) {
   const match = pathname.match(/^\/(de|en)(\/.*)$/);
   return match ? { locale: match[1], basePath: match[2] || "/" } : null;
+}
+
+function localizedPath(locale, basePath) {
+  if (locale === "it") return basePath;
+  if (basePath === "/") return `/${locale}/`;
+  return `/${locale}${basePath}`;
+}
+
+function alternateLinks(basePath) {
+  return ["it", "de", "en"].map(locale => `<xhtml:link rel="alternate" hreflang="${locale}" href="${ORIGIN}${localizedPath(locale, basePath)}"/>`).join("") + `<xhtml:link rel="alternate" hreflang="x-default" href="${ORIGIN}${basePath}"/>`;
+}
+
+function localizeSitemap(xml) {
+  let out = String(xml || "");
+  if (!out.includes("xmlns:xhtml=")) {
+    out = out.replace('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">');
+  }
+  return out.replace(/<url>([\s\S]*?)<\/url>/g, (block, body) => {
+    const locMatch = body.match(/<loc>([^<]+)<\/loc>/);
+    if (!locMatch) return block;
+    let basePath = "";
+    try { basePath = new URL(locMatch[1]).pathname || "/"; } catch { return block; }
+    if (!LOCALIZED_PUBLIC.has(basePath)) return block;
+    const cleanBody = body.replace(/<xhtml:link[\s\S]*?\/>/g, "");
+    return ["it", "de", "en"].map(locale => {
+      const loc = `${ORIGIN}${localizedPath(locale, basePath)}`;
+      const localizedBody = cleanBody.replace(/<loc>[^<]+<\/loc>/, `<loc>${loc}</loc>`);
+      return `<url>${localizedBody}${alternateLinks(basePath)}</url>`;
+    }).join("\n");
+  });
 }
 
 function keepPublicLinksInLocale(html, locale) {
@@ -63,10 +94,32 @@ function polishGuideMarkup(html, locale, basePath) {
   return out;
 }
 
+function shouldLocalizeHead(pathname) {
+  if (pathname === "/de" || pathname === "/en") return true;
+  const route = routeLocale(pathname);
+  return Boolean(route && LOCALIZED_PUBLIC.has(route.basePath));
+}
+
 async function fetchEntry(request, env, ctx) {
+  const url = new URL(request.url);
+
+  if (request.method === "HEAD" && shouldLocalizeHead(url.pathname)) {
+    const headers = new Headers(request.headers);
+    const getResponse = await fetchEntry(new Request(request.url, { method: "GET", headers }), env, ctx);
+    return new Response(null, { status: getResponse.status, statusText: getResponse.statusText, headers: getResponse.headers });
+  }
+
   const response = await legalWorker.fetch(request, env, ctx);
+
+  if (request.method === "GET" && url.pathname === "/sitemap.xml" && response.ok && (response.headers.get("content-type") || "").includes("xml")) {
+    const xml = localizeSitemap(await response.text());
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    return new Response(xml, { status: response.status, statusText: response.statusText, headers });
+  }
+
   if (request.method !== "GET" || !response.ok || !(response.headers.get("content-type") || "").includes("text/html")) return response;
-  const route = routeLocale(new URL(request.url).pathname);
+  const route = routeLocale(url.pathname);
   if (!route || !LOCALIZED_PUBLIC.has(route.basePath)) return response;
   let html = await response.text();
   html = keepPublicLinksInLocale(html, route.locale);
