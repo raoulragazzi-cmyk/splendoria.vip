@@ -12,6 +12,8 @@ const DEFAULT_PREF = Object.freeze({
   dictationLanguage: "it-IT"
 });
 
+const ITALIAN_STANDARD_BLOCK = /Applica rigorosamente l'italiano standard contemporaneo\.[\s\S]*?Prima della consegna esegui silenziosamente due riletture: una grammaticale e sintattica, una logica e narrativa\./gi;
+
 let languageTableReady = false;
 
 function cleanLanguage(value, fallback = "it-IT") {
@@ -102,12 +104,22 @@ async function writePreference(env, projectId, values) {
   }
 }
 
-function museLanguageDirective(language) {
+function languageStandardDirective(language) {
   if (language === "de-DE") {
-    return "LINGUA DELL'OPERA: TEDESCO. Scrivi tutto il testo narrativo destinato al libro in tedesco naturale, editoriale e coerente. Le istruzioni tecniche possono essere in italiano, ma non determinano la lingua dell'output. Non tradurre nomi propri, dati, citazioni o fatti forniti dall'autore. Mantieni invariati eventuali token tecnici tra parentesi quadre.";
+    return "Applica rigorosamente il tedesco standard contemporaneo (Hochdeutsch). Correggi grammatica, ortografia e punteggiatura senza alterare significato, tono, voce o fatti. Controlla casi, genere e numero, declinazioni, concordanze, reggenze, tempi verbali, posizione del verbo, verbi separabili, preposizioni e costruzione delle subordinate. Mantieni coerenti soggetto, punto di vista, riferimenti pronominali, cronologia e tempi verbali. Conserva regionalismi o dialetto soltanto nel discorso diretto quando sono presenti nelle fonti o richiesti dall'autore. Prima della consegna esegui silenziosamente due riletture: una grammaticale e sintattica, una logica e narrativa.";
   }
   if (language === "en-GB") {
-    return "LINGUA DELL'OPERA: INGLESE BRITANNICO. Scrivi tutto il testo narrativo destinato al libro in inglese britannico naturale, editoriale e coerente. Le istruzioni tecniche possono essere in italiano, ma non determinano la lingua dell'output. Non tradurre nomi propri, dati, citazioni o fatti forniti dall'autore. Mantieni invariati eventuali token tecnici tra parentesi quadre.";
+    return "Applica rigorosamente l'inglese britannico standard contemporaneo. Correggi grammatica, spelling britannico e punteggiatura senza alterare significato, tono, voce o fatti. Controlla concordanze, tempi e aspetti verbali, articoli, pronomi, preposizioni, reggenze, struttura delle frasi e coerenza del registro. Mantieni coerenti soggetto, punto di vista, riferimenti pronominali, cronologia e tempi verbali. Conserva forme regionali o dialettali soltanto nel discorso diretto quando sono presenti nelle fonti o richieste dall'autore. Prima della consegna esegui silenziosamente due riletture: una grammaticale e sintattica, una logica e narrativa.";
+  }
+  return "";
+}
+
+function museLanguageDirective(language) {
+  if (language === "de-DE") {
+    return "LINGUA DELL'OPERA: TEDESCO. Tutto il testo narrativo destinato al libro deve essere in tedesco naturale, editoriale e coerente. Le istruzioni tecniche possono restare in italiano e non determinano la lingua dell'output. Non tradurre nomi propri, dati, citazioni, numeri o fatti forniti dall'autore. Mantieni invariati eventuali token tecnici tra parentesi quadre.";
+  }
+  if (language === "en-GB") {
+    return "LINGUA DELL'OPERA: INGLESE BRITANNICO. Tutto il testo narrativo destinato al libro deve essere in inglese britannico naturale, editoriale e coerente. Le istruzioni tecniche possono restare in italiano e non determinano la lingua dell'output. Non tradurre nomi propri, dati, citazioni, numeri o fatti forniti dall'autore. Mantieni invariati eventuali token tecnici tra parentesi quadre.";
   }
   return "";
 }
@@ -115,10 +127,16 @@ function museLanguageDirective(language) {
 function replaceExplicitItalianInstruction(text, language) {
   if (language === "it-IT") return String(text || "");
   const target = language === "de-DE" ? "tedesco" : "inglese britannico";
+  const literature = language === "de-DE" ? "letteratura tedesca e comparata" : "letteratura inglese e comparata";
+  const prose = language === "de-DE" ? "prosa tedesca originale" : "prosa originale in inglese britannico";
   return String(text || "")
+    .replace(ITALIAN_STANDARD_BLOCK, languageStandardDirective(language))
+    .replace(/letteratura italiana e comparata/gi, literature)
+    .replace(/prosa italiana originale/gi, prose)
     .replace(/per un libro in italiano\b/gi, `per un libro in ${target}`)
     .replace(/titoli di capitolo in italiano\b/gi, `titoli di capitolo in ${target}`)
-    .replace(/domande in italiano\b/gi, `domande in ${target}`);
+    .replace(/domande in italiano\b/gi, `domande in ${target}`)
+    .replace(/\bin italiano\b/gi, `in ${target}`);
 }
 
 function isMachineControlPrompt(options) {
