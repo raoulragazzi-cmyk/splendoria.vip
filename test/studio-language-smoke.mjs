@@ -61,6 +61,29 @@ const outline = localizeMuseOptions({ prompt: 'Crea un indice di 12 capitoli per
 assert.match(outline.prompt, /LINGUA DELL'OPERA: INGLESE BRITANNICO/);
 assert.match(outline.prompt, /per un libro in inglese britannico/i);
 
+const italianStandard = "Applica rigorosamente l'italiano standard contemporaneo. Non riprodurre gli errori grammaticali presenti nel materiale dell'autore: correggili senza alterare significato, tono o voce. Controlla persona, numero e genere. Prima della consegna esegui silenziosamente due riletture: una grammaticale e sintattica, una logica e narrativa.";
+const coreWriter = {
+  messages: [{
+    role: 'system',
+    content: `Agisci con la competenza equivalente a quella di uno scrittore e di un editor con formazione universitaria in letteratura italiana e comparata. ${italianStandard} Scrivi una prosa italiana originale, grammaticalmente rigorosa. Restituisci soltanto il testo finale.`
+  }]
+};
+const germanWriter = localizeMuseOptions(coreWriter, 'de-DE').messages[0].content;
+assert.match(germanWriter, /tedesco standard contemporaneo/i);
+assert.match(germanWriter, /letteratura tedesca e comparata/i);
+assert.match(germanWriter, /prosa tedesca originale/i);
+assert.doesNotMatch(germanWriter, /italiano standard contemporaneo/i);
+assert.doesNotMatch(germanWriter, /letteratura italiana e comparata/i);
+assert.doesNotMatch(germanWriter, /prosa italiana originale/i);
+
+const englishWriter = localizeMuseOptions(coreWriter, 'en-GB').messages[0].content;
+assert.match(englishWriter, /inglese britannico standard contemporaneo/i);
+assert.match(englishWriter, /letteratura inglese e comparata/i);
+assert.match(englishWriter, /prosa originale in inglese britannico/i);
+assert.doesNotMatch(englishWriter, /italiano standard contemporaneo/i);
+assert.doesNotMatch(englishWriter, /letteratura italiana e comparata/i);
+assert.doesNotMatch(englishWriter, /prosa italiana originale/i);
+
 const validator = {
   messages: [{ role: 'system', content: 'Sei il controllo qualità. Valuta. Rispondi esclusivamente APPROVATO oppure RIFIUTATO.' }]
 };
