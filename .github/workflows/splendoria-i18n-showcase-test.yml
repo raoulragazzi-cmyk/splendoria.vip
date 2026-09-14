@@ -6,6 +6,7 @@ on:
       - feature/splendoria-i18n-vetrina-20260914
     paths:
       - src/i18n-showcase.js
+      - src/i18n-selector.js
       - src/studio-worker.js
       - public/assets/i18n-showcase.js
       - test/i18n-showcase.mjs
@@ -28,6 +29,7 @@ jobs:
       - name: Syntax checks
         run: |
           node --check src/i18n-showcase.js
+          node --check src/i18n-selector.js
           node --check src/studio-worker.js
           node --check public/assets/i18n-showcase.js
           node --check test/i18n-showcase.mjs
