@@ -23,6 +23,7 @@ on:
       - "src/i18n-ui-runtime-worker.js"
       - "src/i18n-editor-legal-copy-worker.js"
       - "src/i18n-notfound-worker.js"
+      - "src/i18n-editor-delete-worker.js"
       - "test/i18n-smoke.mjs"
       - "test/i18n-public-smoke.mjs"
       - "test/i18n-legal-smoke.mjs"
@@ -38,6 +39,7 @@ on:
       - "test/i18n-ui-runtime-smoke.mjs"
       - "test/i18n-editor-legal-copy-smoke.mjs"
       - "test/i18n-notfound-smoke.mjs"
+      - "test/i18n-visible-residuals-smoke.mjs"
       - "docs/I18N_ROLLOUT.md"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
@@ -85,6 +87,7 @@ jobs:
           node --check src/i18n-ui-runtime-worker.js
           node --check src/i18n-editor-legal-copy-worker.js
           node --check src/i18n-notfound-worker.js
+          node --check src/i18n-editor-delete-worker.js
           node --check test/i18n-smoke.mjs
           node --check test/i18n-public-smoke.mjs
           node --check test/i18n-legal-smoke.mjs
@@ -100,6 +103,7 @@ jobs:
           node --check test/i18n-ui-runtime-smoke.mjs
           node --check test/i18n-editor-legal-copy-smoke.mjs
           node --check test/i18n-notfound-smoke.mjs
+          node --check test/i18n-visible-residuals-smoke.mjs
 
       - name: Guard Italian application source
         run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
@@ -132,8 +136,10 @@ jobs:
           grep -Fq 'bindUiMessagesToLocale' src/i18n-ui-runtime-worker.js
           grep -Fq 'localizeEditorConsent' src/i18n-editor-legal-copy-worker.js
           grep -Fq 'localizedNotFound' src/i18n-notfound-worker.js
+          grep -Fq 'localizeClientDeletePanel' src/i18n-editor-delete-worker.js
+          grep -Fq 'localizePrivateFooter' src/i18n-editor-delete-worker.js
           grep -Fq 'recognition.lang = selectedLanguage();' test/i18n-ui-runtime-smoke.mjs
-          grep -Fq '"main": "src/i18n-notfound-worker.js"' wrangler.jsonc
+          grep -Fq '"main": "src/i18n-editor-delete-worker.js"' wrangler.jsonc
           ! grep -Fq '"/admin"' src/i18n-client-worker.js
           ! grep -Fq '"/area-amministratore"' src/i18n-client-worker.js
           ! grep -Fq '"/admin"' src/i18n-session-worker.js
@@ -183,6 +189,9 @@ jobs:
 
       - name: Localized not-found deep-pass
         run: node test/i18n-notfound-smoke.mjs
+
+      - name: Visible Italian residual scan
+        run: node test/i18n-visible-residuals-smoke.mjs
 
       - name: Existing smoke suite with guarded baseline
         shell: bash
