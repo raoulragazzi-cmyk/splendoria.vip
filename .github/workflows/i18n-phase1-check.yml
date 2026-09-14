@@ -153,6 +153,28 @@ jobs:
           ! grep -Fq '"/admin"' src/i18n-session-worker.js
           ! grep -Fq '"/area-amministratore"' src/i18n-session-worker.js
 
+      - name: Validate isolated staging topology
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const config = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          const staging = config.env?.staging;
+          if (!staging) throw new Error('staging env missing');
+          if (staging.name === config.name) throw new Error('staging Worker name must differ from production');
+          const prodDb = config.d1_databases?.find(db => db.binding === 'DB');
+          const stageDb = staging.d1_databases?.find(db => db.binding === 'DB');
+          if (!prodDb || !stageDb) throw new Error('DB binding missing');
+          if (prodDb.database_id === stageDb.database_id) throw new Error('staging must not use production D1');
+          if (!staging.ai?.binding || staging.ai.binding !== 'AI') throw new Error('staging AI binding missing');
+          if ((staging.triggers?.crons || []).length !== 0) throw new Error('staging cron must be disabled');
+          if (!staging.vars?.APP_URL || staging.vars.APP_URL === config.vars?.APP_URL) throw new Error('staging APP_URL must be isolated');
+          for (const binding of staging.send_email || []) {
+            if ((binding.allowed_destination_addresses || []).length !== 0) throw new Error('staging email must remain blocked before explicit acceptance');
+            if (binding.destination_address) throw new Error('staging must not contain a production email destination');
+          }
+          console.log('staging topology: separate Worker/D1/URL, no cron, email delivery blocked by default');
+          NODE
+
       - name: Localized showcase smoke suite
         run: node test/i18n-smoke.mjs
 
@@ -226,5 +248,8 @@ jobs:
             fi
           fi
 
-      - name: Wrangler dry run
+      - name: Production Wrangler dry run
         run: npm run check
+
+      - name: Staging Wrangler dry run
+        run: npx wrangler deploy --dry-run --env staging --outdir dist-staging
