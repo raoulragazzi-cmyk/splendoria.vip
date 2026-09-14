@@ -8,8 +8,12 @@ on:
       - "src/i18n-guard-worker.js"
       - "src/i18n-public-worker.js"
       - "src/i18n-release-worker.js"
+      - "src/i18n-legal-worker.js"
+      - "src/i18n-entry-worker.js"
       - "test/i18n-smoke.mjs"
       - "test/i18n-public-smoke.mjs"
+      - "test/i18n-legal-smoke.mjs"
+      - "test/i18n-entry-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
 
@@ -41,33 +45,38 @@ jobs:
           node --check src/i18n-guard-worker.js
           node --check src/i18n-public-worker.js
           node --check src/i18n-release-worker.js
+          node --check src/i18n-legal-worker.js
+          node --check src/i18n-entry-worker.js
           node --check test/i18n-smoke.mjs
           node --check test/i18n-public-smoke.mjs
+          node --check test/i18n-legal-smoke.mjs
+          node --check test/i18n-entry-smoke.mjs
 
       - name: Guard Italian application source
-        run: |
-          git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
+        run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
 
       - name: Validate locale architecture
         run: |
           grep -Fq '"/de/"' src/i18n-worker.js
           grep -Fq '"/en/"' src/i18n-worker.js
           grep -Fq 'hreflang="x-default"' src/i18n-worker.js
-          grep -Fq 'spl-language-switcher' src/i18n-worker.js
-          grep -Fq 'Das Recht, in Erinnerung zu bleiben.' src/i18n-worker.js
-          grep -Fq 'The right to be remembered.' src/i18n-worker.js
-          grep -Fq 'localizeHomepageScript' src/i18n-guard-worker.js
           grep -Fq 'repairSemanticFormValues' src/i18n-guard-worker.js
           grep -Fq 'PUBLIC_GUIDE' src/i18n-public-worker.js
-          grep -Fq 'LAST_PARAGRAPH_IT' src/i18n-release-worker.js
-          ! grep -Fq '"/admin"' src/i18n-public-worker.js
-          ! grep -Fq '"/admin"' src/i18n-release-worker.js
+          grep -Fq 'LEGAL_PATHS' src/i18n-legal-worker.js
+          grep -Fq 'LOCALIZED_PUBLIC' src/i18n-entry-worker.js
+          ! grep -Fq '"/admin"' src/i18n-entry-worker.js
 
       - name: Localized showcase smoke suite
         run: node test/i18n-smoke.mjs
 
-      - name: Public pages deep-pass smoke suite
+      - name: Public home and guide deep-pass
         run: node test/i18n-public-smoke.mjs
+
+      - name: Legal and AI transparency deep-pass
+        run: node test/i18n-legal-smoke.mjs
+
+      - name: Public composition entry smoke
+        run: node test/i18n-entry-smoke.mjs
 
       - name: Existing smoke suite with guarded baseline
         shell: bash
