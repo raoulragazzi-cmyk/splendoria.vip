@@ -5,6 +5,10 @@ function requireRule(pattern, label) {
   if (!pattern.test(styles)) throw new Error(`layout safety: missing ${label}`);
 }
 
+function requireText(fragment, label) {
+  if (!styles.includes(fragment)) throw new Error(`layout safety: missing ${label}`);
+}
+
 requireRule(/\.navlinks\{[^}]*flex-wrap:wrap/, "wrapping navigation links");
 requireRule(/\.actions\{[^}]*flex-wrap:wrap/, "wrapping action groups");
 requireRule(/\.footer-links\{[^}]*flex-wrap:wrap/, "wrapping footer links");
@@ -12,9 +16,11 @@ requireRule(/\.magic-tools\{[^}]*flex-wrap:wrap/, "wrapping editor tool buttons"
 requireRule(/\.tablebox\{[^}]*overflow:auto/, "horizontal containment for wide tables");
 requireRule(/\.legal-table-wrap\{[^}]*overflow-x:auto/, "horizontal containment for legal tables");
 requireRule(/\.muse \.button\{[^}]*white-space:normal[^}]*text-align:center/, "multiline Muse buttons");
-requireRule(/@media\(max-width:700px\)\{[^}]*\.studio-editor-page \.chapter-compose-form>\.actions\{display:grid;grid-template-columns:1fr\}/, "single-column editor actions on small screens");
-requireRule(/@media\(max-width:700px\)\{[^}]*\.studio-editor-page \.chapter-compose-form>\.actions \.button\{width:100%;margin:0\}/, "full-width editor buttons on small screens");
-requireRule(/@media\(max-width:760px\)\{[^}]*\.legacy-showcase \.navin\{[^}]*flex-wrap:wrap/, "wrapping showcase navigation on small screens");
+requireText("@media(max-width:700px)", "small-screen breakpoint");
+requireText(".studio-editor-page .chapter-compose-form>.actions{display:grid;grid-template-columns:1fr}", "single-column editor actions on small screens");
+requireText(".studio-editor-page .chapter-compose-form>.actions .button{width:100%;margin:0}", "full-width editor buttons on small screens");
+requireText("@media(max-width:760px)", "showcase mobile breakpoint");
+requireText(".legacy-showcase .navin{align-items:flex-start;flex-wrap:wrap;padding:10px 0}", "wrapping showcase navigation on small screens");
 
 const globalButtonRule = styles.match(/\.pill,\.button\{([^}]*)\}/)?.[1] || "";
 if (!globalButtonRule) throw new Error("layout safety: global button rule not found");
