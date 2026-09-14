@@ -210,19 +210,19 @@ function languagePanel(ui, pref) {
     title: "In welcher Sprache soll dein Buch geschrieben werden?",
     book: "Sprache des Buches",
     muse: "Ausgabesprache der Muse",
-    help: "Die Sprache der Benutzeroberfläche ist davon unabhängig. Du kannst Splendoria auf Deutsch verwenden und dein Buch beispielsweise auf Italienisch schreiben. Die Sprache der Diktierfunktion bleibt ebenfalls separat wählbar."
+    help: "Die Sprache der Benutzeroberfläche ist davon unabhängig. Du kannst Splendoria auf Deutsch verwenden und dein Buch beispielsweise auf Italienisch schreiben. Die Sprache der Diktierfunktion bleibt ebenfalls separat wählbar. Speichere die Buchdaten, damit eine geänderte Buch- oder Muse-Sprache wirksam wird."
   } : ui === "en" ? {
     eyebrow: "Book language",
     title: "Which language should your book be written in?",
     book: "Book language",
     muse: "Muse output language",
-    help: "This is independent of the interface language. You can use Splendoria in English while writing your book in Italian, German or English. Dictation remains a separate choice as well."
+    help: "This is independent of the interface language. You can use Splendoria in English while writing your book in Italian, German or English. Dictation remains a separate choice as well. Save the book settings after changing the book or Muse language."
   } : {
     eyebrow: "Lingua del libro",
     title: "In quale lingua vuoi scrivere il tuo libro?",
     book: "Lingua del libro",
     muse: "Lingua di output della Musa",
-    help: "È indipendente dalla lingua dell’interfaccia. Puoi usare Splendoria in tedesco o inglese e scrivere comunque il libro in italiano. Anche la dettatura resta una scelta separata."
+    help: "È indipendente dalla lingua dell’interfaccia. Puoi usare Splendoria in tedesco o inglese e scrivere comunque il libro in italiano. Anche la dettatura resta una scelta separata. Dopo una modifica, salva i dati del libro per applicare la nuova lingua."
   };
   return `<section class="book-language-panel" data-book-language-panel><p class="eyebrow">${copy.eyebrow}</p><h3>${copy.title}</h3><div class="grid two book-language-grid"><label class="field">${copy.book}<select name="bookLanguage" data-book-language>${languageOptions(ui, pref.bookLanguage)}</select></label><label class="field">${copy.muse}<select name="museOutputLanguage" data-muse-output-language>${languageOptions(ui, pref.museOutputLanguage)}</select></label></div><p class="small muted">${copy.help}</p></section>`;
 }
@@ -342,12 +342,12 @@ async function studioLanguageFetch(request, env, ctx) {
     if (newProjectId) {
       const initial = ui === "de" ? "de-DE" : ui === "en" ? "en-GB" : "it-IT";
       const values = valuesFromForm(submitted, { bookLanguage: initial, museOutputLanguage: initial, dictationLanguage: initial });
-      ctx?.waitUntil?.(writePreference(env, newProjectId, { ...values, dictationLanguage: values.bookLanguage }));
+      await writePreference(env, newProjectId, { ...values, dictationLanguage: values.bookLanguage });
     }
   } else if (submitted && projectId && successfulProjectRedirect(response, projectId)) {
     const previous = await readPreference(env, projectId);
     const values = valuesFromForm(submitted, previous);
-    ctx?.waitUntil?.(writePreference(env, projectId, values));
+    await writePreference(env, projectId, values);
   }
 
   const contentType = response.headers.get("content-type") || "";
