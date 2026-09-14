@@ -16,6 +16,7 @@ on:
       - "src/i18n-session-worker.js"
       - "src/i18n-editor-worker.js"
       - "src/i18n-editor-safe-worker.js"
+      - "src/i18n-commercial-worker.js"
       - "test/i18n-smoke.mjs"
       - "test/i18n-public-smoke.mjs"
       - "test/i18n-legal-smoke.mjs"
@@ -24,6 +25,7 @@ on:
       - "test/i18n-auth-smoke.mjs"
       - "test/i18n-client-smoke.mjs"
       - "test/i18n-editor-smoke.mjs"
+      - "test/i18n-commercial-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
 
@@ -63,6 +65,7 @@ jobs:
           node --check src/i18n-session-worker.js
           node --check src/i18n-editor-worker.js
           node --check src/i18n-editor-safe-worker.js
+          node --check src/i18n-commercial-worker.js
           node --check test/i18n-smoke.mjs
           node --check test/i18n-public-smoke.mjs
           node --check test/i18n-legal-smoke.mjs
@@ -71,6 +74,7 @@ jobs:
           node --check test/i18n-auth-smoke.mjs
           node --check test/i18n-client-smoke.mjs
           node --check test/i18n-editor-smoke.mjs
+          node --check test/i18n-commercial-smoke.mjs
 
       - name: Guard Italian application source
         run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
@@ -92,7 +96,8 @@ jobs:
           grep -Fq 'localizeClientActions' src/i18n-session-worker.js
           grep -Fq 'localizeEditorScript' src/i18n-editor-safe-worker.js
           grep -Fq 'preserveToneValues' src/i18n-editor-safe-worker.js
-          grep -Fq '"main": "src/i18n-editor-safe-worker.js"' wrangler.jsonc
+          grep -Fq 'localizeCommercialHtml' src/i18n-commercial-worker.js
+          grep -Fq '"main": "src/i18n-commercial-worker.js"' wrangler.jsonc
           ! grep -Fq '"/admin"' src/i18n-client-worker.js
           ! grep -Fq '"/area-amministratore"' src/i18n-client-worker.js
           ! grep -Fq '"/admin"' src/i18n-session-worker.js
@@ -121,6 +126,9 @@ jobs:
 
       - name: Book editor and preview deep-pass
         run: node test/i18n-editor-smoke.mjs
+
+      - name: Commercial editor and payment deep-pass
+        run: node test/i18n-commercial-smoke.mjs
 
       - name: Existing smoke suite with guarded baseline
         shell: bash
