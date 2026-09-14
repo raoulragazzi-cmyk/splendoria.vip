@@ -28,6 +28,7 @@ on:
       - "test/i18n-editor-smoke.mjs"
       - "test/i18n-commercial-smoke.mjs"
       - "test/i18n-flow-state-smoke.mjs"
+      - "docs/I18N_ROLLOUT.md"
       - "wrangler.jsonc"
       - ".github/workflows/i18n-phase1-check.yml"
 
