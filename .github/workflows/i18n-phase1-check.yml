@@ -13,6 +13,7 @@ on:
       - "src/i18n-entry-worker.js"
       - "src/i18n-auth-worker.js"
       - "src/i18n-client-worker.js"
+      - "src/i18n-session-worker.js"
       - "test/i18n-smoke.mjs"
       - "test/i18n-public-smoke.mjs"
       - "test/i18n-legal-smoke.mjs"
@@ -56,6 +57,7 @@ jobs:
           node --check src/i18n-entry-worker.js
           node --check src/i18n-auth-worker.js
           node --check src/i18n-client-worker.js
+          node --check src/i18n-session-worker.js
           node --check test/i18n-smoke.mjs
           node --check test/i18n-public-smoke.mjs
           node --check test/i18n-legal-smoke.mjs
@@ -81,9 +83,12 @@ jobs:
           grep -Fq 'CUSTOMER_AUTH_PATHS' src/i18n-auth-worker.js
           grep -Fq 'CLIENT_PATHS' src/i18n-client-worker.js
           grep -Fq 'preserveGenreValues' src/i18n-client-worker.js
-          grep -Fq '"main": "src/i18n-client-worker.js"' wrangler.jsonc
+          grep -Fq 'localizeLogoutAction' src/i18n-session-worker.js
+          grep -Fq '"main": "src/i18n-session-worker.js"' wrangler.jsonc
           ! grep -Fq '"/admin"' src/i18n-client-worker.js
           ! grep -Fq '"/area-amministratore"' src/i18n-client-worker.js
+          ! grep -Fq '"/admin"' src/i18n-session-worker.js
+          ! grep -Fq '"/area-amministratore"' src/i18n-session-worker.js
 
       - name: Localized showcase smoke suite
         run: node test/i18n-smoke.mjs
