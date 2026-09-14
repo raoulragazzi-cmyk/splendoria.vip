@@ -1,0 +1,37 @@
+name: Validate Splendoria multilingual showcase
+
+on:
+  push:
+    branches:
+      - feature/splendoria-i18n-vetrina-20260914
+    paths:
+      - src/i18n-showcase.js
+      - src/studio-worker.js
+      - public/assets/i18n-showcase.js
+      - test/i18n-showcase.mjs
+      - .github/workflows/splendoria-i18n-showcase-test.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout i18n branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/splendoria-i18n-vetrina-20260914
+      - name: Install dependencies
+        run: npm ci
+      - name: Syntax checks
+        run: |
+          node --check src/i18n-showcase.js
+          node --check src/studio-worker.js
+          node --check public/assets/i18n-showcase.js
+          node --check test/i18n-showcase.mjs
+      - name: Multilingual showcase tests
+        run: node test/i18n-showcase.mjs
+      - name: Wrangler dry run
+        run: npm run check
