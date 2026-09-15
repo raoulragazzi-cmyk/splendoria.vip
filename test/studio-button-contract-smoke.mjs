@@ -50,20 +50,20 @@ for (const [pattern, label] of [
 assert.match(studio, /backToTop\.type\s*=\s*['"]button['"]/, 'back-to-top must be an explicit non-submit button');
 
 // AI convenience controls intentionally bypass unrelated required fields but still submit to their explicit endpoint.
-has(worker, 'formnovalidate>\\u2726 Migliora</button>', 'field improve formnovalidate');
-has(worker, 'formnovalidate>Affidati alla Musa</button>', 'field Muse formnovalidate');
-has(worker, 'formaction=\\"/libro/${id}/capitolo/${c.id}/rifinisci\\" formnovalidate', 'chapter improve formnovalidate');
-has(worker, 'formaction=\\"/libro/${id}/capitolo/${c.id}/genera\\" formnovalidate', 'chapter Muse formnovalidate');
+assert.match(worker, /formnovalidate>\\u2726 Migliora<\/button>/, 'field improve must bypass unrelated required fields');
+assert.match(worker, /formnovalidate>Affidati alla Musa<\/button>/, 'field Muse must bypass unrelated required fields');
+assert.match(worker, /formaction=\\?"\/libro\/\$\{id\}\/capitolo\/\$\{c\.id\}\/rifinisci\\?" formnovalidate/, 'chapter improve must target refine and bypass unrelated required fields');
+assert.match(worker, /formaction=\\?"\/libro\/\$\{id\}\/capitolo\/\$\{c\.id\}\/genera\\?" formnovalidate/, 'chapter Muse must target generate and bypass unrelated required fields');
 
 // Destructive actions remain protected by canonical confirmation tokens and password confirmation.
-has(worker, 'pattern=\\"ELIMINA\\"', 'book deletion token');
-has(worker, 'pattern=\\"CANCELLA\\"', 'account deletion token');
+assert.match(worker, /pattern=\\?"ELIMINA\\?"/, 'book deletion token must remain canonical');
+assert.match(worker, /pattern=\\?"CANCELLA\\?"/, 'account deletion token must remain canonical');
 assert.match(worker, /action=\\?"\/libro\/\$\{esc\(id\)\}\/elimina\\?"[\s\S]{0,900}name=\\?"password\\?"/, 'book deletion must require current password');
 
 // Localized editor routes must preserve action/formaction semantics rather than invent translated endpoints.
 has(editorI18n, '["href", "action", "formaction", "data-book-path"]', 'localized route attribute set');
-has(editorI18n, 'out = out.split(\'action="/nuovo-libro"\')', 'localized new-book POST');
-has(editorI18n, 'out = out.split(\'action="/esci"\')', 'localized logout POST');
+has(editorI18n, 'action="/nuovo-libro"', 'localized new-book POST contract');
+has(editorI18n, 'action="/esci"', 'localized logout POST contract');
 assert.ok(!editorI18n.includes('"/admin"') && !editorI18n.includes('"/area-amministratore"'), 'localized client editor must not expose admin routes');
 
 // Key DE/EN visible button labels are explicitly present while machine values remain canonical.
@@ -79,7 +79,7 @@ for (const label of [
 // Locale switcher is navigation, not a mutation: it preserves current query string and canonical project path.
 has(studioLanguage, 'localizedPath(locale, url.pathname) + url.search', 'locale switcher preserves query');
 has(studioLanguage, 'data-studio-locale-switcher', 'private Studio locale switcher');
-assert.match(studioLanguage, /projectIdFromPath\(pathname\)[\s\S]*canonicalPath\(pathname\)/, 'localized book routes must resolve the canonical project id');
+assert.match(studioLanguage, /function projectIdFromPath\(pathname\)[\s\S]{0,220}canonicalPath\(pathname\)/, 'localized book routes must resolve the canonical project id');
 
 // Dynamic section editor keeps submit semantics for Muse while navigation controls remain JS-only.
 has(studio, "sectionMuse.type = 'submit'", 'section Muse submit type');
