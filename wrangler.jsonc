@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "splendoria-v2",
-  "main": "src/german-ghostwriter-style-v2-worker.js",
+  "main": "src/german-editorial-room-worker.js",
   "addresses": [
     "contatti@splendoria.vip"
   ],
