@@ -2,19 +2,27 @@ name: Validate Studio deep i18n and Muse brain
 
 on:
   push:
-    branches: ["postprod/studio-deep-i18n-brain"]
+    branches: ["postprod/studio-deep-i18n-brain", "postprod/de-ghostwriter-brain-v2"]
     paths:
       - "src/studio-deep-i18n-worker.js"
+      - "src/german-ghostwriter-worker.js"
+      - "src/german-ghostwriter-style-v2-worker.js"
       - "test/studio-deep-i18n-smoke.mjs"
       - "test/studio-dynamic-residuals-smoke.mjs"
+      - "test/german-ghostwriter-smoke.mjs"
+      - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/studio-deep-i18n-check.yml"
   pull_request:
     branches: ["splendoria.vip"]
     paths:
       - "src/studio-deep-i18n-worker.js"
+      - "src/german-ghostwriter-worker.js"
+      - "src/german-ghostwriter-style-v2-worker.js"
       - "test/studio-deep-i18n-smoke.mjs"
       - "test/studio-dynamic-residuals-smoke.mjs"
+      - "test/german-ghostwriter-smoke.mjs"
+      - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/studio-deep-i18n-check.yml"
 
@@ -45,12 +53,21 @@ jobs:
           node --check src/studio-deep-i18n-worker.js
           node --check test/studio-deep-i18n-smoke.mjs
           node --check test/studio-dynamic-residuals-smoke.mjs
+          if [ -f src/german-ghostwriter-worker.js ]; then node --check src/german-ghostwriter-worker.js; fi
+          if [ -f src/german-ghostwriter-style-v2-worker.js ]; then node --check src/german-ghostwriter-style-v2-worker.js; fi
+          if [ -f test/german-ghostwriter-smoke.mjs ]; then node --check test/german-ghostwriter-smoke.mjs; fi
+          if [ -f test/german-ghostwriter-style-v2-smoke.mjs ]; then node --check test/german-ghostwriter-style-v2-smoke.mjs; fi
 
       - name: DE/EN deep Studio and Muse smoke
         run: node test/studio-deep-i18n-smoke.mjs
 
       - name: Dynamic Studio residual scan
         run: node test/studio-dynamic-residuals-smoke.mjs
+
+      - name: German ghostwriter quality passes
+        run: |
+          if [ -f test/german-ghostwriter-smoke.mjs ]; then node test/german-ghostwriter-smoke.mjs; fi
+          if [ -f test/german-ghostwriter-style-v2-smoke.mjs ]; then node test/german-ghostwriter-style-v2-smoke.mjs; fi
 
       - name: Existing trilingual Studio smoke
         run: node test/studio-language-smoke.mjs
@@ -84,4 +101,6 @@ jobs:
           fi
 
       - name: Wrangler dry run
-        run: npm run check
+        run: |
+          grep -Fq '"main": "src/german-ghostwriter-style-v2-worker.js"' wrangler.jsonc
+          npm run check
