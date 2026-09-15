@@ -89,6 +89,13 @@ export function editorialRequestRole(pathname, action = "") {
   return "";
 }
 
+export function editorialDefaultAction(pathname) {
+  const path = canonicalEditorialPath(pathname);
+  if (/^\/libro\/[^/]+\/migliora$/.test(path)) return "improve";
+  if (/^\/libro\/[^/]+\/risposte\/migliora$/.test(path)) return "improve";
+  return "";
+}
+
 function editorialBlock(role, action) {
   const main = ROLE_CONTRACTS[role] || ROLE_CONTRACTS.ghostwriter;
   const task = role === "stilredaktion" && STYLE_ACTIONS[action] ? `\n\n${STYLE_ACTIONS[action]}` : "";
@@ -127,12 +134,15 @@ export function applyGermanEditorialRole(options, requestedRole = "ghostwriter",
 export function composeGermanEditorialOptions(options, role, action = "") {
   if (!options || typeof options !== "object") return options;
   if (isGermanMachineControl(options)) return applyGermanEditorialRole(options, "faktenkontrolle", action);
+  if (role === "lektor") return applyGermanEditorialRole(options, "lektor", action);
   const ghostwritten = applyGermanGhostwriter(options);
   const styled = applyGermanStyleV2(ghostwritten);
   return applyGermanEditorialRole(styled, role, action);
 }
 
 async function requestAction(request, pathname) {
+  const defaultAction = editorialDefaultAction(pathname);
+  if (defaultAction) return defaultAction;
   if (!/\/rifinisci$/.test(canonicalEditorialPath(pathname))) return "";
   try {
     const form = await request.clone().formData();
