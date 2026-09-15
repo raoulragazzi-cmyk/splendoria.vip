@@ -51,6 +51,28 @@ Il wrapper sceglie automaticamente una modalità sulla base delle istruzioni tec
 3. `interview`: domande naturali, aperte e non suggestive;
 4. `outline`: indice e titoli concreti, vari e non promozionali.
 
+## Redazione tedesca interna
+
+`src/german-editorial-room-worker.js` aggiunge una redazione virtuale con quattro ruoli distinti. Non esegue quattro chiamate AI: seleziona il contratto editoriale corretto per la chiamata che Splendoria sta già effettuando.
+
+### Ghostwriter
+
+Usato per generazione capitolo, Affidati alla Musa, struttura e intervista. Organizza e sviluppa soltanto materiale autorizzato. Se le fonti sono sottili, scrive meno invece di inventare.
+
+### Lektor
+
+Usato per `grammar`. È deliberatamente conservativo: corregge ortografia, grammatica, sintassi, riferimenti e tempi verbali senza riscrivere stile, fatti o voce.
+
+### Stilredaktion
+
+Usata da Migliora e dagli strumenti `improve`, `clarity`, `emotional`, `vivid`, `elegant`, `short`. Ogni azione riceve un sotto-contratto specifico. Per esempio `vivid` può rendere più leggibili i dettagli già presenti, ma non può aggiungere colori, gesti o percezioni sensoriali non documentati.
+
+### Faktenkontrolle
+
+Non richiede una nuova chiamata obbligatoria. Quando una chiamata esistente è già un controllo di qualità/fedeltà con token macchina (`APPROVATO`, `RIFIUTATO`, `[FONTI_INSUFFICIENTI]`), il ruolo passa automaticamente a Faktenkontrolle. Il controllo confronta le affermazioni esclusivamente con le fonti fornite e conserva esattamente il protocollo di risposta macchina richiesto dal chiamante.
+
+Questa architettura evita costo e latenza di una pipeline rigida a quattro agenti, ma rende esplicita la responsabilità editoriale di ogni operazione.
+
 ## Profili di genere
 
 Il layer v2 adatta la tecnica editoriale al genere già dichiarato nel progetto, senza modificare il valore macchina:
@@ -80,7 +102,9 @@ La rilevazione può leggere il contesto per scegliere il profilo, ma il contenut
 
 `src/german-ghostwriter-style-v2-worker.js` aggiunge un secondo pass dedicato a lessico contemporaneo, ritmo, genere, regionalità e anti-cliché. Interviene solo sul tedesco già marcato dal primo layer.
 
-Italiano e inglese passano invariati. Entrambi i wrapper sono idempotenti: se un contratto è già presente non viene aggiunto una seconda volta.
+`src/german-editorial-room-worker.js` è l'entry point candidato di PR #45. Legge la lingua del progetto, interviene solo se `museOutputLanguage`/`bookLanguage` è `de-DE`, assegna il ruolo in base alla route e all'azione del pulsante e lascia italiano e inglese sul percorso precedente.
+
+Italiano e inglese passano invariati. I wrapper sono idempotenti: se un contratto è già presente non viene aggiunto una seconda volta.
 
 ## Controlli finali silenziosi
 
@@ -96,10 +120,14 @@ Prima della consegna la Musa tedesca verifica internamente:
 
 La checklist non deve mai comparire nell'output del libro.
 
+## Deep pass pulsanti
+
+`test/studio-button-contract-smoke.mjs` protegge le route e i valori macchina dietro i pulsanti Studio, distingue controlli submit da controlli JavaScript `type="button"`, controlla `formnovalidate` per le azioni Musa/Migliora, verifica le traduzioni DE/EN e mantiene i token distruttivi `ELIMINA` / `CANCELLA` canonici. L'inventario è in `docs/STUDIO_BUTTON_AUDIT.md`.
+
 ## Gate prima della produzione
 
 - `src/worker.js`, `src/studio-worker.js`, `src/studio-language-worker.js` e `src/studio-deep-i18n-worker.js` byte-identici alla produzione;
-- test dedicati per modalità, toni, generi, idempotenza, token macchina, citazioni storiche e contenuti utente;
+- test dedicati per modalità, toni, generi, ruoli redazionali, idempotenza, token macchina, citazioni storiche, pulsanti e contenuti utente;
 - suite Studio/i18n/app esistenti verdi;
 - Wrangler dry-run verde;
 - branch preview Cloudflare verde;
