@@ -1,13 +1,9 @@
 import assert from 'node:assert/strict';
 import { applyGermanGhostwriter } from '../src/german-ghostwriter-worker.js';
 import { applyGermanStyleV2 } from '../src/german-ghostwriter-style-v2-worker.js';
-import { applyGermanEditorialRole, editorialRequestRole, isGermanMachineControl } from '../src/german-editorial-room-worker.js';
+import { composeGermanEditorialOptions, editorialRequestRole, isGermanMachineControl } from '../src/german-editorial-room-worker.js';
 
 const DE_MARKER = 'VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE';
-
-function pipeline(options, role = 'ghostwriter', action = '') {
-  return applyGermanEditorialRole(applyGermanStyleV2(applyGermanGhostwriter(options)), role, action);
-}
 
 function systemText(options) {
   return (options.messages || []).filter(m => m.role === 'system').map(m => m.content).join('\n');
@@ -90,7 +86,7 @@ const cases = [
 
 for (const testCase of cases) {
   const beforeUser = userText(testCase.options);
-  const result = pipeline(testCase.options, testCase.role, testCase.action || '');
+  const result = composeGermanEditorialOptions(testCase.options, testCase.role, testCase.action || '');
   const afterSystem = systemText(result);
   const afterUser = userText(result);
   assert.equal(afterUser, beforeUser, `${testCase.name}: authored user content must stay byte-identical`);
@@ -105,11 +101,12 @@ const machineOptions = {
   }]
 };
 assert.equal(isGermanMachineControl(machineOptions), true, 'machine quality control must be detected');
-const machineResult = pipeline(machineOptions, 'ghostwriter');
+const machineResult = composeGermanEditorialOptions(machineOptions, 'ghostwriter');
 const machineSystem = systemText(machineResult);
 assert.match(machineSystem, /ROLLE — FAKTENKONTROLLE/);
 assert.match(machineSystem, /APPROVATO, RIFIUTATO oder \[FONTI_INSUFFICIENTI\]/);
-assert.doesNotMatch(machineSystem, /ROLLE — GHOSTWRITER\nDu bist in diesem Arbeitsgang der Ghostwriter/);
+assert.doesNotMatch(machineSystem, /PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH/, 'fact checks must not inherit prose-generation contracts');
+assert.doesNotMatch(machineSystem, /ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH/, 'fact checks must not inherit style contracts');
 
 assert.equal(editorialRequestRole('/de/libro/book/capitolo/ch/rifinisci', 'grammar'), 'lektor');
 assert.equal(editorialRequestRole('/de/libro/book/capitolo/ch/rifinisci', 'vivid'), 'stilredaktion');
@@ -123,5 +120,6 @@ const nonGerman = {
 };
 assert.strictEqual(applyGermanGhostwriter(nonGerman), nonGerman, 'German ghostwriter must not touch English');
 assert.strictEqual(applyGermanStyleV2(nonGerman), nonGerman, 'German style pass must not touch English');
+assert.strictEqual(composeGermanEditorialOptions(nonGerman, 'ghostwriter'), nonGerman, 'German editorial composition must not touch English');
 
 console.log('German editorial qualitative cases: ok');
