@@ -11,6 +11,8 @@ on:
       - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "test/german-editorial-room-smoke.mjs"
       - "test/studio-button-contract-smoke.mjs"
+      - "docs/GERMAN_GHOSTWRITER_BRAIN.md"
+      - "docs/STUDIO_BUTTON_AUDIT.md"
       - "wrangler.jsonc"
       - ".github/workflows/german-ghostwriter-check.yml"
   pull_request:
@@ -23,6 +25,8 @@ on:
       - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "test/german-editorial-room-smoke.mjs"
       - "test/studio-button-contract-smoke.mjs"
+      - "docs/GERMAN_GHOSTWRITER_BRAIN.md"
+      - "docs/STUDIO_BUTTON_AUDIT.md"
       - "wrangler.jsonc"
       - ".github/workflows/german-ghostwriter-check.yml"
 
