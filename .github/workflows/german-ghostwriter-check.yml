@@ -5,14 +5,18 @@ on:
     branches: ["postprod/de-ghostwriter-brain-v2"]
     paths:
       - "src/german-ghostwriter-worker.js"
+      - "src/german-ghostwriter-style-v2-worker.js"
       - "test/german-ghostwriter-smoke.mjs"
+      - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/german-ghostwriter-check.yml"
   pull_request:
     branches: ["splendoria.vip"]
     paths:
       - "src/german-ghostwriter-worker.js"
+      - "src/german-ghostwriter-style-v2-worker.js"
       - "test/german-ghostwriter-smoke.mjs"
+      - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/german-ghostwriter-check.yml"
 
@@ -41,10 +45,14 @@ jobs:
       - name: Syntax checks
         run: |
           node --check src/german-ghostwriter-worker.js
+          node --check src/german-ghostwriter-style-v2-worker.js
           node --check test/german-ghostwriter-smoke.mjs
+          node --check test/german-ghostwriter-style-v2-smoke.mjs
 
       - name: German ghostwriter quality and safety smoke
-        run: node test/german-ghostwriter-smoke.mjs
+        run: |
+          node test/german-ghostwriter-smoke.mjs
+          node test/german-ghostwriter-style-v2-smoke.mjs
 
       - name: Existing deep Studio and Muse smoke
         run: node test/studio-deep-i18n-smoke.mjs
@@ -83,7 +91,8 @@ jobs:
       - name: Verify additive ghostwriter entry point
         shell: bash
         run: |
-          grep -Fq '"main": "src/german-ghostwriter-worker.js"' wrangler.jsonc
+          grep -Fq '"main": "src/german-ghostwriter-style-v2-worker.js"' wrangler.jsonc
           grep -Fq 'PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH' src/german-ghostwriter-worker.js
+          grep -Fq 'ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH' src/german-ghostwriter-style-v2-worker.js
           grep -Fq 'MANDATORY LANGUAGE CONTRACT FOR THE MUSE' src/studio-deep-i18n-worker.js
           npm run check
