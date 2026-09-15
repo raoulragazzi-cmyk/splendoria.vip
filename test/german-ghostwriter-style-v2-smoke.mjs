@@ -19,7 +19,9 @@ assert.match(autoResult.messages[0].content, /SPRACHZIEL 2026: MODERN, FRISCH, U
 assert.match(autoResult.messages[0].content, /GENREPROFIL — AUTOBIOGRAFIE/);
 assert.match(autoResult.messages[0].content, /DACH-Raum/);
 assert.match(autoResult.messages[0].content, /„entscheiden“ statt „eine Entscheidung treffen“/);
-assert.match(autoResult.messages[0].content, /Anti-KI|ANTI-KI-LEKTORAT/i);
+assert.match(autoResult.messages[0].content, /Verwaltungsformeln/);
+assert.match(autoResult.messages[0].content, /historische Zitate/);
+assert.match(autoResult.messages[0].content, /ANTI-KI-LEKTORAT/);
 assert.equal(autoResult.messages[1].content, autobiography.messages[1].content, 'authored user content must stay byte-identical');
 assert.equal(autoResult.temperature, 0.2);
 assert.strictEqual(applyGermanStyleV2(autoResult), autoResult, 'style layer must be idempotent');
@@ -52,6 +54,16 @@ const regionalResult = applyGermanStyleV2(regional);
 assert.match(regionalResult.messages[0].content, /Südtirol/);
 assert.match(regionalResult.messages[0].content, /Regionale Begriffe, Ortsnamen, Institutionen/);
 assert.equal(regionalResult.messages[1].content, regional.messages[1].content);
+
+const historical = {
+  messages: [
+    { role: 'system', content: `${BASE}\nSchreibe eine Erinnerung aus den 1970er-Jahren.` },
+    { role: 'user', content: 'Genere: Autobiografia\n1974 sagte mein Vater wörtlich: „Wir fahren morgen mit dem Käfer nach Meran.“' }
+  ]
+};
+const historicalResult = applyGermanStyleV2(historical);
+assert.match(historicalResult.messages[0].content, /historische Zitate, zeitgebundene Begriffe/);
+assert.equal(historicalResult.messages[1].content, historical.messages[1].content, 'historical quotation must remain untouched by style layer');
 
 const promptOnly = {
   prompt: `${BASE}\nGenere: Biografia aziendale\nTitolo: Unser Betrieb\nFakt: 1998 gegründet.`
