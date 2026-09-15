@@ -6,8 +6,11 @@ on:
     paths:
       - "src/german-ghostwriter-worker.js"
       - "src/german-ghostwriter-style-v2-worker.js"
+      - "src/german-editorial-room-worker.js"
       - "test/german-ghostwriter-smoke.mjs"
       - "test/german-ghostwriter-style-v2-smoke.mjs"
+      - "test/german-editorial-room-smoke.mjs"
+      - "test/studio-button-contract-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/german-ghostwriter-check.yml"
   pull_request:
@@ -15,8 +18,11 @@ on:
     paths:
       - "src/german-ghostwriter-worker.js"
       - "src/german-ghostwriter-style-v2-worker.js"
+      - "src/german-editorial-room-worker.js"
       - "test/german-ghostwriter-smoke.mjs"
       - "test/german-ghostwriter-style-v2-smoke.mjs"
+      - "test/german-editorial-room-smoke.mjs"
+      - "test/studio-button-contract-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/german-ghostwriter-check.yml"
 
@@ -46,16 +52,25 @@ jobs:
         run: |
           node --check src/german-ghostwriter-worker.js
           node --check src/german-ghostwriter-style-v2-worker.js
+          node --check src/german-editorial-room-worker.js
           node --check test/german-ghostwriter-smoke.mjs
           node --check test/german-ghostwriter-style-v2-smoke.mjs
+          node --check test/german-editorial-room-smoke.mjs
+          node --check test/studio-button-contract-smoke.mjs
 
       - name: German ghostwriter quality and safety smoke
         run: |
           node test/german-ghostwriter-smoke.mjs
           node test/german-ghostwriter-style-v2-smoke.mjs
+          node test/german-editorial-room-smoke.mjs
+
+      - name: Studio button and action contract deep-pass
+        run: node test/studio-button-contract-smoke.mjs
 
       - name: Existing deep Studio and Muse smoke
-        run: node test/studio-deep-i18n-smoke.mjs
+        run: |
+          node test/studio-deep-i18n-smoke.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
 
       - name: Existing trilingual Studio smoke
         run: node test/studio-language-smoke.mjs
@@ -88,11 +103,12 @@ jobs:
             fi
           fi
 
-      - name: Verify additive ghostwriter entry point
+      - name: Verify additive editorial-room entry point
         shell: bash
         run: |
-          grep -Fq '"main": "src/german-ghostwriter-style-v2-worker.js"' wrangler.jsonc
+          grep -Fq '"main": "src/german-editorial-room-worker.js"' wrangler.jsonc
           grep -Fq 'PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH' src/german-ghostwriter-worker.js
           grep -Fq 'ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH' src/german-ghostwriter-style-v2-worker.js
+          grep -Fq 'INTERNE REDAKTION SPLENDORIA — DEUTSCH' src/german-editorial-room-worker.js
           grep -Fq 'MANDATORY LANGUAGE CONTRACT FOR THE MUSE' src/studio-deep-i18n-worker.js
           npm run check
