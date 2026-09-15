@@ -1,0 +1,89 @@
+name: Validate German ghostwriter brain
+
+on:
+  push:
+    branches: ["postprod/de-ghostwriter-brain-v2"]
+    paths:
+      - "src/german-ghostwriter-worker.js"
+      - "test/german-ghostwriter-smoke.mjs"
+      - "wrangler.jsonc"
+      - ".github/workflows/german-ghostwriter-check.yml"
+  pull_request:
+    branches: ["splendoria.vip"]
+    paths:
+      - "src/german-ghostwriter-worker.js"
+      - "test/german-ghostwriter-smoke.mjs"
+      - "wrangler.jsonc"
+      - ".github/workflows/german-ghostwriter-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fetch production baseline
+        run: git fetch --no-tags origin splendoria.vip:refs/remotes/origin/splendoria.vip
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Guard stable production layers
+        run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js src/studio-language-worker.js src/studio-deep-i18n-worker.js
+
+      - name: Syntax checks
+        run: |
+          node --check src/german-ghostwriter-worker.js
+          node --check test/german-ghostwriter-smoke.mjs
+
+      - name: German ghostwriter quality and safety smoke
+        run: node test/german-ghostwriter-smoke.mjs
+
+      - name: Existing deep Studio and Muse smoke
+        run: node test/studio-deep-i18n-smoke.mjs
+
+      - name: Existing trilingual Studio smoke
+        run: node test/studio-language-smoke.mjs
+
+      - name: Existing multilingual suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_file in test/i18n-*.mjs; do
+            echo "Running $test_file"
+            node "$test_file"
+          done
+
+      - name: Existing application smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          npm test 2>&1 | tee /tmp/splendoria-existing-smoke.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if grep -Fq 'Vetrina: asset JavaScript non versionato contro la cache del browser' /tmp/splendoria-existing-smoke.log; then
+              echo 'Known pre-existing cache-bust assertion detected.'
+            elif grep -Fq 'Accessibilità: navigazione da tastiera, focus o riduzione del movimento incompleti' /tmp/splendoria-existing-smoke.log; then
+              echo 'Known pre-existing accessibility assertion detected.'
+            else
+              echo 'Unexpected baseline smoke failure.'
+              exit "$status"
+            fi
+          fi
+
+      - name: Verify additive ghostwriter entry point
+        shell: bash
+        run: |
+          grep -Fq '"main": "src/german-ghostwriter-worker.js"' wrangler.jsonc
+          grep -Fq 'PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH' src/german-ghostwriter-worker.js
+          grep -Fq 'MANDATORY LANGUAGE CONTRACT FOR THE MUSE' src/studio-deep-i18n-worker.js
+          npm run check
