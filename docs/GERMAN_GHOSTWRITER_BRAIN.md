@@ -104,3 +104,5 @@ La checklist non deve mai comparire nell'output del libro.
 - Wrangler dry-run verde;
 - branch preview Cloudflare verde;
 - nessun merge finché il PR è Draft.
+
+Il branch preview può essere usato per collaudare il cervello tedesco, ma il nuovo layer non viene promosso sul dominio reale finché il PR non viene esplicitamente portato fuori da Draft e approvato per il merge.
