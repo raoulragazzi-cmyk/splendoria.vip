@@ -1,6 +1,9 @@
-import studioWorker from "./studio-language-worker.js";
+import studioWorker, { projectIdFromPath, readPreference } from "./studio-language-worker.js";
+import appWorker from "./i18n-email-worker.js";
 
 const LOCALES = new Set(["de", "en"]);
+const SUPPORTED_BOOK_LANGUAGES = new Set(["it-IT", "de-DE", "en-GB"]);
+const ITALIAN_STANDARD_BLOCK = /Applica rigorosamente l'italiano standard contemporaneo\.[\s\S]*?Prima della consegna esegui silenziosamente due riletture: una grammaticale e sintattica, una logica e narrativa\./gi;
 
 const DE_RUNTIME_PAIRS = [
   ["Torna all’inizio della pagina", "Zum Seitenanfang"],
@@ -86,6 +89,11 @@ const EN_BRAIN_CONTRACT = `MANDATORY LANGUAGE CONTRACT FOR THE MUSE — BRITISH 
 - The author’s voice takes precedence over stylistic smoothing. Preserve dialect or regional colouring only when it is present in the source material or explicitly requested.
 - Keep technical tokens and machine-readable control values exactly unchanged.`;
 
+const LANGUAGE_DIRECTIVES = {
+  "de-DE": "LINGUA DELL'OPERA: TEDESCO. Tutto il testo narrativo destinato al libro deve essere in tedesco naturale, editoriale e coerente. Le istruzioni tecniche possono restare in italiano e non determinano la lingua dell'output. Non tradurre nomi propri, dati, citazioni, numeri o fatti forniti dall'autore. Mantieni invariati eventuali token tecnici tra parentesi quadre.",
+  "en-GB": "LINGUA DELL'OPERA: INGLESE BRITANNICO. Tutto il testo narrativo destinato al libro deve essere in inglese britannico naturale, editoriale e coerente. Le istruzioni tecniche possono restare in italiano e non determinano la lingua dell'output. Non tradurre nomi propri, dati, citazioni, numeri o fatti forniti dall'autore. Mantieni invariati eventuali token tecnici tra parentesi quadre."
+};
+
 function replacePairs(value, pairs) {
   let out = String(value || "");
   for (const [source, target] of pairs) out = out.split(source).join(target);
@@ -98,6 +106,7 @@ function protectAuthored(html) {
   let out = String(html || "");
   out = out.replace(/(<textarea\b[^>]*>)([\s\S]*?)(<\/textarea>)/gi, (_m, open, body, close) => `${open}${token(body)}${close}`);
   out = out.replace(/(<input\b[^>]*\bvalue=")([^"]*)(")/gi, (_m, open, value, close) => `${open}${token(value)}${close}`);
+  out = out.replace(/(<h[1-5]\b[^>]*>)([\s\S]*?)(<\/h[1-5]>)/gi, (_m, open, body, close) => `${open}${token(body)}${close}`);
   out = out.replace(/(<div class="live-page-copy"[^>]*>)([\s\S]*?)(<\/div>)/gi, (_m, open, body, close) => `${open}${token(body)}${close}`);
   return {
     html: out,
@@ -131,48 +140,119 @@ export function localizeDeepStudioScript(source, locale) {
   return out;
 }
 
-function detectMuseLanguage(options) {
-  const values = [];
-  if (typeof options?.prompt === "string") values.push(options.prompt);
-  if (Array.isArray(options?.messages)) {
-    for (const message of options.messages) if (message?.role === "system" && typeof message.content === "string") values.push(message.content);
-  }
-  if (values.some(value => /LINGUA DELL'OPERA:\s*TEDESCO/i.test(value))) return "de";
-  if (values.some(value => /LINGUA DELL'OPERA:\s*INGLESE BRITANNICO/i.test(value))) return "en";
-  return "";
+function cleanBookLanguage(value) {
+  return SUPPORTED_BOOK_LANGUAGES.has(String(value || "")) ? String(value) : "it-IT";
 }
 
-export function strengthenMuseOptions(options) {
-  if (!options || typeof options !== "object") return options;
-  const locale = detectMuseLanguage(options);
-  if (!locale) return options;
-  const contract = locale === "de" ? DE_BRAIN_CONTRACT : EN_BRAIN_CONTRACT;
-  const marker = locale === "de" ? "VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE" : "MANDATORY LANGUAGE CONTRACT FOR THE MUSE";
+function isMachineControlPrompt(options) {
+  const systems = Array.isArray(options?.messages)
+    ? options.messages.filter(message => message?.role === "system").map(message => String(message?.content || ""))
+    : [];
+  return systems.some(text => /APPROVATO|RIFIUTATO/.test(text) && /controllo qualit|valuta/i.test(text));
+}
+
+function languageStandardDirective(language) {
+  if (language === "de-DE") {
+    return "Applica rigorosamente il tedesco standard contemporaneo (Hochdeutsch). Correggi grammatica, ortografia e punteggiatura senza alterare significato, tono, voce o fatti. Controlla casi, genere e numero, declinazioni, concordanze, reggenze, tempi verbali, posizione del verbo, verbi separabili, preposizioni e costruzione delle subordinate. Mantieni coerenti soggetto, punto di vista, riferimenti pronominali, cronologia e tempi verbali. Conserva regionalismi o dialetto soltanto nel discorso diretto quando sono presenti nelle fonti o richiesti dall'autore. Prima della consegna esegui silenziosamente due riletture: una grammaticale e sintattica, una logica e narrativa.";
+  }
+  return "Applica rigorosamente l'inglese britannico standard contemporaneo. Correggi grammatica, spelling britannico e punteggiatura senza alterare significato, tono, voce o fatti. Controlla concordanze, tempi e aspetti verbali, articoli, pronomi, preposizioni, reggenze, struttura delle frasi e coerenza del registro. Mantieni coerenti soggetto, punto di vista, riferimenti pronominali, cronologia e tempi verbali. Conserva forme regionali o dialettali soltanto nel discorso diretto quando sono presenti nelle fonti o richieste dall'autore. Prima della consegna esegui silenziosamente due riletture: una grammaticale e sintattica, una logica e narrativa.";
+}
+
+function localizeSystemInstruction(text, language) {
+  const target = language === "de-DE" ? "tedesco" : "inglese britannico";
+  const literature = language === "de-DE" ? "letteratura tedesca e comparata" : "letteratura inglese e comparata";
+  const prose = language === "de-DE" ? "prosa tedesca originale" : "prosa originale in inglese britannico";
+  return String(text || "")
+    .replace(ITALIAN_STANDARD_BLOCK, languageStandardDirective(language))
+    .replace(/letteratura italiana e comparata/gi, literature)
+    .replace(/prosa italiana originale/gi, prose)
+    .replace(/per un libro in italiano\b/gi, `per un libro in ${target}`)
+    .replace(/titoli di capitolo in italiano\b/gi, `titoli di capitolo in ${target}`)
+    .replace(/domande in italiano\b/gi, `domande in ${target}`)
+    .replace(/\bin italiano\b/gi, `in ${target}`);
+}
+
+function localizePromptInstruction(prompt, language) {
+  const source = String(prompt || "");
+  const boundary = source.indexOf(" Titolo:");
+  if (boundary < 0 || !/^Crea un indice di esattamente \d+ capitoli per un libro in italiano\b/.test(source)) return source;
+  const target = language === "de-DE" ? "tedesco" : "inglese britannico";
+  const instruction = source.slice(0, boundary).replace(/per un libro in italiano\b/, `per un libro in ${target}`);
+  return instruction + source.slice(boundary);
+}
+
+function languageContract(language) {
+  return language === "de-DE" ? DE_BRAIN_CONTRACT : EN_BRAIN_CONTRACT;
+}
+
+export function localizeMuseOptionsSafely(options, language) {
+  const normalized = cleanBookLanguage(language);
+  if (normalized === "it-IT" || !options || typeof options !== "object" || isMachineControlPrompt(options)) return options;
+  const directive = LANGUAGE_DIRECTIVES[normalized];
+  const contract = languageContract(normalized);
   const out = { ...options };
   if (Array.isArray(options.messages)) {
     out.messages = options.messages.map(message => {
       if (!message || message.role !== "system" || typeof message.content !== "string") return message;
-      if (message.content.includes(marker)) return message;
-      return { ...message, content: `${contract}\n\n${message.content}` };
+      const localized = localizeSystemInstruction(message.content, normalized);
+      return { ...message, content: `${contract}\n\n${directive}\n\n${localized}` };
     });
   }
-  if (typeof options.prompt === "string" && !options.prompt.includes(marker)) {
-    out.prompt = `${contract}\n\n${options.prompt}`;
+  if (typeof options.prompt === "string") {
+    out.prompt = `${contract}\n\n${directive}\n\n${localizePromptInstruction(options.prompt, normalized)}`;
   }
   return out;
 }
 
-function deepBrainEnv(env) {
-  if (!env?.AI?.run) return env;
+export function strengthenMuseOptions(options) {
+  if (!options || typeof options !== "object") return options;
+  const values = [];
+  if (typeof options.prompt === "string") values.push(options.prompt);
+  if (Array.isArray(options.messages)) {
+    for (const message of options.messages) if (message?.role === "system" && typeof message.content === "string") values.push(message.content);
+  }
+  const language = values.some(value => /LINGUA DELL'OPERA:\s*TEDESCO/i.test(value))
+    ? "de-DE"
+    : values.some(value => /LINGUA DELL'OPERA:\s*INGLESE BRITANNICO/i.test(value)) ? "en-GB" : "it-IT";
+  if (language === "it-IT") return options;
+  const marker = language === "de-DE" ? "VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE" : "MANDATORY LANGUAGE CONTRACT FOR THE MUSE";
+  if (values.some(value => value.includes(marker))) return options;
+  return localizeMuseOptionsSafely(options, language);
+}
+
+function envWithSafeMuseLanguage(env, language) {
+  const normalized = cleanBookLanguage(language);
+  if (normalized === "it-IT" || !env?.AI?.run) return env;
   const wrapped = Object.create(env);
   Object.assign(wrapped, env);
   const binding = env.AI;
   wrapped.AI = {
     run(model, options) {
-      return binding.run(model, strengthenMuseOptions(options));
+      return binding.run(model, localizeMuseOptionsSafely(options, normalized));
     }
   };
   return wrapped;
+}
+
+function canonicalPath(pathname) {
+  const stripped = String(pathname || "/").replace(/^\/(?:de|en)(?=\/|$)/, "");
+  return stripped || "/";
+}
+
+function isProjectMusePost(request, pathname) {
+  if (request.method !== "POST") return false;
+  const path = canonicalPath(pathname);
+  return /^\/libro\/[^/]+\/(?:migliora|affidati|struttura|intervista)$/.test(path)
+    || /^\/libro\/[^/]+\/risposte\/(?:migliora|affidati)$/.test(path)
+    || /^\/libro\/[^/]+\/capitolo\/[^/]+\/(?:genera|rifinisci)$/.test(path);
+}
+
+async function fetchMusePostSafely(request, env, ctx) {
+  const projectId = projectIdFromPath(new URL(request.url).pathname);
+  if (!projectId) return appWorker.fetch(request, env, ctx);
+  const pref = await readPreference(env, projectId);
+  const language = cleanBookLanguage(pref.museOutputLanguage || pref.bookLanguage);
+  return appWorker.fetch(request, envWithSafeMuseLanguage(env, language), ctx);
 }
 
 function localeFromPrivatePath(pathname) {
@@ -181,7 +261,9 @@ function localeFromPrivatePath(pathname) {
 
 async function deepFetch(request, env, ctx) {
   const url = new URL(request.url);
-  const response = await studioWorker.fetch(request, deepBrainEnv(env), ctx);
+  const response = isProjectMusePost(request, url.pathname)
+    ? await fetchMusePostSafely(request, env, ctx)
+    : await studioWorker.fetch(request, env, ctx);
   if (!response.ok) return response;
   const type = response.headers.get("content-type") || "";
 
