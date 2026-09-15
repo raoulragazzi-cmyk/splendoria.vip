@@ -2,19 +2,25 @@ name: Validate trilingual Studio and Muse brain
 
 on:
   push:
-    branches: ["feature/studio-brain-trilingual"]
+    branches: ["feature/studio-brain-trilingual", "postprod/studio-deep-i18n-brain"]
     paths:
       - "src/studio-language-worker.js"
+      - "src/studio-deep-i18n-worker.js"
       - "migrations/0005_book_language_preferences.sql"
       - "test/studio-language-smoke.mjs"
+      - "test/studio-deep-i18n-smoke.mjs"
+      - "test/studio-dynamic-residuals-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/studio-brain-trilingual-check.yml"
   pull_request:
     branches: ["splendoria.vip"]
     paths:
       - "src/studio-language-worker.js"
+      - "src/studio-deep-i18n-worker.js"
       - "migrations/0005_book_language_preferences.sql"
       - "test/studio-language-smoke.mjs"
+      - "test/studio-deep-i18n-smoke.mjs"
+      - "test/studio-dynamic-residuals-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/studio-brain-trilingual-check.yml"
 
@@ -40,7 +46,10 @@ jobs:
       - name: Syntax
         run: |
           node --check src/studio-language-worker.js
+          node --check src/studio-deep-i18n-worker.js
           node --check test/studio-language-smoke.mjs
+          node --check test/studio-deep-i18n-smoke.mjs
+          node --check test/studio-dynamic-residuals-smoke.mjs
 
       - name: Guard canonical Italian application source
         run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
@@ -58,6 +67,11 @@ jobs:
 
       - name: Studio language architecture smoke
         run: node test/studio-language-smoke.mjs
+
+      - name: Deep Studio and Muse safety smoke
+        run: |
+          node test/studio-deep-i18n-smoke.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
 
       - name: Existing multilingual suites
         shell: bash
@@ -90,5 +104,9 @@ jobs:
       - name: Verify Wrangler entry point
         shell: bash
         run: |
-          grep -Fq '"main": "src/studio-language-worker.js"' wrangler.jsonc
+          if grep -Fq '"main": "src/studio-deep-i18n-worker.js"' wrangler.jsonc; then
+            echo 'Deep i18n entry point active.'
+          else
+            grep -Fq '"main": "src/studio-language-worker.js"' wrangler.jsonc
+          fi
           npm run check
