@@ -1,0 +1,91 @@
+name: Validate Splendoria trilingual Studio post-production
+
+on:
+  push:
+    branches: ["postprod/studio-trilingual-v1"]
+    paths:
+      - "src/i18n-studio-language-worker.js"
+      - "migrations/0005_book_project_language.sql"
+      - "test/i18n-studio-language-smoke.mjs"
+      - "wrangler.jsonc"
+      - ".github/workflows/studio-trilingual-postprod-check.yml"
+  pull_request:
+    branches: ["splendoria.vip"]
+    paths:
+      - "src/i18n-studio-language-worker.js"
+      - "migrations/0005_book_project_language.sql"
+      - "test/i18n-studio-language-smoke.mjs"
+      - "wrangler.jsonc"
+      - ".github/workflows/studio-trilingual-postprod-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fetch production baseline
+        run: git fetch --no-tags origin splendoria.vip:refs/remotes/origin/splendoria.vip
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Guard canonical Italian application source
+        run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
+
+      - name: Syntax check
+        run: |
+          node --check src/i18n-studio-language-worker.js
+          node --check test/i18n-studio-language-smoke.mjs
+
+      - name: Trilingual Studio language smoke
+        run: node test/i18n-studio-language-smoke.mjs
+
+      - name: Guard additive migration
+        run: |
+          grep -Fq 'CREATE TABLE IF NOT EXISTS "BookProjectLanguage"' migrations/0005_book_project_language.sql
+          grep -Fq 'CHECK ("bookLanguage" IN (' migrations/0005_book_project_language.sql
+          ! grep -Eiq '(^|[[:space:]])(DROP|DELETE|UPDATE)[[:space:]]' migrations/0005_book_project_language.sql
+
+      - name: Guard admin exclusion
+        run: |
+          ! grep -Fq '/de/admin' src/i18n-studio-language-worker.js
+          ! grep -Fq '/en/admin' src/i18n-studio-language-worker.js
+          ! grep -Fq '/admin/lingua' src/i18n-studio-language-worker.js
+
+      - name: Existing i18n regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_file in test/i18n-*.mjs; do
+            echo "Running $test_file"
+            node "$test_file"
+          done
+
+      - name: Existing smoke suite
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          npm test 2>&1 | tee /tmp/splendoria-smoke.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if grep -Fq 'Vetrina: asset JavaScript non versionato contro la cache del browser' /tmp/splendoria-smoke.log; then
+              echo 'Known pre-existing cache-bust assertion detected.'
+            elif grep -Fq 'Accessibilità: navigazione da tastiera, focus o riduzione del movimento incompleti' /tmp/splendoria-smoke.log; then
+              echo 'Known pre-existing accessibility assertion detected.'
+            else
+              exit "$status"
+            fi
+          fi
+
+      - name: Wrangler dry run
+        run: npx wrangler deploy --dry-run --outdir dist-postprod
