@@ -1,4 +1,6 @@
-import styleWorker from "./german-ghostwriter-style-v2-worker.js";
+import studioDeepWorker from "./studio-deep-i18n-worker.js";
+import { applyGermanGhostwriter } from "./german-ghostwriter-worker.js";
+import { applyGermanStyleV2 } from "./german-ghostwriter-style-v2-worker.js";
 import { projectIdFromPath, readPreference } from "./studio-language-worker.js";
 
 const ROOM_MARKER = "INTERNE REDAKTION SPLENDORIA — DEUTSCH";
@@ -122,6 +124,14 @@ export function applyGermanEditorialRole(options, requestedRole = "ghostwriter",
   return out;
 }
 
+export function composeGermanEditorialOptions(options, role, action = "") {
+  if (!options || typeof options !== "object") return options;
+  if (isGermanMachineControl(options)) return applyGermanEditorialRole(options, "faktenkontrolle", action);
+  const ghostwritten = applyGermanGhostwriter(options);
+  const styled = applyGermanStyleV2(ghostwritten);
+  return applyGermanEditorialRole(styled, role, action);
+}
+
 async function requestAction(request, pathname) {
   if (!/\/rifinisci$/.test(canonicalEditorialPath(pathname))) return "";
   try {
@@ -139,7 +149,7 @@ function envWithEditorialRoom(env, role, action) {
   Object.assign(wrapped, env);
   wrapped.AI = {
     run(model, options) {
-      return binding.run(model, applyGermanEditorialRole(options, role, action));
+      return binding.run(model, composeGermanEditorialOptions(options, role, action));
     }
   };
   return wrapped;
@@ -147,25 +157,25 @@ function envWithEditorialRoom(env, role, action) {
 
 async function editorialFetch(request, env, ctx) {
   const url = new URL(request.url);
-  if (request.method !== "POST") return styleWorker.fetch(request, env, ctx);
+  if (request.method !== "POST") return studioDeepWorker.fetch(request, env, ctx);
 
   const initialRole = editorialRequestRole(url.pathname);
-  if (!initialRole) return styleWorker.fetch(request, env, ctx);
+  if (!initialRole) return studioDeepWorker.fetch(request, env, ctx);
 
   const projectId = projectIdFromPath(url.pathname);
-  if (!projectId) return styleWorker.fetch(request, env, ctx);
+  if (!projectId) return studioDeepWorker.fetch(request, env, ctx);
 
   const pref = await readPreference(env, projectId);
   const language = pref.museOutputLanguage || pref.bookLanguage || "it-IT";
-  if (language !== "de-DE") return styleWorker.fetch(request, env, ctx);
+  if (language !== "de-DE") return studioDeepWorker.fetch(request, env, ctx);
 
   const action = await requestAction(request, url.pathname);
   const role = editorialRequestRole(url.pathname, action) || initialRole;
-  return styleWorker.fetch(request, envWithEditorialRoom(env, role, action), ctx);
+  return studioDeepWorker.fetch(request, envWithEditorialRoom(env, role, action), ctx);
 }
 
 export default {
   fetch: editorialFetch,
-  email(message, env, ctx) { return styleWorker.email(message, env, ctx); },
-  scheduled(controller, env, ctx) { return styleWorker.scheduled(controller, env, ctx); }
+  email(message, env, ctx) { return studioDeepWorker.email(message, env, ctx); },
+  scheduled(controller, env, ctx) { return studioDeepWorker.scheduled(controller, env, ctx); }
 };
