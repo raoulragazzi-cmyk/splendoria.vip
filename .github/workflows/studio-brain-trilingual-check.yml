@@ -7,11 +7,13 @@ on:
       - "src/studio-language-worker.js"
       - "src/studio-deep-i18n-worker.js"
       - "src/german-ghostwriter-worker.js"
+      - "src/german-ghostwriter-style-v2-worker.js"
       - "migrations/0005_book_language_preferences.sql"
       - "test/studio-language-smoke.mjs"
       - "test/studio-deep-i18n-smoke.mjs"
       - "test/studio-dynamic-residuals-smoke.mjs"
       - "test/german-ghostwriter-smoke.mjs"
+      - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/studio-brain-trilingual-check.yml"
   pull_request:
@@ -20,11 +22,13 @@ on:
       - "src/studio-language-worker.js"
       - "src/studio-deep-i18n-worker.js"
       - "src/german-ghostwriter-worker.js"
+      - "src/german-ghostwriter-style-v2-worker.js"
       - "migrations/0005_book_language_preferences.sql"
       - "test/studio-language-smoke.mjs"
       - "test/studio-deep-i18n-smoke.mjs"
       - "test/studio-dynamic-residuals-smoke.mjs"
       - "test/german-ghostwriter-smoke.mjs"
+      - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/studio-brain-trilingual-check.yml"
 
@@ -55,7 +59,9 @@ jobs:
           node --check test/studio-deep-i18n-smoke.mjs
           node --check test/studio-dynamic-residuals-smoke.mjs
           if [ -f src/german-ghostwriter-worker.js ]; then node --check src/german-ghostwriter-worker.js; fi
+          if [ -f src/german-ghostwriter-style-v2-worker.js ]; then node --check src/german-ghostwriter-style-v2-worker.js; fi
           if [ -f test/german-ghostwriter-smoke.mjs ]; then node --check test/german-ghostwriter-smoke.mjs; fi
+          if [ -f test/german-ghostwriter-style-v2-smoke.mjs ]; then node --check test/german-ghostwriter-style-v2-smoke.mjs; fi
 
       - name: Guard canonical Italian application source
         run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js
@@ -79,6 +85,7 @@ jobs:
           node test/studio-deep-i18n-smoke.mjs
           node test/studio-dynamic-residuals-smoke.mjs
           if [ -f test/german-ghostwriter-smoke.mjs ]; then node test/german-ghostwriter-smoke.mjs; fi
+          if [ -f test/german-ghostwriter-style-v2-smoke.mjs ]; then node test/german-ghostwriter-style-v2-smoke.mjs; fi
 
       - name: Existing multilingual suites
         shell: bash
@@ -111,10 +118,12 @@ jobs:
       - name: Verify Wrangler entry point
         shell: bash
         run: |
-          if grep -Fq '"main": "src/german-ghostwriter-worker.js"' wrangler.jsonc; then
-            grep -Fq 'import studioDeepWorker from "./studio-deep-i18n-worker.js"' src/german-ghostwriter-worker.js
-            grep -Fq 'PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH' src/german-ghostwriter-worker.js
-            echo 'Guarded German ghostwriter entry point active.'
+          if grep -Fq '"main": "src/german-ghostwriter-style-v2-worker.js"' wrangler.jsonc; then
+            grep -Fq 'import ghostwriterWorker from "./german-ghostwriter-worker.js"' src/german-ghostwriter-style-v2-worker.js
+            grep -Fq 'ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH' src/german-ghostwriter-style-v2-worker.js
+            echo 'German ghostwriter style v2 entry point active.'
+          elif grep -Fq '"main": "src/german-ghostwriter-worker.js"' wrangler.jsonc; then
+            echo 'German ghostwriter entry point active.'
           elif grep -Fq '"main": "src/studio-deep-i18n-worker.js"' wrangler.jsonc; then
             echo 'Deep i18n entry point active.'
           else
