@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   localizeDeepStudioHtml,
   localizeDeepStudioScript,
+  localizeMuseOptionsSafely,
   strengthenMuseOptions
 } from '../src/studio-deep-i18n-worker.js';
 
@@ -14,31 +15,34 @@ const html = `
 <p>La storia si sta facendo più nitida.</p>
 <span>Stai scrivendo qui</span>
 <label>Titolo del capitolo • puoi rinominarlo in qualsiasi momento</label>
+<h1>Il tuo posto nella storia</h1>
 <textarea>Il tuo posto nella storia. 100 parole.</textarea>
 <input value="La storia si sta facendo più nitida.">
 <div class="live-page-copy">Riprendiamo da dove avevi lasciato: la tua storia ti aspetta qui.</div>
 </body></html>`;
 
 const deHtml = localizeDeepStudioHtml(html, 'de');
-assert.match(deHtml, /Dein Platz in der Geschichte/);
+assert.match(deHtml, /<p class="eyebrow">Dein Platz in der Geschichte<\/p>/);
 assert.match(deHtml, /Mach dort weiter, wo du aufgehört hast/);
 assert.match(deHtml, /1193 Wörter · 3,4 geschätzte Seiten/);
 assert.match(deHtml, /Ziel: etwa 6,8 Seiten · 2392 Wörter/);
 assert.match(deHtml, /Deine Geschichte gewinnt an Klarheit/);
 assert.match(deHtml, /Hier schreibst du gerade/);
 assert.match(deHtml, /Kapiteltitel • jederzeit umbenennbar/);
+assert.match(deHtml, /<h1>Il tuo posto nella storia<\/h1>/, 'German pass must preserve authored heading collisions');
 assert.match(deHtml, /<textarea>Il tuo posto nella storia\. 100 parole\.<\/textarea>/, 'German pass must preserve textarea author content');
 assert.match(deHtml, /<input value="La storia si sta facendo più nitida\.">/, 'German pass must preserve authored input values');
 assert.match(deHtml, /<div class="live-page-copy">Riprendiamo da dove avevi lasciato: la tua storia ti aspetta qui\.<\/div>/, 'German pass must preserve preview author content');
 
 const enHtml = localizeDeepStudioHtml(html, 'en');
-assert.match(enHtml, /Your place in the story/);
+assert.match(enHtml, /<p class="eyebrow">Your place in the story<\/p>/);
 assert.match(enHtml, /Pick up where you left off/);
 assert.match(enHtml, /1193 words · 3,4 estimated pages/);
 assert.match(enHtml, /Target: about 6,8 pages · 2392 words/);
 assert.match(enHtml, /Your story is coming into sharper focus/);
 assert.match(enHtml, /You’re writing here/);
 assert.match(enHtml, /Chapter title • you can rename it at any time/);
+assert.match(enHtml, /<h1>Il tuo posto nella storia<\/h1>/, 'English pass must preserve authored heading collisions');
 assert.match(enHtml, /<textarea>Il tuo posto nella storia\. 100 parole\.<\/textarea>/, 'English pass must preserve textarea author content');
 assert.match(enHtml, /<input value="La storia si sta facendo più nitida\.">/, 'English pass must preserve authored input values');
 assert.match(enHtml, /<div class="live-page-copy">Riprendiamo da dove avevi lasciato: la tua storia ti aspetta qui\.<\/div>/, 'English pass must preserve preview author content');
@@ -84,33 +88,54 @@ assert.match(enScript, /\(\?:de\|en\)/, 'English localized editor route must sti
 const userText = 'Mia madre diceva: «scrivevo in italiano», ma vivevamo a Köln.';
 const germanOptions = {
   messages: [
-    { role: 'system', content: "LINGUA DELL'OPERA: TEDESCO. Scrivi il capitolo senza inventare fatti." },
+    { role: 'system', content: 'Formula esattamente 8 domande in italiano. Non inventare fatti.' },
     { role: 'user', content: userText }
   ],
   temperature: 0.2
 };
-const strengthenedGerman = strengthenMuseOptions(germanOptions);
-assert.notStrictEqual(strengthenedGerman, germanOptions);
-assert.match(strengthenedGerman.messages[0].content, /VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE/);
-assert.match(strengthenedGerman.messages[0].content, /Standarddeutsch/);
-assert.equal(strengthenedGerman.messages[1].content, userText, 'German brain pass must preserve user-authored content byte-identically');
-assert.equal(strengthenedGerman.temperature, 0.2);
+const safeGerman = localizeMuseOptionsSafely(germanOptions, 'de-DE');
+assert.notStrictEqual(safeGerman, germanOptions);
+assert.match(safeGerman.messages[0].content, /VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE/);
+assert.match(safeGerman.messages[0].content, /domande in tedesco/i);
+assert.equal(safeGerman.messages[1].content, userText, 'German brain pass must preserve user-authored messages byte-identically');
+assert.equal(safeGerman.temperature, 0.2);
 
 const englishOptions = {
   messages: [
-    { role: 'system', content: "LINGUA DELL'OPERA: INGLESE BRITANNICO. Scrivi il capitolo senza inventare fatti." },
+    { role: 'system', content: 'Formula esattamente 8 domande in italiano. Non inventare fatti.' },
     { role: 'user', content: userText }
   ],
   temperature: 0.25
 };
-const strengthenedEnglish = strengthenMuseOptions(englishOptions);
-assert.notStrictEqual(strengthenedEnglish, englishOptions);
-assert.match(strengthenedEnglish.messages[0].content, /MANDATORY LANGUAGE CONTRACT FOR THE MUSE/);
-assert.match(strengthenedEnglish.messages[0].content, /British English/);
-assert.equal(strengthenedEnglish.messages[1].content, userText, 'English brain pass must preserve user-authored content byte-identically');
-assert.equal(strengthenedEnglish.temperature, 0.25);
+const safeEnglish = localizeMuseOptionsSafely(englishOptions, 'en-GB');
+assert.notStrictEqual(safeEnglish, englishOptions);
+assert.match(safeEnglish.messages[0].content, /MANDATORY LANGUAGE CONTRACT FOR THE MUSE/);
+assert.match(safeEnglish.messages[0].content, /domande in inglese britannico/i);
+assert.equal(safeEnglish.messages[1].content, userText, 'English brain pass must preserve user-authored messages byte-identically');
+assert.equal(safeEnglish.temperature, 0.25);
 
+const promptWithCollision = 'Crea un indice di esattamente 12 capitoli per un libro in italiano di 84 pagine effettive. Titolo: Il mio lavoro in italiano. Dati e fatti reali: Mia madre diceva “scrivo in italiano”. Storia: vivo in italiano ogni giorno.';
+const safePromptGerman = localizeMuseOptionsSafely({ prompt: promptWithCollision }, 'de-DE').prompt;
+assert.match(safePromptGerman, /per un libro in tedesco di 84 pagine/);
+assert.match(safePromptGerman, /Titolo: Il mio lavoro in italiano/);
+assert.match(safePromptGerman, /Mia madre diceva “scrivo in italiano”/);
+assert.match(safePromptGerman, /Storia: vivo in italiano ogni giorno/);
+const safePromptEnglish = localizeMuseOptionsSafely({ prompt: promptWithCollision }, 'en-GB').prompt;
+assert.match(safePromptEnglish, /per un libro in inglese britannico di 84 pagine/);
+assert.match(safePromptEnglish, /Titolo: Il mio lavoro in italiano/);
+assert.match(safePromptEnglish, /Mia madre diceva “scrivo in italiano”/);
+assert.match(safePromptEnglish, /Storia: vivo in italiano ogni giorno/);
+
+const alreadyDirectedGerman = strengthenMuseOptions({ messages: [{ role: 'system', content: "LINGUA DELL'OPERA: TEDESCO. Scrivi senza inventare." }, { role: 'user', content: userText }] });
+assert.match(alreadyDirectedGerman.messages[0].content, /VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE/);
+assert.equal(alreadyDirectedGerman.messages[1].content, userText);
+const alreadyDirectedEnglish = strengthenMuseOptions({ messages: [{ role: 'system', content: "LINGUA DELL'OPERA: INGLESE BRITANNICO. Scrivi senza inventare." }, { role: 'user', content: userText }] });
+assert.match(alreadyDirectedEnglish.messages[0].content, /MANDATORY LANGUAGE CONTRACT FOR THE MUSE/);
+assert.equal(alreadyDirectedEnglish.messages[1].content, userText);
+
+const validator = { messages: [{ role: 'system', content: 'Sei il controllo qualità. Valuta. Rispondi esclusivamente APPROVATO oppure RIFIUTATO.' }] };
+assert.strictEqual(localizeMuseOptionsSafely(validator, 'de-DE'), validator, 'machine-control prompt must remain canonical');
 const italian = { messages: [{ role: 'system', content: 'Scrivi in italiano.' }] };
-assert.strictEqual(strengthenMuseOptions(italian), italian, 'Italian Muse path must remain untouched');
+assert.strictEqual(localizeMuseOptionsSafely(italian, 'it-IT'), italian, 'Italian Muse path must remain untouched');
 
 console.log('studio deep i18n DE/EN smoke: ok');
