@@ -2,6 +2,7 @@ import styleWorker from "./german-ghostwriter-style-v2-worker.js";
 import { projectIdFromPath, readPreference } from "./studio-language-worker.js";
 
 const ROOM_MARKER = "INTERNE REDAKTION SPLENDORIA — DEUTSCH";
+const GERMAN_CONTEXT = /PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH|VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE|LINGUA DELL'OPERA:\s*TEDESCO/i;
 
 const ROLE_CONTRACTS = {
   ghostwriter: `ROLLE — GHOSTWRITER
@@ -80,7 +81,7 @@ export function editorialRequestRole(pathname, action = "") {
   if (/^\/libro\/[^/]+\/(?:affidati|struttura|intervista)$/.test(path)) return "ghostwriter";
   if (/^\/libro\/[^/]+\/risposte\/affidati$/.test(path)) return "ghostwriter";
   if (/^\/libro\/[^/]+\/capitolo\/[^/]+\/genera$/.test(path)) return "ghostwriter";
-  if (/^\/libro\/[^/]+\/(?:migliora)$/.test(path)) return "stilredaktion";
+  if (/^\/libro\/[^/]+\/migliora$/.test(path)) return "stilredaktion";
   if (/^\/libro\/[^/]+\/risposte\/migliora$/.test(path)) return "stilredaktion";
   if (/^\/libro\/[^/]+\/capitolo\/[^/]+\/rifinisci$/.test(path)) return action === "grammar" ? "lektor" : "stilredaktion";
   return "";
@@ -97,7 +98,9 @@ export function applyGermanEditorialRole(options, requestedRole = "ghostwriter",
   const existing = instructionText(options);
   if (existing.includes(ROOM_MARKER)) return options;
 
-  const role = isGermanMachineControl(options) ? "faktenkontrolle" : requestedRole;
+  const machineControl = isGermanMachineControl(options);
+  if (!machineControl && !GERMAN_CONTEXT.test(existing)) return options;
+  const role = machineControl ? "faktenkontrolle" : requestedRole;
   if (!ROLE_CONTRACTS[role]) return options;
   const block = editorialBlock(role, action);
   const out = { ...options };
