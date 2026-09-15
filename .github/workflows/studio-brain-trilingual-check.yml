@@ -17,6 +17,7 @@ on:
       - "test/german-ghostwriter-smoke.mjs"
       - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "test/german-editorial-room-smoke.mjs"
+      - "test/german-editorial-quality-cases.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/studio-brain-trilingual-check.yml"
   pull_request:
@@ -35,6 +36,7 @@ on:
       - "test/german-ghostwriter-smoke.mjs"
       - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "test/german-editorial-room-smoke.mjs"
+      - "test/german-editorial-quality-cases.mjs"
       - "wrangler.jsonc"
       - ".github/workflows/studio-brain-trilingual-check.yml"
 
@@ -70,6 +72,7 @@ jobs:
           if [ -f test/german-ghostwriter-smoke.mjs ]; then node --check test/german-ghostwriter-smoke.mjs; fi
           if [ -f test/german-ghostwriter-style-v2-smoke.mjs ]; then node --check test/german-ghostwriter-style-v2-smoke.mjs; fi
           if [ -f test/german-editorial-room-smoke.mjs ]; then node --check test/german-editorial-room-smoke.mjs; fi
+          if [ -f test/german-editorial-quality-cases.mjs ]; then node --check test/german-editorial-quality-cases.mjs; fi
           if [ -f test/studio-button-contract-smoke.mjs ]; then node --check test/studio-button-contract-smoke.mjs; fi
 
       - name: Guard canonical Italian application source
@@ -97,6 +100,7 @@ jobs:
           if [ -f test/german-ghostwriter-smoke.mjs ]; then node test/german-ghostwriter-smoke.mjs; fi
           if [ -f test/german-ghostwriter-style-v2-smoke.mjs ]; then node test/german-ghostwriter-style-v2-smoke.mjs; fi
           if [ -f test/german-editorial-room-smoke.mjs ]; then node test/german-editorial-room-smoke.mjs; fi
+          if [ -f test/german-editorial-quality-cases.mjs ]; then node test/german-editorial-quality-cases.mjs; fi
 
       - name: Existing multilingual suites
         shell: bash
@@ -130,9 +134,10 @@ jobs:
         shell: bash
         run: |
           if grep -Fq '"main": "src/german-editorial-room-worker.js"' wrangler.jsonc; then
-            grep -Fq 'import styleWorker from "./german-ghostwriter-style-v2-worker.js"' src/german-editorial-room-worker.js
+            grep -Fq 'import studioDeepWorker from "./studio-deep-i18n-worker.js"' src/german-editorial-room-worker.js
+            grep -Fq 'composeGermanEditorialOptions' src/german-editorial-room-worker.js
             grep -Fq 'INTERNE REDAKTION SPLENDORIA — DEUTSCH' src/german-editorial-room-worker.js
-            echo 'German internal editorial room entry point active.'
+            echo 'German composed editorial room entry point active.'
           elif grep -Fq '"main": "src/german-ghostwriter-style-v2-worker.js"' wrangler.jsonc; then
             grep -Fq 'import ghostwriterWorker from "./german-ghostwriter-worker.js"' src/german-ghostwriter-style-v2-worker.js
             grep -Fq 'ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH' src/german-ghostwriter-style-v2-worker.js
