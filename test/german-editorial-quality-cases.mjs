@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { applyGermanGhostwriter } from '../src/german-ghostwriter-worker.js';
 import { applyGermanStyleV2 } from '../src/german-ghostwriter-style-v2-worker.js';
-import { composeGermanEditorialOptions, editorialRequestRole, isGermanMachineControl } from '../src/german-editorial-room-worker.js';
+import { composeGermanEditorialOptions, editorialDefaultAction, editorialRequestRole, isGermanMachineControl } from '../src/german-editorial-room-worker.js';
 
 const DE_MARKER = 'VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE';
 
@@ -56,7 +56,8 @@ const cases = [
         { role: 'user', content: 'Wir sind nach Hause gegangen und danach ich habe meinen Bruder angerufen.' }
       ]
     },
-    expect: [/ROLLE — LEKTOR/, /Keine neuen Beispiele, Bilder, Dialoge, Details oder Deutungen hinzufügen/, /Ziel ist ein druckreifer Text, nicht ein stilistisch anderer Text/]
+    expect: [/ROLLE — LEKTOR/, /Keine neuen Beispiele, Bilder, Dialoge, Details oder Deutungen hinzufügen/, /Ziel ist ein druckreifer Text, nicht ein stilistisch anderer Text/],
+    reject: [/PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH/, /ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH/]
   },
   {
     name: 'vivid action cannot invent sensory detail',
@@ -91,6 +92,7 @@ for (const testCase of cases) {
   const afterUser = userText(result);
   assert.equal(afterUser, beforeUser, `${testCase.name}: authored user content must stay byte-identical`);
   for (const pattern of testCase.expect) assert.match(afterSystem, pattern, `${testCase.name}: missing editorial safeguard ${pattern}`);
+  for (const pattern of testCase.reject || []) assert.doesNotMatch(afterSystem, pattern, `${testCase.name}: forbidden broader prose contract ${pattern}`);
   assert.equal((afterSystem.match(/INTERNE REDAKTION SPLENDORIA — DEUTSCH/g) || []).length, 1, `${testCase.name}: editorial room must be injected exactly once`);
 }
 
@@ -107,6 +109,18 @@ assert.match(machineSystem, /ROLLE — FAKTENKONTROLLE/);
 assert.match(machineSystem, /APPROVATO, RIFIUTATO oder \[FONTI_INSUFFICIENTI\]/);
 assert.doesNotMatch(machineSystem, /PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH/, 'fact checks must not inherit prose-generation contracts');
 assert.doesNotMatch(machineSystem, /ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH/, 'fact checks must not inherit style contracts');
+
+assert.equal(editorialDefaultAction('/de/libro/book/migliora'), 'improve');
+assert.equal(editorialDefaultAction('/de/libro/book/risposte/migliora'), 'improve');
+assert.equal(editorialDefaultAction('/de/libro/book/capitolo/ch/rifinisci'), '');
+const improveOptions = {
+  messages: [
+    { role: 'system', content: `${DE_MARKER}\nMigliora il testo senza inventare.` },
+    { role: 'user', content: 'Der Satz ist etwas schwer, aber inhaltlich korrekt.' }
+  ]
+};
+const improveResult = composeGermanEditorialOptions(improveOptions, 'stilredaktion', editorialDefaultAction('/de/libro/book/migliora'));
+assert.match(systemText(improveResult), /AUFTRAG — ALLGEMEINE STILVERBESSERUNG/);
 
 assert.equal(editorialRequestRole('/de/libro/book/capitolo/ch/rifinisci', 'grammar'), 'lektor');
 assert.equal(editorialRequestRole('/de/libro/book/capitolo/ch/rifinisci', 'vivid'), 'stilredaktion');
