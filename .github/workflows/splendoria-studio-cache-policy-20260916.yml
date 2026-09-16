@@ -15,13 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: fix/studio-js-cache-policy-20260916
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
@@ -42,32 +42,22 @@ jobs:
           worker = worker_path.read_text(encoding="utf-8")
           smoke = smoke_path.read_text(encoding="utf-8")
 
-          old_cache = '''  if (url.pathname === '/assets/studio.js' && contentType.includes('javascript')) {
-            const source = await response.text();
-            const headers = new Headers(response.headers);
-            headers.delete('content-length');
-            headers.set('cache-control', 'public, max-age=31536000, immutable');
-            headers.set('cdn-cache-control', 'public, max-age=31536000, immutable');
-            return new Response(patchStudioScript(source), { status: response.status, statusText: response.statusText, headers });
-          }'''
+          old_browser_cache = "    headers.set('cache-control', 'public, max-age=31536000, immutable');"
+          old_cdn_cache = "    headers.set('cdn-cache-control', 'public, max-age=31536000, immutable');"
+          if studio.count(old_browser_cache) != 1 or studio.count(old_cdn_cache) != 1:
+              raise SystemExit(
+                  f"Studio cache sentinel mismatch: browser={studio.count(old_browser_cache)} cdn={studio.count(old_cdn_cache)}"
+              )
 
-          new_cache = '''  if (url.pathname === '/assets/studio.js' && contentType.includes('javascript')) {
-            const source = await response.text();
-            const headers = new Headers(response.headers);
-            headers.delete('content-length');
-            // studio.js is transformed by this Worker. Its representation therefore changes
-            // when the Worker patch changes even if the underlying static asset does not.
-            // Do not reuse the static asset validators or a year-long immutable cache here.
-            headers.set('cache-control', 'no-store, max-age=0');
-            headers.delete('cdn-cache-control');
-            headers.delete('etag');
-            headers.delete('last-modified');
-            return new Response(patchStudioScript(source), { status: response.status, statusText: response.statusText, headers });
-          }'''
-
-          if studio.count(old_cache) != 1:
-              raise SystemExit(f"Studio cache sentinel mismatch: expected 1 block, got {studio.count(old_cache)}")
-          studio = studio.replace(old_cache, new_cache, 1)
+          new_browser_cache = """    // studio.js is transformed by this Worker. The transformed representation can
+              // change while the underlying static asset stays byte-identical, so static
+              // validators and a year-long immutable policy are unsafe here.
+              headers.set('cache-control', 'no-store, max-age=0');"""
+          new_validator_policy = """    headers.delete('cdn-cache-control');
+              headers.delete('etag');
+              headers.delete('last-modified');"""
+          studio = studio.replace(old_browser_cache, new_browser_cache, 1)
+          studio = studio.replace(old_cdn_cache, new_validator_policy, 1)
 
           old_version = '/assets/studio.js?v=20260812-3'
           new_version = '/assets/studio.js?v=20260916-1'
@@ -79,14 +69,12 @@ jobs:
               raise SystemExit(f"smoke.mjs cache version sentinel mismatch: expected 1, got {smoke.count(old_version)}")
           smoke = smoke.replace(old_version, new_version, 1)
 
-          test_path.write_text('''import studioWorker from "../src/studio-worker.js";\nimport { readFileSync } from "node:fs";\n\nconst workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");\nconst studioSource = readFileSync(new URL("../src/studio-worker.js", import.meta.url), "utf8");\n\nif (!workerSource.includes('/assets/studio.js?v=20260916-1')) {\n  throw new Error("Studio JS: cache-busting HTML version not updated");\n}\n\nconst block = studioSource.match(/if \\(url\\.pathname === '\\/assets\\/studio\\.js'[\\s\\S]*?return new Response\\(patchStudioScript\\(source\\)[\\s\\S]*?\\n  \\}/)?.[0] || "";\nif (!block) throw new Error("Studio JS: transformed asset block not found");\nif (!block.includes("'no-store, max-age=0'")) throw new Error("Studio JS: transformed asset is not no-store");\nif (block.includes("immutable")) throw new Error("Studio JS: immutable cache must not be used for transformed JS");\nfor (const header of ["cdn-cache-control", "etag", "last-modified"]) {\n  if (!block.includes(`headers.delete('${header}')`)) throw new Error(`Studio JS: ${header} validator/cache header not removed`);\n}\n\nconst response = await studioWorker.fetch(new Request("https://www.splendoria.vip/assets/studio.js?v=20260916-1"), {\n  DB: { prepare() { throw new Error("Studio JS asset must not query D1"); } }\n});\nif (response.status !== 200) throw new Error(`Studio JS: unexpected status ${response.status}`);\nif (response.headers.get("cache-control") !== "no-store, max-age=0") throw new Error("Studio JS: runtime cache-control is not no-store");\nif (response.headers.has("cdn-cache-control")) throw new Error("Studio JS: CDN cache-control leaked from base asset");\nif (response.headers.has("etag") || response.headers.has("last-modified")) throw new Error("Studio JS: static validators leaked onto transformed representation");\nconst body = await response.text();\nif (!body.includes("splendoria:client-draft:v1:")) throw new Error("Studio JS: runtime patch was not applied");\n\nconsole.log("studio cache policy: transformed JS cannot remain stale across Worker patch changes");\n''', encoding="utf-8")
+          test_path.write_text('''import studioWorker from "../src/studio-worker.js";\nimport { readFileSync } from "node:fs";\n\nconst workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");\nconst studioSource = readFileSync(new URL("../src/studio-worker.js", import.meta.url), "utf8");\n\nif (!workerSource.includes('/assets/studio.js?v=20260916-1')) {\n  throw new Error("Studio JS: cache-busting HTML version not updated");\n}\n\nconst marker = "if (url.pathname === '/assets/studio.js' && contentType.includes('javascript'))";\nconst start = studioSource.indexOf(marker);\nconst end = studioSource.indexOf("\\n  if (/^\\\\/libro", start);\nif (start < 0 || end <= start) throw new Error("Studio JS: transformed asset block not found");\nconst block = studioSource.slice(start, end);\nif (!block.includes("'no-store, max-age=0'")) throw new Error("Studio JS: transformed asset is not no-store");\nif (block.includes("immutable")) throw new Error("Studio JS: immutable cache must not be used for transformed JS");\nfor (const header of ["cdn-cache-control", "etag", "last-modified"]) {\n  if (!block.includes(`headers.delete('${header}')`)) throw new Error(`Studio JS: ${header} validator/cache header not removed`);\n}\n\nconst response = await studioWorker.fetch(new Request("https://www.splendoria.vip/assets/studio.js?v=20260916-1"), {\n  DB: { prepare() { throw new Error("Studio JS asset must not query D1"); } }\n});\nif (response.status !== 200) throw new Error(`Studio JS: unexpected status ${response.status}`);\nif (response.headers.get("cache-control") !== "no-store, max-age=0") throw new Error("Studio JS: runtime cache-control is not no-store");\nif (response.headers.has("cdn-cache-control")) throw new Error("Studio JS: CDN cache-control leaked from base asset");\nif (response.headers.has("etag") || response.headers.has("last-modified")) throw new Error("Studio JS: static validators leaked onto transformed representation");\nconst body = await response.text();\nif (!body.includes("splendoria:client-draft:v1:")) throw new Error("Studio JS: runtime patch was not applied");\n\nconsole.log("studio cache policy: transformed JS cannot remain stale across Worker patch changes");\n''', encoding="utf-8")
 
           studio_path.write_text(studio, encoding="utf-8")
           worker_path.write_text(worker, encoding="utf-8")
           smoke_path.write_text(smoke, encoding="utf-8")
 
-          # This workflow is intentionally one-shot. Remove it from the resulting branch
-          # so the PR contains only the product/test changes and no maintenance debris.
           workflow_path.unlink()
           PY
 
