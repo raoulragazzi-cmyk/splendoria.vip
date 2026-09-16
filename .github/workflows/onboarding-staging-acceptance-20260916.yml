@@ -64,12 +64,16 @@ jobs:
           npx wrangler deploy --dry-run --env staging --outdir dist-staging
           git diff --check origin/splendoria.vip...HEAD
 
-      - name: Require staging credentials
+      - name: Normalize and require staging credentials
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          raw="${CLOUDFLARE_API_TOKEN:-}"
+          test -n "$raw" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          clean="$(printf '%s' "$raw" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^[Bb][Ee][Aa][Rr][Ee][Rr][[:space:]]\+//')"
+          test -n "$clean" || { echo "Cloudflare API token is empty after normalization"; exit 1; }
+          printf 'CLOUDFLARE_API_TOKEN=%s\n' "$clean" >> "$GITHUB_ENV"
 
       - name: Deploy isolated staging only
         run: npx wrangler deploy --env staging
