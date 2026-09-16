@@ -7,6 +7,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "check": "wrangler deploy --dry-run --outdir dist",
+    "check:staging": "node test/staging-config-smoke.mjs && wrangler deploy --dry-run --env staging --outdir dist-staging",
     "db:migrate:local": "wrangler d1 migrations apply splendoria-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply splendoria-db --remote",
     "test": "node test/smoke.mjs"
