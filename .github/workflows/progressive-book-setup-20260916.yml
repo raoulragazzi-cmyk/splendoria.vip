@@ -28,6 +28,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+
           p = Path('src/worker.js')
           s = p.read_text(encoding='utf-8')
           old_css = '.formbox{width:min(580px,calc(100% - 32px));margin:56px auto;background:#fff;border:1px solid var(--line);border-radius:28px;padding:38px;box-shadow:0 16px 50px rgba(16,45,41,.10)}'
@@ -40,22 +41,65 @@ jobs:
           new = r'<details class="book-create-options"><summary>Personalizza la struttura</summary><label class="field"><span class="sr-only">Struttura del libro</span><select name="targetPages"><option value="84" selected>12 capitoli \xB7 circa 7 pagine ciascuno</option><option value="117">18 capitoli \xB7 circa 6\u20137 pagine ciascuno</option></select></label></details>'
           s = s.replace(old_css, new_css, 1).replace(old, new, 1)
           p.write_text(s, encoding='utf-8')
+
+          ip = Path('src/i18n-client-worker.js')
+          i18n = ip.read_text(encoding='utf-8')
+          de_anchor = '    ["Struttura del libro", "Buchstruktur"],\n'
+          en_anchor = '    ["Struttura del libro", "Book structure"],\n'
+          if i18n.count(de_anchor) != 1 or i18n.count(en_anchor) != 1:
+              raise SystemExit('i18n structure anchors not unique')
+          i18n = i18n.replace(de_anchor, de_anchor + '    ["Personalizza la struttura", "Struktur anpassen"],\n', 1)
+          i18n = i18n.replace(en_anchor, en_anchor + '    ["Personalizza la struttura", "Customise structure"],\n', 1)
+          ip.write_text(i18n, encoding='utf-8')
           PY
+
           cat > test/progressive-book-setup-smoke.mjs <<'EOF'
-          import { readFileSync } from 'node:fs';
-          const source = readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
-          const count = (needle) => source.split(needle).length - 1;
-          if (count('book-create-options') < 4) throw new Error('first-book setup: disclosure CSS/markup missing');
-          if (count('Personalizza la struttura') !== 1) throw new Error('first-book setup: disclosure label missing or duplicated');
-          if (count('option value=\\"84\\" selected>12 capitoli') < 1) throw new Error('first-book setup: 12-chapter default changed');
-          if (!source.includes('${structure.chapters === 12 ?')) throw new Error('book editor: later structure selector contract changed');
-          if (count('Genere<select name=\\"genre\\">') !== 1) throw new Error('first-book setup: genre choice unexpectedly hidden or duplicated');
-          console.log('progressive first-book setup: genre visible; structure default preserved and deferred visually');
+          import worker from "../src/studio-language-worker.js";
+
+          const USER = { id: "user-1", email: "anna@example.com", nome: "Anna", passwordHash: "hash", createdAt: "2026-01-01T10:00:00.000Z", emailVerifiedAt: "2026-01-02T10:00:00.000Z" };
+          const DB = {
+            prepare(sql = "") { return {
+              bind() { return this; },
+              async run() { return { success: true, meta: { changes: 1 } }; },
+              async first() {
+                if (sql === "SELECT 1 AS ok") return { ok: 1 };
+                if (sql.includes('FROM "Session" s JOIN "User"')) return { ...USER };
+                if (sql.includes('SELECT COUNT(*) total FROM "BookProject"')) return { total: 0 };
+                return null;
+              },
+              async all() {
+                if (sql.includes('FROM "BookProject" p LEFT JOIN "BookChapter"')) return { results: [] };
+                if (sql.includes('SELECT c.projectId,c.content')) return { results: [] };
+                return { results: [] };
+              }
+            }; },
+            async batch(statements) { return statements.map(() => ({ success: true, meta: { changes: 1 } })); }
+          };
+          const env = { DB, APP_URL: "https://www.splendoria.vip", ADMIN_EMAIL: "admin@example.invalid", EMAIL_FROM: "contatti@splendoria.vip", AI: { async run() { return { response: "ok" }; } } };
+
+          const response = await worker.fetch(new Request("https://www.splendoria.vip/studio", { headers: { cookie: "spl_session=test-session" } }), env);
+          if (response.status !== 200) throw new Error(`first-book studio status ${response.status}`);
+          const html = await response.text();
+          for (const marker of ['La tua storia comincia qui', 'name="title"', 'name="genre"', '<summary>Personalizza la struttura</summary>', 'name="targetPages"', 'value="84" selected', 'data-book-language-panel']) {
+            if (!html.includes(marker)) throw new Error(`first-book onboarding missing ${marker}`);
+          }
+          if ((html.match(/Personalizza la struttura/g) || []).length !== 1) throw new Error('first-book structure disclosure duplicated');
+          const genreIndex = html.indexOf('name="genre"');
+          const summaryIndex = html.indexOf('<summary>Personalizza la struttura</summary>');
+          const targetIndex = html.indexOf('name="targetPages"');
+          const detailsEnd = html.indexOf('</details>', summaryIndex);
+          const languageIndex = html.indexOf('data-book-language-panel');
+          if (!(genreIndex >= 0 && genreIndex < summaryIndex)) throw new Error('genre must remain visible before advanced structure options');
+          if (!(summaryIndex >= 0 && targetIndex > summaryIndex && detailsEnd > targetIndex)) throw new Error('structure selector is not contained in progressive disclosure');
+          if (!(languageIndex > detailsEnd)) throw new Error('book language must remain visible and independent from structure disclosure');
+          console.log('progressive first-book setup: genre/language visible, structure optional, 12-chapter default preserved');
           EOF
+
       - name: Validate
         shell: bash
         run: |
           node --check src/worker.js
+          node --check src/i18n-client-worker.js
           node --check test/progressive-book-setup-smoke.mjs
           node test/progressive-book-setup-smoke.mjs
           for test_file in test/i18n-*.mjs; do node "$test_file"; done
@@ -68,7 +112,7 @@ jobs:
         run: |
           git config user.name "splendoria-release-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add src/worker.js test/progressive-book-setup-smoke.mjs
+          git add src/worker.js src/i18n-client-worker.js test/progressive-book-setup-smoke.mjs
           git commit -m "ux: progressively disclose first-book structure"
           git push origin HEAD:integration/onboarding-zero-friction-20260916
       - name: Remove one-shot workflow
