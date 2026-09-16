@@ -1,0 +1,78 @@
+name: Progressive first-book setup
+
+on:
+  push:
+    branches:
+      - integration/onboarding-zero-friction-20260916
+    paths:
+      - ".github/workflows/progressive-book-setup-20260916.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: integration/onboarding-zero-friction-20260916
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Apply guarded progressive disclosure patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/worker.js')
+          s = p.read_text(encoding='utf-8')
+          old_css = '.formbox{width:min(580px,calc(100% - 32px));margin:56px auto;background:#fff;border:1px solid var(--line);border-radius:28px;padding:38px;box-shadow:0 16px 50px rgba(16,45,41,.10)}'
+          new_css = old_css + '.book-create-options{margin:14px 0 18px;border:1px solid var(--line);border-radius:14px;background:#fff}.book-create-options summary{cursor:pointer;padding:13px 15px;font-weight:750;color:var(--ink)}.book-create-options[open] summary{border-bottom:1px solid var(--line)}.book-create-options .field{margin:0;padding:2px 15px 15px}'
+          if s.count(old_css) != 1:
+              raise SystemExit(f'CSS guard failed: {s.count(old_css)} matches')
+          s = s.replace(old_css, new_css, 1)
+          old = '<label class=\\"field\\">Struttura del libro<select name=\\"targetPages\\"><option value=\\"84\\" selected>12 capitoli \\xB7 circa 7 pagine ciascuno</option><option value=\\"117\\">18 capitoli \\xB7 circa 6\\u20137 pagine ciascuno</option></select></label>'
+          if s.count(old) != 1:
+              raise SystemExit(f'first-book structure guard failed: {s.count(old)} matches')
+          new = '<details class=\\"book-create-options\\"><summary>Struttura del libro</summary><label class=\\"field\\"><span class=\\"sr-only\\">Struttura del libro</span><select name=\\"targetPages\\"><option value=\\"84\\" selected>12 capitoli \\xB7 circa 7 pagine ciascuno</option><option value=\\"117\\">18 capitoli \\xB7 circa 6\\u20137 pagine ciascuno</option></select></label></details>'
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+          cat > test/progressive-book-setup-smoke.mjs <<'EOF'
+          import { readFileSync } from 'node:fs';
+          const source = readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
+          const marker = '<details class=\\"book-create-options\\"><summary>Struttura del libro</summary>';
+          if ((source.match(new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&'), 'g')) || []).length !== 1) throw new Error('first-book setup: progressive structure disclosure missing or duplicated');
+          if (!source.includes('<select name=\\"targetPages\\"><option value=\\"84\\" selected>12 capitoli')) throw new Error('first-book setup: 12-chapter default changed');
+          if (!source.includes('<label class=\\"field\\">Struttura del libro<select name=\\"targetPages\\"><option value=\\"84\\"${structure.chapters === 12 ? \\" selected\\" : \\"\\"}>')) throw new Error('book editor: structure selector contract changed');
+          console.log('progressive first-book setup: default preserved, advanced choice deferred visually');
+          EOF
+      - name: Validate
+        shell: bash
+        run: |
+          node --check src/worker.js
+          node --check test/progressive-book-setup-smoke.mjs
+          node test/progressive-book-setup-smoke.mjs
+          for test_file in test/i18n-*.mjs; do node "$test_file"; done
+          node test/client-first-access-smoke.mjs
+          node test/single-muse-cta-smoke.mjs
+          node test/studio-cache-policy-smoke.mjs
+          npm run check
+          git diff --check
+      - name: Commit application change
+        run: |
+          git config user.name "splendoria-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/worker.js test/progressive-book-setup-smoke.mjs
+          git commit -m "ux: progressively disclose first-book structure"
+          git push origin HEAD:integration/onboarding-zero-friction-20260916
+      - name: Remove one-shot workflow
+        run: |
+          git pull --ff-only origin integration/onboarding-zero-friction-20260916
+          git rm .github/workflows/progressive-book-setup-20260916.yml
+          git commit -m "chore: remove completed first-book setup workflow"
+          git push origin HEAD:integration/onboarding-zero-friction-20260916
