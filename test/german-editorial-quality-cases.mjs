@@ -110,6 +110,29 @@ assert.match(machineSystem, /APPROVATO, RIFIUTATO oder \[FONTI_INSUFFICIENTI\]/)
 assert.doesNotMatch(machineSystem, /PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH/, 'fact checks must not inherit prose-generation contracts');
 assert.doesNotMatch(machineSystem, /ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH/, 'fact checks must not inherit style contracts');
 
+// Strict-facts generation is still a writing task. It may mention the sentinel
+// [FONTI_INSUFFICIENTI] and the word "verificato", but must not be mistaken for
+// a verdict-only quality-control call. Otherwise a retry could stop rewriting
+// and return a checker-style response instead of the requested chapter text.
+const strictFactsRewrite = {
+  messages: [
+    {
+      role: 'system',
+      content: `${DE_MARKER}\nSei il revisore letterario finale. Prima di riscrivere, confronta internamente ogni affermazione concreta con le fonti autorizzate. Non sostituire un dettaglio non verificato con un'altra invenzione. Se le fonti non permettono una versione completa e fedele, restituisci esclusivamente [FONTI_INSUFFICIENTI]. Altrimenti riscrivi il testo in modo fedele.`
+    },
+    { role: 'user', content: '1978 zog ich mit meiner Mutter nach Meran. Das ist die einzige sichere Information.' }
+  ]
+};
+assert.equal(isGermanMachineControl(strictFactsRewrite), false, 'strict-facts rewriting must not be classified as verdict-only machine control');
+const strictFactsUserBefore = userText(strictFactsRewrite);
+const strictFactsResult = composeGermanEditorialOptions(strictFactsRewrite, 'ghostwriter');
+const strictFactsSystem = systemText(strictFactsResult);
+assert.equal(userText(strictFactsResult), strictFactsUserBefore, 'strict-facts retry must preserve authored source text byte-identically');
+assert.match(strictFactsSystem, /ROLLE — GHOSTWRITER/, 'strict-facts retry must remain in the writing path');
+assert.match(strictFactsSystem, /PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH/, 'strict-facts retry must retain the German ghostwriter contract');
+assert.match(strictFactsSystem, /ZEITGENÖSSISCHER GHOSTWRITER-STILPASS V2 — DEUTSCH/, 'strict-facts retry must retain the German style contract');
+assert.doesNotMatch(strictFactsSystem, /ROLLE — FAKTENKONTROLLE/, 'strict-facts retry must not become a verdict-only fact checker');
+
 assert.equal(editorialDefaultAction('/de/libro/book/migliora'), 'improve');
 assert.equal(editorialDefaultAction('/de/libro/book/risposte/migliora'), 'improve');
 assert.equal(editorialDefaultAction('/de/libro/book/capitolo/ch/rifinisci'), '');

@@ -68,9 +68,18 @@ function instructionText(options) {
 
 export function isGermanMachineControl(options) {
   const text = instructionText(options);
-  const hasToken = /APPROVATO|RIFIUTATO|\[FONTI_INSUFFICIENTI\]/.test(text);
-  const hasControlIntent = /controllo qualit|controllo.*fedelt|valuta|verifica|fonti insufficienti|fonti.*sufficient/i.test(text);
-  return hasToken && hasControlIntent;
+  const hasVerdictPair = /\bAPPROVATO\b/.test(text) && /\bRIFIUTATO\b/.test(text);
+  const hasInsufficientSentinel = /\[FONTI_INSUFFICIENTI\]/.test(text);
+  const hasControlIntent = /controllo qualit|controllo.*fedelt|valuta|verifica|fonti.*sufficient|quality control|fidelity check|qualit[aä]tskontroll|quellenkontroll|pr[uü]f/i.test(text);
+  const hasRewriteIntent = /riscriv|scrivi|riscrivere|testo revisionato|versione completa e fedele|rewrite|write\b|schreib|[uü]berarbeit|redig/i.test(text);
+
+  // APPROVATO/RIFIUTATO is unambiguously a verdict-only contract, even if the
+  // checker says "senza riscriverle". A lone [FONTI_INSUFFICIENTI] sentinel is
+  // different: Splendoria also uses it inside strict-facts *rewriting* retries.
+  // Those retries must stay in the Ghostwriter path and produce prose whenever
+  // the sources are sufficient.
+  if (hasVerdictPair && hasControlIntent) return true;
+  return hasInsufficientSentinel && hasControlIntent && !hasRewriteIntent;
 }
 
 export function canonicalEditorialPath(pathname) {
