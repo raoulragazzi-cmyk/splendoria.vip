@@ -9,7 +9,8 @@
     "check": "wrangler deploy --dry-run --outdir dist",
     "db:migrate:local": "wrangler d1 migrations apply splendoria-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply splendoria-db --remote",
-    "test": "node test/smoke.mjs"
+    "test": "node test/smoke.mjs",
+    "test:studio-cache": "node test/studio-cache-policy.mjs"
   },
   "dependencies": {
     "@fontsource/gentium-book-plus": "5.3.0",
