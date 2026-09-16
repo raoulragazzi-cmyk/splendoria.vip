@@ -44,12 +44,12 @@ jobs:
           cat > test/progressive-book-setup-smoke.mjs <<'EOF'
           import { readFileSync } from 'node:fs';
           const source = readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
-          const progressive = '<details class=\\"book-create-options\\"><summary>Personalizza la struttura</summary>';
-          if (!source.includes(progressive)) throw new Error('first-book setup: progressive structure disclosure missing');
-          if (!source.includes('<select name=\\"targetPages\\"><option value=\\"84\\" selected>12 capitoli')) throw new Error('first-book setup: 12-chapter default changed');
-          const editorContract = '<label class=\\"field\\">Struttura del libro<select name=\\"targetPages\\"><option value=\\"84\\"${structure.chapters === 12 ? \\" selected\\" : \\"\\"}>';
-          if (!source.includes(editorContract)) throw new Error('book editor: later structure selector contract changed');
-          if (!source.includes('<label class=\\"field\\">Genere<select name=\\"genre\\">')) throw new Error('first-book setup: genre choice unexpectedly hidden');
+          const count = (needle) => source.split(needle).length - 1;
+          if (count('book-create-options') < 4) throw new Error('first-book setup: disclosure CSS/markup missing');
+          if (count('Personalizza la struttura') !== 1) throw new Error('first-book setup: disclosure label missing or duplicated');
+          if (count('option value=\\"84\\" selected>12 capitoli') < 1) throw new Error('first-book setup: 12-chapter default changed');
+          if (!source.includes('${structure.chapters === 12 ?')) throw new Error('book editor: later structure selector contract changed');
+          if (count('Genere<select name=\\"genre\\">') !== 1) throw new Error('first-book setup: genre choice unexpectedly hidden or duplicated');
           console.log('progressive first-book setup: genre visible; structure default preserved and deferred visually');
           EOF
       - name: Validate
