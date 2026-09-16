@@ -68,9 +68,13 @@ function instructionText(options) {
 
 export function isGermanMachineControl(options) {
   const text = instructionText(options);
-  const hasToken = /APPROVATO|RIFIUTATO|\[FONTI_INSUFFICIENTI\]/.test(text);
-  const hasControlIntent = /controllo qualit|controllo.*fedelt|valuta|verifica|fonti insufficienti|fonti.*sufficient/i.test(text);
-  return hasToken && hasControlIntent;
+  // A prose-generation retry may legitimately mention [FONTI_INSUFFICIENTI]
+  // while still being expected to rewrite the chapter. Treat only an explicit
+  // approve/reject verdict contract as machine control; this keeps strict-facts
+  // rewriting inside the Ghostwriter path instead of turning it into a checker.
+  const hasVerdictContract = /\bAPPROVATO\b/.test(text) && /\bRIFIUTATO\b/.test(text);
+  const hasControlIntent = /controllo qualit|controllo.*fedelt|valuta|verifica|quality control|fidelity check|qualit[aä]tskontroll|quellenkontroll|pr[uü]f/i.test(text);
+  return hasVerdictContract && hasControlIntent;
 }
 
 export function canonicalEditorialPath(pathname) {
