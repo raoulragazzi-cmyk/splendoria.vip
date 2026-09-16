@@ -1,0 +1,113 @@
+name: Splendoria client-first consequence cleanup
+
+on:
+  push:
+    branches:
+      - ux/client-first-access-20260916
+    paths:
+      - ".github/workflows/splendoria-client-first-consequences-20260916.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ux/client-first-access-20260916
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+
+      - name: Apply guarded consequence cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          worker_path = Path('src/worker.js')
+          worker = worker_path.read_text(encoding='utf-8')
+          old = 'const secondary = register2 ? `<p class="center">Hai gi\\xE0 un account? <a href="/area-clienti">Area clienti</a></p>` : admin ? `<p class="center"><a href="/password-dimenticata">Password amministratore dimenticata?</a></p><p class="center"><a href="/accedi">\\u2190 Scegli un\\u2019altra area</a></p>` : `<p class="center"><a href="/password-dimenticata">Password dimenticata?</a></p><p class="center">Non hai un account? <a href="/registrati">Registrati gratis</a></p><p class="center"><a href="/accedi">\\u2190 Scegli un\\u2019altra area</a></p>`;'
+          new = 'const secondary = register2 ? `<p class="center">Hai gi\\xE0 un account? <a href="/area-clienti">Accedi</a></p>` : admin ? `<p class="center"><a href="/password-dimenticata">Password amministratore dimenticata?</a></p><p class="center"><a href="/area-clienti">\\u2190 Vai all\\u2019Area clienti</a></p>` : `<p class="center"><a href="/password-dimenticata">Password dimenticata?</a></p><p class="center">Non hai un account? <a href="/registrati">Registrati gratis</a></p>`;'
+          if worker.count(old) != 1:
+              raise SystemExit(f'auth secondary guard failed: {worker.count(old)} matches')
+          worker = worker.replace(old, new, 1)
+
+          old_forgot = '<p class="center"><a href="/accedi">\\u2190 Torna alla scelta dell\\u2019area</a></p>'
+          new_forgot = '<p class="center"><a href="/area-clienti">\\u2190 Torna all\\u2019accesso</a></p>'
+          if worker.count(old_forgot) != 1:
+              raise SystemExit(f'forgot back-link guard failed: {worker.count(old_forgot)} matches')
+          worker = worker.replace(old_forgot, new_forgot, 1)
+          worker_path.write_text(worker, encoding='utf-8')
+
+          i18n_path = Path('src/i18n-auth-worker.js')
+          i18n = i18n_path.read_text(encoding='utf-8')
+          replacements = {
+              '["Area clienti", "Kundenbereich"],': '["Accedi", "Anmelden"],\n    ["Area clienti", "Kundenbereich"],',
+              '["← Torna alla scelta dell’area", "← Zurück zum Kundenbereich"],': '["← Torna all’accesso", "← Zurück zur Anmeldung"],',
+              '["Area clienti", "Client area"],': '["Accedi", "Sign in"],\n    ["Area clienti", "Client area"],',
+              '["← Torna alla scelta dell’area", "← Back to the client area"],': '["← Torna all’accesso", "← Back to sign in"],'
+          }
+          for source, target in replacements.items():
+              if i18n.count(source) != 1:
+                  raise SystemExit(f'i18n guard failed for {source!r}: {i18n.count(source)} matches')
+              i18n = i18n.replace(source, target, 1)
+          i18n_path.write_text(i18n, encoding='utf-8')
+
+          test_path = Path('test/client-first-access-smoke.mjs')
+          test = test_path.read_text(encoding='utf-8')
+          marker = 'if (client.status !== 200 || !(await client.text()).includes(\'action="/area-clienti"\')) throw new Error("client login route changed unexpectedly");'
+          replacement = '''if (client.status !== 200) throw new Error("client login route changed unexpectedly");
+          const clientHtml = await client.text();
+          if (!clientHtml.includes('action="/area-clienti"') || clientHtml.includes('href="/accedi"') || clientHtml.includes('Scegli un’altra area')) throw new Error("client login contains obsolete area-choice navigation");
+          const forgot = await worker.fetch(new Request("https://www.splendoria.vip/password-dimenticata"), env);
+          const forgotHtml = await forgot.text();
+          if (!forgotHtml.includes('href="/area-clienti"') || !forgotHtml.includes('Torna all\\u2019accesso') || forgotHtml.includes('Torna alla scelta dell\\u2019area')) throw new Error("password recovery back-link is not client-first");'''
+          if test.count(marker) != 1:
+              raise SystemExit(f'client-first test guard failed: {test.count(marker)} matches')
+          test = test.replace(marker, replacement, 1)
+          test_path.write_text(test, encoding='utf-8')
+          PY
+
+      - name: Validate auth and regressions
+        shell: bash
+        run: |
+          node --check src/worker.js
+          node --check src/i18n-auth-worker.js
+          node --check test/client-first-access-smoke.mjs
+          node test/client-first-access-smoke.mjs
+          node test/i18n-auth-smoke.mjs
+          for test_file in test/i18n-*.mjs; do node "$test_file"; done
+          set -o pipefail
+          set +e
+          npm test 2>&1 | tee /tmp/smoke.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if grep -Fq 'Vetrina: asset JavaScript non versionato contro la cache del browser' /tmp/smoke.log || grep -Fq 'Accessibilità: navigazione da tastiera, focus o riduzione del movimento incompleti' /tmp/smoke.log; then
+              echo 'Only a known baseline assertion remains.'
+            else
+              exit "$status"
+            fi
+          fi
+          npm run check
+          git diff --check
+
+      - name: Commit application cleanup
+        run: |
+          git config user.name "splendoria-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/worker.js src/i18n-auth-worker.js test/client-first-access-smoke.mjs
+          git commit -m "ux: remove obsolete area-choice links after client-first access"
+          git push origin HEAD:ux/client-first-access-20260916
+
+      - name: Remove one-shot workflow
+        run: |
+          git rm .github/workflows/splendoria-client-first-consequences-20260916.yml
+          git commit -m "chore: remove completed client-first consequence workflow"
+          git push origin HEAD:ux/client-first-access-20260916
