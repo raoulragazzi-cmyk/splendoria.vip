@@ -58,7 +58,7 @@ const post = (path, data, withUser = true) => send(path, {
 
 const cases = {
   de: {
-    studio: ["Mein Studio", "Hallo, Anna", "Hier kannst du deine Bücher selbstständig erstellen", "Neues Buch erstellen", "Arbeitstitel", "Kostenloses Projekt erstellen"],
+    studio: ["Mein Studio", "Hallo, Anna", "Hier kannst du deine Bücher selbstständig erstellen", "Deine Geschichte beginnt hier", "Arbeitstitel", "Genre und Struktur anpassen", "Mein Buch beginnen"],
     account: ["Mein Konto", "Profil und Datenschutz", "Wie möchtest du genannt werden?", "E-Mail-Adresse ändern", "Meine Daten exportieren", "Mein Konto endgültig löschen"],
     profileSuccess: "Name wurde erfolgreich aktualisiert.",
     logoutMessage: "Du hast dein Studio verlassen. Du kannst dich mit denselben Zugangsdaten erneut anmelden.",
@@ -66,7 +66,7 @@ const cases = {
     genre: "Autobiografie"
   },
   en: {
-    studio: ["My Studio", "Hello, Anna", "Here you can create, edit and complete your books independently", "Create a new book", "Working title", "Create free project"],
+    studio: ["My Studio", "Hello, Anna", "Here you can create, edit and complete your books independently", "Your story starts here", "Working title", "Customise genre and structure", "Start my book"],
     account: ["My account", "Profile and privacy", "How would you like to be addressed?", "Change email address", "Export my data", "Permanently delete my account"],
     profileSuccess: "Name updated successfully.",
     logoutMessage: "You have signed out of your Studio. You can sign in again with the same credentials.",
