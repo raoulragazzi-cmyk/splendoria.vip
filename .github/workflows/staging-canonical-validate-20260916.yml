@@ -1,0 +1,52 @@
+name: Validate canonical staging infrastructure
+
+on:
+  push:
+    branches:
+      - infra/staging-canonical-20260916
+    paths:
+      - ".github/workflows/staging-canonical-validate-20260916.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: infra/staging-canonical-20260916
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Validate staging contract
+        run: npm run check:staging
+      - name: Validate workflow safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          workflow=.github/workflows/staging-deploy.yml
+          grep -Fq 'CLOUDFLARE_STAGING_API_TOKEN' "$workflow"
+          grep -Fq 'candidate_ref' "$workflow"
+          grep -Fq 'npx wrangler deploy --env staging' "$workflow"
+          if grep -Fq 'd1 migrations apply' "$workflow"; then
+            echo 'staging workflow must not apply D1 migrations'
+            exit 1
+          fi
+          if grep -Fq 'secrets.CLOUDFLARE_API_TOKEN' "$workflow"; then
+            echo 'staging workflow must not use generic Cloudflare token'
+            exit 1
+          fi
+          git diff --check origin/splendoria.vip...HEAD
+      - name: Remove one-shot validator
+        run: |
+          git config user.name "splendoria-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/staging-canonical-validate-20260916.yml
+          git commit -m "chore: remove completed canonical staging validator"
+          git push origin HEAD:infra/staging-canonical-20260916
