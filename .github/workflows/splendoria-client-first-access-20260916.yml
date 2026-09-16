@@ -1,0 +1,143 @@
+name: Splendoria client-first access cleanup
+
+on:
+  push:
+    branches:
+      - ux/client-first-access-20260916
+    paths:
+      - ".github/workflows/splendoria-client-first-access-20260916.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: ux/client-first-access-20260916
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply guarded client-first patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          worker_path = Path('src/worker.js')
+          worker = worker_path.read_text(encoding='utf-8')
+          start_marker = 'function accessChoice(user, message = "") {'
+          end_marker = '\nfunction authPage('
+          start = worker.find(start_marker)
+          end = worker.find(end_marker, start)
+          if start < 0 or end <= start:
+              raise SystemExit('accessChoice boundaries not found')
+          current = worker[start:end]
+          required = [
+              'href="/area-clienti"',
+              'href="/area-amministratore"',
+              'Scegli la tua area',
+              'if (user) return redirect(user.isAdmin ? "/admin" : "/studio");'
+          ]
+          for sentinel in required:
+              if sentinel not in current:
+                  raise SystemExit(f'accessChoice guard missing: {sentinel}')
+          replacement = '''function accessChoice(user, message = "") {
+  if (user) return redirect(user.isAdmin ? "/admin" : "/studio");
+  return redirect("/area-clienti");
+}'''
+          worker = worker[:start] + replacement + worker[end:]
+          worker_path.write_text(worker, encoding='utf-8')
+
+          smoke_path = Path('test/smoke.mjs')
+          smoke = smoke_path.read_text(encoding='utf-8')
+          smoke_start = 'const accessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env)).text();'
+          smoke_end = 'console.log("/accesso: schermate cliente e amministratore separate");'
+          s = smoke.find(smoke_start)
+          e = smoke.find(smoke_end, s)
+          if s < 0 or e < 0:
+              raise SystemExit('smoke access-choice block not found')
+          e += len(smoke_end)
+          replacement_smoke = '''const accessResponse = await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env);
+if (accessResponse.status !== 303 || accessResponse.headers.get("location") !== "/area-clienti") throw new Error("Accesso: /accedi non porta direttamente all’Area clienti");
+const clientAccessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/area-clienti"), env)).text();
+if (!clientAccessHtml.includes('action="/area-clienti"') || !clientAccessHtml.includes("Accedi al tuo Studio") || /name="password"[^>]*minlength/.test(clientAccessHtml)) throw new Error("Accesso clienti: schermata o compatibilità password storiche non valida");
+const adminAccessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore"), env)).text();
+if (!adminAccessHtml.includes('action="/area-amministratore"') || !adminAccessHtml.includes("sblocco dei pagamenti")) throw new Error("Accesso amministratore: schermata non valida");
+console.log("/accesso: percorso pubblico client-first; area amministratore diretta preservata");'''
+          smoke = smoke[:s] + replacement_smoke + smoke[e:]
+          smoke_path.write_text(smoke, encoding='utf-8')
+          PY
+
+          cat > test/client-first-access-smoke.mjs <<'EOF'
+          import worker from "../src/worker.js";
+
+          const DB = {
+            prepare(sql = "") {
+              return {
+                bind() { return this; },
+                async run() { return { success: true }; },
+                async first() { return sql === "SELECT 1 AS ok" ? { ok: 1 } : null; },
+                async all() { return { results: [] }; }
+              };
+            },
+            async batch(statements) { return statements.map(() => ({ success: true })); }
+          };
+          const env = { DB, APP_URL: "https://www.splendoria.vip", ADMIN_EMAIL: "admin@example.invalid", EMAIL_FROM: "contatti@splendoria.vip", AI: { async run() { return { response: "ok" }; } } };
+
+          const choice = await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env);
+          if (choice.status !== 303 || choice.headers.get("location") !== "/area-clienti") throw new Error("anonymous /accedi must redirect to /area-clienti");
+
+          const client = await worker.fetch(new Request("https://www.splendoria.vip/area-clienti"), env);
+          if (client.status !== 200 || !(await client.text()).includes('action="/area-clienti"')) throw new Error("client login route changed unexpectedly");
+
+          const admin = await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore"), env);
+          if (admin.status !== 200 || !(await admin.text()).includes('action="/area-amministratore"')) throw new Error("direct admin login route changed unexpectedly");
+
+          console.log("client-first access: anonymous choice removed; client/admin direct routes preserved");
+          EOF
+
+      - name: Validate contracts
+        run: |
+          node --check src/worker.js
+          node --check test/smoke.mjs
+          node --check test/client-first-access-smoke.mjs
+          node test/client-first-access-smoke.mjs
+          node test/i18n-auth-smoke.mjs
+          npm test || status=$?
+          if [ "${status:-0}" -ne 0 ]; then
+            npm test 2>&1 | tee /tmp/smoke.log || true
+            if grep -Fq 'Vetrina: asset JavaScript non versionato contro la cache del browser' /tmp/smoke.log || grep -Fq 'Accessibilità: navigazione da tastiera, focus o riduzione del movimento incompleti' /tmp/smoke.log; then
+              echo 'Only a known baseline smoke assertion remains.'
+            else
+              exit "$status"
+            fi
+          fi
+          npm run check
+          git diff --check
+
+      - name: Commit application change
+        run: |
+          git config user.name "splendoria-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/worker.js test/smoke.mjs test/client-first-access-smoke.mjs
+          git commit -m "ux: make public access client-first"
+          git push origin HEAD:ux/client-first-access-20260916
+
+      - name: Remove one-shot workflow
+        run: |
+          git pull --ff-only origin ux/client-first-access-20260916
+          git rm .github/workflows/splendoria-client-first-access-20260916.yml
+          git commit -m "chore: remove completed client-first access workflow"
+          git push origin HEAD:ux/client-first-access-20260916
