@@ -34,22 +34,23 @@ jobs:
           new_css = old_css + '.book-create-options{margin:14px 0 18px;border:1px solid var(--line);border-radius:14px;background:#fff}.book-create-options summary{cursor:pointer;padding:13px 15px;font-weight:750;color:var(--ink)}.book-create-options[open] summary{border-bottom:1px solid var(--line)}.book-create-options .field{margin:0;padding:2px 15px 15px}'
           if s.count(old_css) != 1:
               raise SystemExit(f'CSS guard failed: {s.count(old_css)} matches')
-          s = s.replace(old_css, new_css, 1)
-          old = '<label class=\\"field\\">Struttura del libro<select name=\\"targetPages\\"><option value=\\"84\\" selected>12 capitoli \\xB7 circa 7 pagine ciascuno</option><option value=\\"117\\">18 capitoli \\xB7 circa 6\\u20137 pagine ciascuno</option></select></label>'
+          old = r'<label class="field">Struttura del libro<select name="targetPages"><option value="84" selected>12 capitoli \xB7 circa 7 pagine ciascuno</option><option value="117">18 capitoli \xB7 circa 6\u20137 pagine ciascuno</option></select></label>'
           if s.count(old) != 1:
               raise SystemExit(f'first-book structure guard failed: {s.count(old)} matches')
-          new = '<details class=\\"book-create-options\\"><summary>Struttura del libro</summary><label class=\\"field\\"><span class=\\"sr-only\\">Struttura del libro</span><select name=\\"targetPages\\"><option value=\\"84\\" selected>12 capitoli \\xB7 circa 7 pagine ciascuno</option><option value=\\"117\\">18 capitoli \\xB7 circa 6\\u20137 pagine ciascuno</option></select></label></details>'
-          s = s.replace(old, new, 1)
+          new = r'<details class="book-create-options"><summary>Personalizza la struttura</summary><label class="field"><span class="sr-only">Struttura del libro</span><select name="targetPages"><option value="84" selected>12 capitoli \xB7 circa 7 pagine ciascuno</option><option value="117">18 capitoli \xB7 circa 6\u20137 pagine ciascuno</option></select></label></details>'
+          s = s.replace(old_css, new_css, 1).replace(old, new, 1)
           p.write_text(s, encoding='utf-8')
           PY
           cat > test/progressive-book-setup-smoke.mjs <<'EOF'
           import { readFileSync } from 'node:fs';
           const source = readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
-          const marker = '<details class=\\"book-create-options\\"><summary>Struttura del libro</summary>';
-          if ((source.match(new RegExp(marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&'), 'g')) || []).length !== 1) throw new Error('first-book setup: progressive structure disclosure missing or duplicated');
+          const progressive = '<details class=\\"book-create-options\\"><summary>Personalizza la struttura</summary>';
+          if (!source.includes(progressive)) throw new Error('first-book setup: progressive structure disclosure missing');
           if (!source.includes('<select name=\\"targetPages\\"><option value=\\"84\\" selected>12 capitoli')) throw new Error('first-book setup: 12-chapter default changed');
-          if (!source.includes('<label class=\\"field\\">Struttura del libro<select name=\\"targetPages\\"><option value=\\"84\\"${structure.chapters === 12 ? \\" selected\\" : \\"\\"}>')) throw new Error('book editor: structure selector contract changed');
-          console.log('progressive first-book setup: default preserved, advanced choice deferred visually');
+          const editorContract = '<label class=\\"field\\">Struttura del libro<select name=\\"targetPages\\"><option value=\\"84\\"${structure.chapters === 12 ? \\" selected\\" : \\"\\"}>';
+          if (!source.includes(editorContract)) throw new Error('book editor: later structure selector contract changed');
+          if (!source.includes('<label class=\\"field\\">Genere<select name=\\"genre\\">')) throw new Error('first-book setup: genre choice unexpectedly hidden');
+          console.log('progressive first-book setup: genre visible; structure default preserved and deferred visually');
           EOF
       - name: Validate
         shell: bash
