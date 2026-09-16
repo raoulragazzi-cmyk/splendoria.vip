@@ -56,7 +56,7 @@ for (const [path, title] of publicSeoPages) {
   if (!response.headers.get("strict-transport-security")?.includes("max-age=31536000") || !response.headers.get("permissions-policy")?.includes("microphone=(self)") || response.headers.get("x-frame-options") !== "DENY") throw new Error(`${path}: header di sicurezza incompleti`);
 }
 
-for (const path of ["/accedi", "/registrati", "/area-clienti", "/area-amministratore", "/verifica-amministratore?challenge=test", "/verifica-email?token=test", "/password-dimenticata", "/reimposta-password?token=test"]) {
+for (const path of ["/registrati", "/area-clienti", "/area-amministratore", "/verifica-amministratore?challenge=test", "/verifica-email?token=test", "/password-dimenticata", "/reimposta-password?token=test"]) {
   const response = await worker.fetch(new Request(`https://www.splendoria.vip${path}`), env);
   const html = await response.text();
   if (!html.includes('name="robots" content="noindex, nofollow, noarchive"') || html.includes('rel="canonical"')) throw new Error(`${path}: noindex HTML specifico non applicato`);
@@ -84,13 +84,14 @@ const publicWithoutSchemaChecks = await worker.fetch(new Request("https://www.sp
 if (publicWithoutSchemaChecks.status !== 200 || publicDatabaseQueries !== 0) throw new Error("Prestazioni: la home esegue ancora verifiche D1 non necessarie");
 console.log("/seo: sitemap, robots, favicon, canonical, social metadata, noindex e hardening HTTP validi");
 
-const accessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env)).text();
-if (!accessHtml.includes('href="/area-clienti"') || !accessHtml.includes('href="/area-amministratore"') || !accessHtml.includes("Scegli la tua area")) throw new Error("Accesso: scelta tra area clienti e amministratore incompleta");
+const accessResponse = await worker.fetch(new Request("https://www.splendoria.vip/accedi"), env);
+if (accessResponse.status !== 303 || accessResponse.headers.get("location") !== "/area-clienti") throw new Error("Accesso: /accedi non porta direttamente all’Area clienti");
+if (accessResponse.headers.get("x-robots-tag") !== "noindex, nofollow, noarchive" || !accessResponse.headers.get("cache-control")?.includes("no-store")) throw new Error("Accesso: redirect /accedi privo di noindex/no-store HTTP");
 const clientAccessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/area-clienti"), env)).text();
 if (!clientAccessHtml.includes('action="/area-clienti"') || !clientAccessHtml.includes("Accedi al tuo Studio") || /name="password"[^>]*minlength/.test(clientAccessHtml)) throw new Error("Accesso clienti: schermata o compatibilità password storiche non valida");
 const adminAccessHtml = await (await worker.fetch(new Request("https://www.splendoria.vip/area-amministratore"), env)).text();
 if (!adminAccessHtml.includes('action="/area-amministratore"') || !adminAccessHtml.includes("sblocco dei pagamenti")) throw new Error("Accesso amministratore: schermata non valida");
-console.log("/accesso: schermate cliente e amministratore separate");
+console.log("/accesso: percorso pubblico client-first; area amministratore diretta preservata");
 
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette non applicate");

@@ -3810,7 +3810,7 @@ async function correctDictation(request, user, env) {
 }
 function accessChoice(user, message = "") {
   if (user) return redirect(user.isAdmin ? "/admin" : "/studio");
-  return page("Accesso", `<section class="access-shell"><div class="access-heading"><p class="eyebrow center">Accesso riservato</p><h1>Scegli la tua area</h1><p>Clienti e amministrazione hanno percorsi separati, cos\xEC ogni persona entra direttamente negli strumenti che le competono.</p>${message ? `<p class="success">${esc(message)}</p>` : ""}</div><div class="access-grid"><article class="access-card client-access"><span class="access-icon" aria-hidden="true">\u2726</span><p class="eyebrow">Area clienti</p><h2>La tua storia, il tuo Studio</h2><p>Accedi ai tuoi libri, alle interviste con la Musa, ai capitoli, alle revisioni e alle anteprime.</p><a class="button" href="/area-clienti">Entra nell\u2019Area clienti</a></article><article class="access-card admin-access"><span class="access-icon" aria-hidden="true">\u25C6</span><p class="eyebrow">Area amministratore</p><h2>Gestione e pagamenti</h2><p>Accesso riservato alla gestione di clienti, progetti, stati editoriali, ordini e sblocco dei pagamenti.</p><a class="button secondary" href="/area-amministratore">Entra nell\u2019Area amministratore</a></article></div></section>`, null);
+  return redirect("/area-clienti");
 }
 function authPage(mode, user, message = "", emailValue = "", nomeValue = "") {
   if (user) return redirect(user.isAdmin ? "/admin" : "/studio");
