@@ -92,11 +92,11 @@ const escapeHtml = value => String(value)
 
 const cases = {
   de: {
-    markers: ["Deine Schreibreise", "Vorschau durchblättern", "Die Seele des Buches", "Buchstruktur", "Deine Muse", "Fortschritt des Buches"],
+    markers: ["Deine Schreibreise", "Vorschau durchblättern", "Die Seele des Buches", "Bucheinstellungen", "Buchstruktur", "Deine Muse", "Fortschritt des Buches"],
     preview: ["Drucken öffnen / PDF speichern", "Persönliche Ausgabe", "Inhaltsverzeichnis"]
   },
   en: {
-    markers: ["Your writing journey", "Browse preview", "The soul of the book", "Book structure", "Your Muse", "Book progress"],
+    markers: ["Your writing journey", "Browse preview", "The soul of the book", "Book settings", "Book structure", "Your Muse", "Book progress"],
     preview: ["Open print / Save PDF", "Personal edition", "Table of contents"]
   }
 };
