@@ -40,7 +40,7 @@ jobs:
           node test/single-muse-cta-smoke.mjs
           node test/studio-cache-policy-smoke.mjs
           for test_file in test/i18n-*.mjs; do node "$test_file"; done
-          git diff --check integration/onboarding-zero-friction-20260916...HEAD
+          git diff --check origin/integration/onboarding-zero-friction-20260916...HEAD
       - name: Remove one-shot validator
         run: |
           git config user.name "splendoria-release-bot"
