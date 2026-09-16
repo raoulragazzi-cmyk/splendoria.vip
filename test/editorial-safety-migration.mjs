@@ -25,7 +25,7 @@ for (const fragment of requiredFragments) {
 // During the first rollout the runtime fallback must remain in place. It makes the
 // migration additive and safe for environments where D1 migrations have not yet run.
 for (const table of ['BookChapterSection', 'BookProjectBackup']) {
-  if (!worker.includes(`CREATE TABLE IF NOT EXISTS \\"${table}\\"`)) {
+  if (!worker.includes(`CREATE TABLE IF NOT EXISTS "${table}"`)) {
     throw new Error(`Fallback runtime rimosso troppo presto per ${table}`);
   }
 }
