@@ -1,0 +1,63 @@
+name: Validate permanent staging pipeline
+
+on:
+  push:
+    branches:
+      - infra/staging-deploy-pipeline-20260916
+    paths:
+      - ".github/workflows/staging-deploy.yml"
+      - "docs/STAGING_RUNBOOK.md"
+      - ".github/workflows/staging-pipeline-validate-20260916.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: infra/staging-deploy-pipeline-20260916
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Validate staging contract and candidate regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run check:staging
+          node test/progressive-book-setup-smoke.mjs
+          node test/client-first-access-smoke.mjs
+          node test/single-muse-cta-smoke.mjs
+          node test/studio-cache-policy-smoke.mjs
+          for test_file in test/i18n-*.mjs; do node "$test_file"; done
+      - name: Validate permanent workflow safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=.github/workflows/staging-deploy.yml
+          grep -Fq 'CLOUDFLARE_STAGING_API_TOKEN' "$file"
+          grep -Fq 'splendoria-v2-staging' "$file"
+          grep -Fq 'splendoria-v2-test' "$file"
+          grep -Fq 'workflow_dispatch' "$file"
+          if grep -Fq 'd1 migrations apply' "$file"; then
+            echo 'Staging deploy workflow must not apply D1 migrations automatically.'
+            exit 1
+          fi
+          if grep -Fq 'secrets.CLOUDFLARE_API_TOKEN' "$file"; then
+            echo 'Staging deploy workflow must use the dedicated staging token secret.'
+            exit 1
+          fi
+          git diff --check origin/integration/onboarding-zero-friction-20260916...HEAD
+      - name: Remove one-shot validator
+        run: |
+          git config user.name "splendoria-release-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/staging-pipeline-validate-20260916.yml
+          git commit -m "chore: remove completed staging pipeline validator"
+          git push origin HEAD:infra/staging-deploy-pipeline-20260916
