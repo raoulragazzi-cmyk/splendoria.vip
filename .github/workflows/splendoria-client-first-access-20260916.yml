@@ -1,5 +1,6 @@
 name: Splendoria client-first access cleanup
 
+# one-shot guarded UX cleanup; rerun after redirect smoke contract alignment
 on:
   push:
     branches:
