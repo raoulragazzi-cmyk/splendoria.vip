@@ -546,8 +546,13 @@ async function patchedFetch(request, env, ctx) {
     const source = await response.text();
     const headers = new Headers(response.headers);
     headers.delete('content-length');
-    headers.set('cache-control', 'public, max-age=31536000, immutable');
-    headers.set('cdn-cache-control', 'public, max-age=31536000, immutable');
+    // studio.js is transformed by this Worker. The transformed representation can
+    // change while the underlying static asset stays byte-identical, so static
+    // validators and a year-long immutable policy are unsafe here.
+    headers.set('cache-control', 'no-store, max-age=0');
+    headers.delete('cdn-cache-control');
+    headers.delete('etag');
+    headers.delete('last-modified');
     return new Response(patchStudioScript(source), { status: response.status, statusText: response.statusText, headers });
   }
 

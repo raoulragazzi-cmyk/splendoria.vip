@@ -58,6 +58,15 @@
           "migrations_dir": "./migrations"
         }
       ],
+      "send_email": [
+        {
+          "name": "CONTACT_EMAIL"
+        },
+        {
+          "name": "ADMIN_EMAIL_NOTIFICATION",
+          "destination_address": "raoulragazzi@gmail.com"
+        }
+      ],
       "triggers": {
         "crons": []
       },
