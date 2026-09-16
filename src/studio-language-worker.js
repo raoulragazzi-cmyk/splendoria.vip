@@ -235,8 +235,11 @@ function newBookLanguagePanel(ui) {
 
 function injectNewBookControls(html, ui) {
   if (html.includes("data-book-language-panel")) return html;
+  const panel = newBookLanguagePanel(ui);
+  const firstBookSlot = '<div data-first-book-language-slot></div>';
+  if (html.includes(firstBookSlot)) return html.replace(firstBookSlot, panel);
   const formPattern = /(<form method="post" action="\/(?:de\/|en\/)?nuovo-libro">[\s\S]*?<div class="grid three">[\s\S]*?<\/div>)(<p class="small muted">)/;
-  return html.replace(formPattern, `$1${newBookLanguagePanel(ui)}$2`);
+  return html.replace(formPattern, `$1${panel}$2`);
 }
 
 function setDictationSelection(html, language) {
