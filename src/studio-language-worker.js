@@ -255,7 +255,10 @@ function setDictationSelection(html, language) {
 function injectEditorControls(html, ui, pref) {
   if (html.includes("data-book-language-panel")) return setDictationSelection(html, pref.dictationLanguage);
   let out = html.replace(/<form class="wow-panel"(?![^>]*\bid=)/, '<form class="wow-panel" id="spl-book-settings"');
-  out = out.replace(/(<form class="wow-panel"[^>]*>[\s\S]*?<h2[^>]*>[\s\S]*?<\/h2>)/, `$1${languagePanel(ui, pref)}`);
+  const panel = languagePanel(ui, pref);
+  const settingsSlot = '<div data-editor-language-slot></div>';
+  if (out.includes(settingsSlot)) out = out.replace(settingsSlot, panel);
+  else out = out.replace(/(<form class="wow-panel"[^>]*>[\s\S]*?<h2[^>]*>[\s\S]*?<\/h2>)/, `$1${panel}`);
   return setDictationSelection(out, pref.dictationLanguage);
 }
 
