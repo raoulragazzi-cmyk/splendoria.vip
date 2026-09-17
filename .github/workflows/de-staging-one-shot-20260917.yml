@@ -1,5 +1,6 @@
 name: Splendoria DE staging one-shot
 
+# Rerun after localized auth metadata fix.
 on:
   push:
     branches: ["ux/de-dictation-safety-audit-20260917"]
