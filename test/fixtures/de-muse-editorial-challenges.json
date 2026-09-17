@@ -1,0 +1,42 @@
+[
+  {
+    "id": "grammar-repair",
+    "label": "Grammatica difettosa",
+    "source": "Der Betrieb wurde 1987 von Martin Hofer gegründet. Anfangs gab es drei Mitarbeiter. 1994 zog die Firma in eine größere Halle um.",
+    "draft": "Der Betrieb wurden 1987 von Martin Hofer gegründet. Am Anfang arbeiten drei Mitarbeiter. 1994 die Firma zog in eine größere Halle.",
+    "mustKeep": ["1987", "Martin Hofer", "drei Mitarbeiter", "1994", "größere Halle"],
+    "mustRemove": ["Betrieb wurden", "arbeiten drei Mitarbeiter", "1994 die Firma zog"],
+    "mustNotAdd": ["Erfolg", "Wachstum", "Kunden", "Umsatz"],
+    "exactPhrases": []
+  },
+  {
+    "id": "bureaucratic-style",
+    "label": "Burocratese",
+    "source": "1994 zog die Firma in eine größere Halle um. Dadurch stand mehr Platz für die bestehende Arbeit zur Verfügung.",
+    "draft": "Im Rahmen der im Jahre 1994 erfolgten Durchführung des Umzugs in eine größere Halle konnte in Bezug auf die bestehende Arbeit eine Erweiterung der räumlichen Möglichkeiten realisiert werden.",
+    "mustKeep": ["1994", "größere Halle"],
+    "mustRemove": ["Im Rahmen der", "Durchführung des Umzugs", "in Bezug auf", "räumlichen Möglichkeiten realisiert"],
+    "mustNotAdd": ["Expansion", "Markt", "Produktion", "Mitarbeiter"],
+    "exactPhrases": []
+  },
+  {
+    "id": "unsupported-ai-rhetoric",
+    "label": "Retorica AI non supportata",
+    "source": "2008 übernahm Eva die Geschäftsführung. Heute beschäftigt das Unternehmen 46 Personen.",
+    "draft": "2008 übernahm Eva die Geschäftsführung. Dieser Schritt war nicht nur ein mutiger Wendepunkt, sondern auch ein Meilenstein, der das Unternehmen bis heute prägt. Heute beschäftigt das Unternehmen 46 Personen.",
+    "mustKeep": ["2008", "Eva", "46 Personen"],
+    "mustRemove": ["nicht nur", "mutiger Wendepunkt", "Meilenstein", "bis heute prägt"],
+    "mustNotAdd": ["Vision", "Innovation", "Erfolg", "Wachstum"],
+    "exactPhrases": []
+  },
+  {
+    "id": "quote-byte-integrity",
+    "label": "Citazione byte-identica",
+    "source": "Meine Großmutter sagte wörtlich: ‚Tu nicht so wichtig, Bub.‘ Sie sprach wenig und sehr direkt.",
+    "draft": "Meine Großmutter, die generell nicht besonders viel sprach, sagte zu mir immer wieder: ‚Tu nicht so wichtig, Bub.‘ Sie war dabei in ihrer Art sehr direkt.",
+    "mustKeep": ["Großmutter", "sprach", "direkt"],
+    "mustRemove": ["generell nicht besonders viel", "dabei in ihrer Art"],
+    "mustNotAdd": ["streng", "liebevoll", "Kindheit", "Erziehung"],
+    "exactPhrases": ["‚Tu nicht so wichtig, Bub.‘"]
+  }
+]
