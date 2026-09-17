@@ -31,11 +31,16 @@ Il lettore tedesco deve poter capire, raccontare, dettare, correggere e ritrovar
 - Valori macchina dell'assistenza rimasti canonici in italiano. Cataloghi condivisi non mutati dall'ordinamento; ramo inglese mantiene l'ordine precedente.
 - Harness di test estratto in `test/helpers/dictation-harness.mjs` e condiviso con le prove del vero entrypoint, senza duplicare il controller applicativo.
 
-### CI
+### CI — stato effettivo dopo la pubblicazione
 
-DE-10: il workflow esistente `i18n-visible-residuals.yml` ora richiede il vero `pull_request.head.sha`, lo verifica esplicitamente e include dettatura/entrypoint finale e build staging **dry-run**. Eliminato il doppio trigger sulla vecchia branch storica; aggiunta concorrenza con annullamento dei run superati. Nessun workflow ricorrente nuovo, secret Cloudflare o deploy nella verifica.
+Commit applicativo pubblicato: `2a111f60dbc4864e1d5cce56b25a58b1c5e3f292`.
+Run remoto `35204241555`, job `105146024808`: **success**, con 69 test mirati PASS, gli altri script censiti PASS, FAIL smoke identico prima/dopo, guard dei file esclusi PASS, `npm run check:staging` PASS. Il dry-run ha verificato il binding `splendoria-v2-test` e si è concluso senza pubblicazione.
 
-Per il trasferimento atomico della continuazione viene riutilizzato e poi rimosso il workflow temporaneo dello snapshot. Un solo commit applicativo evita una serie di candidati intermedi e run duplicati. Push non forzato e controllo dello SHA impediscono di sovrascrivere lavori concorrenti. L'esito remoto effettivo va letto nel commento conclusivo della PR, non dedotto da questo documento.
+**DE-10 resta APERTO.** La modifica del workflow permanente per verificare il vero `pull_request.head.sha` è preparata localmente ma NON pubblicata. Il tentativo conclusivo di aggiornamento dei workflow è stato bloccato dal controllo di sicurezza dello strumento. Il vecchio `i18n-visible-residuals.yml` continua quindi a eseguire checkout della branch storica: il suo verde NON valida il candidato corrente.
+
+Il workflow temporaneo `.github/workflows/de-continuation-snapshot-20260917.yml` è stato riutilizzato per applicare e verificare i 12 file in un unico commit, con push non forzato e controllo degli SHA. **Il file temporaneo non è stato rimosso** a causa dello stesso blocco. È limitato a un push che modifica quel preciso file sulla branch candidata; non ha cron né deploy, ma conserva `contents: write` e deve essere eliminato prima del merge. Non dichiarare conclusa questa pulizia.
+
+Da completare dopo sblocco: rimuovere il workflow temporaneo, pubblicare il checkout esatto e le regressioni nel workflow permanente, eliminare il trigger storico duplicato e confermare il run sul nuovo SHA. Nessun tentativo alternativo di aggirare il blocco è stato eseguito.
 
 ## Verifiche eseguite localmente
 
@@ -44,7 +49,7 @@ Per il trasferimento atomico della continuazione viene riutilizzato e poi rimoss
 3. Confronto byte-per-byte: **20 pagine IT/EN** (10 percorsi per lingua) e i due asset finali Studio IT/EN identici alla baseline. Dieci pagine pubbliche DE controllate sui residui mirati. Non prova di traduzione completa di ogni stato privato.
 4. Chromium locale a **320, 390, 768, 1280 px**: HTML/CSS reale dell'editor reso con DB sintetico, controller estratto dall'asset finale, microfono simulato. Nessun overflow orizzontale nella fixture, controlli circa **52,3 px** e font **18 px**, modifica manuale conservata, nessun errore JS osservato.
 
-Limite del punto 4: la navigazione del browser locale è bloccata dall'ambiente. Verifica eseguita con `set_content`, non una sessione autenticata, non l'intero bootstrap dinamico, non audio/dispositivi reali. Font esterni non caricati. Zoom reale al 200%, preferenze di lettura, Safari/iOS e Android ancora da accettare. Il dry-run Wrangler è affidato alla verifica remota; non dichiararlo eseguito localmente.
+Limite del punto 4: la navigazione del browser locale è bloccata dall'ambiente. Verifica eseguita con `set_content`, non una sessione autenticata, non l'intero bootstrap dinamico, non audio/dispositivi reali. Font esterni non caricati. Zoom reale al 200%, preferenze di lettura, Safari/iOS e Android ancora da accettare. Il dry-run Wrangler è stato eseguito con successo nel run remoto sopra indicato, non localmente.
 
 Comandi ripetibili:
 
@@ -67,7 +72,7 @@ npm run check:staging
 | DE-07 | Isolamento e gate documentati | Staging funzionante, account sintetico autorizzato, matrice rete/permessi |
 | DE-08 | Esteso il controllo di footer/aria/errori mirati | Inventario di stati privati, tooltip, email, PDF, pagamenti e trial |
 | DE-09 | #62 tenuta separata; nessuna doppia integrazione | Allineare deliberate dipendenze/cache e conflitti di integrazione |
-| DE-10 | Checkout esatto e regressioni nel workflow esistente | Confermare il run sullo SHA pubblicato; mantenere aperto il FAIL smoke |
+| DE-10 | Run temporaneo con prove effettive e dry-run PASS; correzione CI preparata localmente | Blocco strumento: pubblicare CI sullo SHA esatto e rimuovere workflow temporaneo; riallineare FAIL smoke |
 | DE-11 | Nuovi attriti documentati durante la fixture | Banner privacy dell'editor ancora misto IT/DE; menu mobile molto alto |
 
 ### Nuovi finding, non silenziosamente ampliati in questa tranche
