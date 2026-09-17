@@ -5,7 +5,6 @@ import { projectIdFromPath, readPreference } from "./studio-language-worker.js";
 
 const ROOM_MARKER = "INTERNE REDAKTION SPLENDORIA — DEUTSCH";
 const GERMAN_CONTEXT = /PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH|VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE|LINGUA DELL'OPERA:\s*TEDESCO/i;
-const GERMAN_WRITER_MODEL = "@cf/qwen/qwen3.8-27b";
 const GERMAN_EDITOR_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 const ROLE_CONTRACTS = {
@@ -84,7 +83,13 @@ export function germanEditorialModel(model, options, requestedRole = "ghostwrite
   if (requestedRole === "lektor" || requestedRole === "stilredaktion" || requestedRole === "faktenkontrolle") return GERMAN_EDITOR_MODEL;
   const isExistingFinalEditorialPass = /revisore letterario finale di Splendoria|testo revisionato|Prima di riscrivere, confronta internamente ogni affermazione concreta/i.test(text);
   if (isExistingFinalEditorialPass) return GERMAN_EDITOR_MODEL;
-  return GERMAN_WRITER_MODEL || model;
+
+  // Writer calls deliberately keep the model chosen by the canonical core.
+  // The core already selects Qwen for the chapter-generation path and may
+  // select another proven model for structure/interview/other Muse flows.
+  // The German wrapper must enrich editorial behaviour, not create a second
+  // competing model-selection policy.
+  return model;
 }
 
 export function canonicalEditorialPath(pathname) {
