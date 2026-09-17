@@ -8,12 +8,15 @@ export default {
     const body = await request.json();
     const allowed = new Set(['@cf/qwen/qwen3.8-27b','@cf/meta/llama-3.3-70b-instruct-fp8-fast']);
     if (!allowed.has(body?.model)) return new Response('Model not allowed', {status:400});
-    const result = await env.AI.run(body.model, {
+    const options = {
       messages: Array.isArray(body.messages) ? body.messages : [],
       temperature: Number.isFinite(body.temperature) ? body.temperature : 0.2,
-      max_tokens: Number.isFinite(body.max_tokens) ? body.max_tokens : 900,
-      ...(body.model.includes('qwen3.8') ? {enable_thinking:false} : {})
-    });
+      max_tokens: Number.isFinite(body.max_tokens) ? body.max_tokens : 900
+    };
+    if (body.model.includes('qwen3.8')) {
+      options.chat_template_kwargs = { enable_thinking: false };
+    }
+    const result = await env.AI.run(body.model, options);
     return Response.json({ok:true,result});
   }
 };
