@@ -60,6 +60,19 @@ for (const route of publicRoutes) test('German footer is complete on ' + route, 
   assert.doesNotMatch(footer, /Leitfaden allo Studio|La tua vita in un romanzo|aria-label="Informazioni e assistenza"/);
   assert.match(footer, /aria-label="Informationen und Unterstützung"/);
 });
+test('customer auth metadata is localized in German and English', async () => {
+  const expected = {
+    de: 'Splendoria verwandelt deine Geschichte in ein Buch – mit digitalen Musen, Kontrolle durch den Autor und menschlicher Aufsicht.',
+    en: 'Splendoria turns your story into a book, with digital Muses, author control and human oversight.'
+  };
+  for (const locale of ['de', 'en']) {
+    for (const route of ['/registrati', '/area-clienti', '/password-dimenticata']) {
+      const html = await (await get('/' + locale + route)).text();
+      assert.ok(html.includes(`content="${expected[locale]}"`), `${locale}${route} metadata not localized`);
+      assert.doesNotMatch(html, /Splendoria trasforma la tua storia in un libro/);
+    }
+  }
+});
 test('home assistance labels are German but form values stay canonical', async () => {
   const html = await (await get('/de/')).text();
   const governance = html.match(/<select[^>]*name="governance"[^>]*>([\s\S]*?)<\/select>/)[1];
