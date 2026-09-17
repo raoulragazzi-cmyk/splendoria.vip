@@ -3,11 +3,14 @@ import {
   applyGermanEditorialRole,
   canonicalEditorialPath,
   editorialRequestRole,
+  germanEditorialModel,
   isGermanMachineControl
 } from '../src/german-editorial-room-worker.js';
 
 const DE = 'PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH';
 const authored = 'Meine Mutter sagte: „Das war unser Laden.“ 1998 zogen wir nach Bozen.';
+const WRITER = '@cf/qwen/qwen3.8-27b';
+const EDITOR = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 assert.equal(canonicalEditorialPath('/de/libro/book-1/capitolo/ch-1/genera'), '/libro/book-1/capitolo/ch-1/genera');
 assert.equal(canonicalEditorialPath('/en/libro/book-1/rifinisci'), '/libro/book-1/rifinisci');
@@ -45,6 +48,12 @@ assert.match(ghostResult.messages[0].content, /Bei zu wenig Material: enger und 
 assert.equal(ghostResult.messages[1].content, authored, 'Ghostwriter role must not rewrite authored user messages');
 assert.equal(ghostResult.temperature, 0.25);
 assert.strictEqual(applyGermanEditorialRole(ghostResult, 'ghostwriter'), ghostResult, 'editorial room injection must be idempotent');
+assert.equal(germanEditorialModel('legacy', ghostwriter, 'ghostwriter'), WRITER, 'German drafting must use the writer model');
+
+const finalEditorialPass = {
+  messages: [{ role: 'system', content: `${DE}\nSei il revisore letterario finale di Splendoria. Restituisci soltanto il testo revisionato.` }]
+};
+assert.equal(germanEditorialModel('legacy', finalEditorialPass, 'ghostwriter'), EDITOR, 'Existing final editorial pass must use the editor model');
 
 const lektor = applyGermanEditorialRole({
   messages: [
@@ -55,6 +64,7 @@ const lektor = applyGermanEditorialRole({
 assert.match(lektor.messages[0].content, /ROLLE — LEKTOR/);
 assert.match(lektor.messages[0].content, /druckreifer Text, nicht ein stilistisch anderer Text/);
 assert.equal(lektor.messages[1].content, authored);
+assert.equal(germanEditorialModel('legacy', lektor, 'lektor'), EDITOR, 'German grammar review must use the editor model');
 
 for (const [action, marker] of [
   ['improve', 'ALLGEMEINE STILVERBESSERUNG'],
@@ -73,12 +83,14 @@ for (const [action, marker] of [
   assert.match(result.messages[0].content, /ROLLE — STILREDAKTION/);
   assert.match(result.messages[0].content, new RegExp(`AUFTRAG — ${marker}`));
   assert.equal(result.messages[1].content, authored, `${action}: user content must remain byte-identical`);
+  assert.equal(germanEditorialModel('legacy', result, 'stilredaktion'), EDITOR, `${action}: style edit must use editor model`);
 }
 
 const machine = {
   messages: [{ role: 'system', content: 'Sei der controllo qualità. Verifica la fedeltà alle fonti. Rispondi esclusivamente APPROVATO oppure RIFIUTATO.' }]
 };
 assert.equal(isGermanMachineControl(machine), true);
+assert.equal(germanEditorialModel('legacy', machine, 'ghostwriter'), EDITOR, 'Fact control must use editor model');
 const factResult = applyGermanEditorialRole(machine, 'ghostwriter');
 assert.match(factResult.messages[0].content, /ROLLE — FAKTENKONTROLLE/);
 assert.match(factResult.messages[0].content, /Plausibilität ist kein Beleg/);
@@ -89,6 +101,7 @@ const insufficient = {
   messages: [{ role: 'system', content: 'Verifica se le fonti sono sufficienti. Se non bastano restituisci [FONTI_INSUFFICIENTI].' }]
 };
 assert.equal(isGermanMachineControl(insufficient), true);
+assert.equal(germanEditorialModel('legacy', insufficient, 'ghostwriter'), EDITOR);
 assert.match(applyGermanEditorialRole(insufficient, 'ghostwriter').messages[0].content, /ROLLE — FAKTENKONTROLLE/);
 
 const english = { messages: [{ role: 'system', content: 'MANDATORY LANGUAGE CONTRACT FOR THE MUSE — BRITISH ENGLISH\nWrite naturally.' }] };
@@ -100,5 +113,6 @@ const promptOnly = { prompt: `${DE}\nCrea un indice in tedesco.` };
 const promptResult = applyGermanEditorialRole(promptOnly, 'ghostwriter');
 assert.match(promptResult.prompt, /ROLLE — GHOSTWRITER/);
 assert.match(promptResult.prompt, /Crea un indice in tedesco/);
+assert.equal(germanEditorialModel('legacy', promptOnly, 'ghostwriter'), WRITER);
 
 console.log('German internal editorial room smoke: ok');
