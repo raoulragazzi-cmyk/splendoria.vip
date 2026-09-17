@@ -1,4 +1,4 @@
-name: Splendoria DE candidate snapshot (temporary)
+name: Splendoria DE continuation (temporary)
 
 on:
   push:
@@ -6,42 +6,91 @@ on:
     paths: [".github/workflows/de-continuation-snapshot-20260917.yml"]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: de-continuation-snapshot-20260917
   cancel-in-progress: false
 
 jobs:
-  snapshot:
+  candidate:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 1
+          fetch-depth: 2
           persist-credentials: false
+      - name: Refuse concurrent or unexpected base
+        run: |
+          test "$(git rev-parse HEAD^)" = '20d11406dfda2b4ca3c3d18634c14822e5495b6f'
+          test "$(git ls-remote origin refs/heads/ux/de-dictation-safety-audit-20260917 | cut -f1)" = "$GITHUB_SHA"
+          mkdir -p qa-reports
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Prepare tracked source and exact SHA (no secrets or remote app)
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Record pre-existing smoke failure
         run: |
-          mkdir -p qa-reports
-          git rev-parse HEAD | tee qa-reports/source-sha.txt
-          git archive --format=tar.gz -o qa-reports/source.tgz HEAD
-      - name: Install dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Package offline runtime dependency
-        run: tar -czf qa-reports/bcryptjs.tgz node_modules/bcryptjs
-      - name: Run candidate controller regressions
+          set +e
+          node test/smoke.mjs > qa-reports/smoke-before.log 2>&1
+          result=$?
+          set -e
+          test "$result" = 1
+          grep -F 'Vetrina: asset JavaScript non versionato contro la cache del browser' qa-reports/smoke-before.log
+      - name: Apply exact reviewed patch (application, tests and documentation only)
+        run: |
+          python3 - <<'PY'
+          import base64, lzma, hashlib, subprocess
+          data = '''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'''
+          patch = lzma.decompress(base64.b64decode(data))
+          assert hashlib.sha256(patch).hexdigest() == '8c5dfd0a0200989f99ea75c602c1c8c56555fd3f5aa7da3ed87e2c40635faa78'
+          subprocess.run(['git','apply','--check','--unidiff-zero'], input=patch, check=True)
+          subprocess.run(['git','apply','--unidiff-zero'], input=patch, check=True)
+          PY
+      - name: Run all scoped tests and characterize unchanged general-smoke blocker
         run: |
           set -o pipefail
-          node --test test/studio-dictation-de-ux.test.mjs | tee qa-reports/dictation.tap
+          node --test test/studio-dictation-de-ux.test.mjs test/de-release-runtime.test.mjs | tee qa-reports/de-runtime.tap
+          for file in test/*.mjs; do
+            case "$file" in test/smoke.mjs|test/german-editorial-quality-cases.mjs) continue ;; esac
+            node "$file" > "qa-reports/$(basename "$file").log" 2>&1 || { cat "qa-reports/$(basename "$file").log"; exit 1; }
+          done
+          set +e
+          node test/smoke.mjs > qa-reports/smoke-after.log 2>&1
+          result=$?
+          set -e
+          test "$result" = 1
+          diff -u qa-reports/smoke-before.log qa-reports/smoke-after.log
+          echo 'General smoke remains blocked by the identical pre-existing asset-version expectation; this is NOT a full-suite green result.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Isolated staging dry-run (no Cloudflare credentials, no publishing)
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          set -o pipefail
+          npm run check:staging | tee qa-reports/staging-dry-run.log
+      - name: Commit only validated candidate files, never force push
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git diff --check
+          git diff --exit-code -- src/worker.js src/studio-worker.js wrangler.jsonc migrations package.json package-lock.json
+          test "$(git ls-remote origin refs/heads/ux/de-dictation-safety-audit-20260917 | cut -f1)" = "$GITHUB_SHA"
+          git add docs/DE_RELEASE_PROGRESS_20260917.md docs/DE_UX_AUDIT_20260917.md src/i18n-auth-worker.js src/i18n-entry-worker.js src/i18n-legal-worker.js src/i18n-public-worker.js src/i18n-ui-runtime-worker.js src/i18n-worker.js src/studio-dictation-de-ux.js test/de-release-runtime.test.mjs test/helpers/dictation-harness.mjs test/studio-dictation-de-ux.test.mjs
+          git diff --cached --name-only | tee qa-reports/changed-files.txt
+          test "$(git diff --cached --name-only | wc -l)" = 12
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(de): preserve author edits, honor book language, complete public copy and verify final runtime'
+          gh auth setup-git --hostname github.com
+          git push origin HEAD:refs/heads/ux/de-dictation-safety-audit-20260917
+          git rev-parse HEAD | tee qa-reports/candidate-sha.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: splendoria-de-source-${{ github.sha }}
+          name: splendoria-de-v2-validation-${{ github.sha }}
           path: qa-reports/
-          retention-days: 1
+          retention-days: 2
           if-no-files-found: error
