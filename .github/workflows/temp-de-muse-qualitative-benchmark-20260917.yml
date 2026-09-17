@@ -43,13 +43,22 @@ jobs:
           echo "BENCH_TOKEN=$BENCH_TOKEN" >> "$GITHUB_ENV"
       - name: Deploy ephemeral benchmark worker only
         run: npx wrangler deploy --config wrangler.de-muse-benchmark.jsonc --var "BENCH_TOKEN:${BENCH_TOKEN}"
-      - name: Verify ephemeral worker
+      - name: Wait for ephemeral worker propagation
         shell: bash
         run: |
           set -euo pipefail
-          code="$(curl -sS -o /tmp/bench-health -w '%{http_code}' "$BENCHMARK_URL/healthz")"
-          test "$code" = "200"
-          grep -Fq '"benchmark":true' /tmp/bench-health
+          for attempt in 1 2 3 4 5 6 7 8; do
+            code="$(curl -sS -o /tmp/bench-health -w '%{http_code}' "$BENCHMARK_URL/healthz" || true)"
+            if [ "$code" = "200" ] && grep -Fq '"benchmark":true' /tmp/bench-health; then
+              echo "Benchmark worker ready on attempt $attempt."
+              exit 0
+            fi
+            echo "Benchmark worker not ready yet (attempt $attempt, HTTP ${code:-none})."
+            sleep $((attempt * 2))
+          done
+          echo "Benchmark worker failed to become ready."
+          cat /tmp/bench-health || true
+          exit 1
       - name: Run live model comparison
         run: node scripts/de-muse-qualitative-benchmark.mjs
       - name: Upload qualitative reports
