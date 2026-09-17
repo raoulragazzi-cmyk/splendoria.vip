@@ -1,0 +1,41 @@
+name: TEMP DE Muse dual-model check 2026-09-17
+
+on:
+  push:
+    branches: ["ai/de-muse-dual-model-20260917"]
+    paths:
+      - "src/german-editorial-room-worker.js"
+      - "test/german-editorial-room-smoke.mjs"
+      - ".github/workflows/temp-de-muse-dual-model-check-20260917.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Syntax
+        run: node --check src/german-editorial-room-worker.js
+      - name: German editorial room
+        run: node test/german-editorial-room-smoke.mjs
+      - name: German editorial quality cases
+        run: node test/german-editorial-quality-cases.mjs
+      - name: German ghostwriter
+        run: node test/german-ghostwriter-smoke.mjs
+      - name: DE release runtime
+        run: node test/de-release-runtime.test.mjs
+      - name: Full i18n suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in test/i18n-*.mjs; do node "$f"; done
+      - name: Wrangler dry run only
+        run: npx wrangler deploy --dry-run --outdir dist-de-muse-check
