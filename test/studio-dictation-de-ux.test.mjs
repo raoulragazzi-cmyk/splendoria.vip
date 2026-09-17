@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { createDictationHarness } from './helpers/dictation-harness.mjs';
 import { buildGermanDictationCandidate, GERMAN_DICTATION_CSS } from '../src/studio-dictation-de-ux.js';
 
 // In a checkout this extracts the REAL controller from src/worker.js, not a second implementation.
@@ -18,38 +19,7 @@ const candidate = buildGermanDictationCandidate(baseline);
 assert.equal(candidate.applied, true, candidate.reason);
 new vm.Script(candidate.source);
 
-function harness(source = candidate.source, { supported = true, storedLanguage = null } = {}) {
-  const state = { requests: [], starts: 0, stops: 0, instances: 0, recognition: null, startError: null, ending: null, styles: [] };
-  const classes = () => { const s = new Set(); return { add: x => s.add(x), contains: x => s.has(x), toggle: (x, flag) => flag ? s.add(x) : s.delete(x) }; };
-  const node = () => ({ id: '', textContent: '', attrs: {}, classList: classes(), setAttribute(k, v) { this.attrs[k] = v; } });
-  const targets = Object.fromEntries(['a','b'].map(id => [id, { id, value: id === 'a' ? 'Vorgeschichte A.' : 'Vorgeschichte B.', inputs: 0, focused: 0, dispatchEvent() { this.inputs++; }, focus() { this.focused++; } }]));
-  const statuses = [node(), node()];
-  const buttons = ['a','b'].map((id, i) => ({ ...node(), dataset: { voiceTarget: id }, disabled: false, events: {}, parentElement: { querySelector: () => statuses[i] }, addEventListener(k, fn) { this.events[k] = fn; }, click() { if (!this.disabled) this.events.click?.(); } }));
-  const select = { value: 'de-DE', events: {}, querySelector: () => ({}), addEventListener(k, fn) { this.events[k] = fn; }, change(value) { this.value = value; this.events.change(); } };
-  class Recognition {
-    constructor() { state.instances++; state.recognition = this; }
-    start() { if (state.startError) throw state.startError; state.starts++; this.onstart?.(); }
-    stop() { state.stops++; state.ending = this.onend?.(); }
-  }
-  const document = {
-    querySelector: s => s === '[data-voice-language]' ? select : null,
-    querySelectorAll: s => s === '[data-voice-target]' ? buttons : [],
-    getElementById: id => targets[id] || state.styles.find(s => s.id === id) || null,
-    createElement: () => node(), head: { append: n => state.styles.push(n) },
-    body: { classList: { contains: c => c === 'studio-editor-page' } }
-  };
-  vm.runInNewContext(source, {
-    document, window: supported ? { SpeechRecognition: Recognition } : {},
-    localStorage: { getItem: () => storedLanguage, setItem() {} }, Event: class {},
-    fetch: (url, options) => new Promise((resolve, reject) => state.requests.push({ url, body: JSON.parse(options.body), resolve, reject }))
-  });
-  return {
-    state, targets, buttons, statuses, select,
-    result(text, final = true) { const r = [{ transcript: text }]; r.isFinal = final; state.recognition.onresult({ resultIndex: 0, results: [r] }); },
-    end() { return state.recognition.onend(); },
-    resolve(index, text, ok = true) { state.requests[index].resolve({ ok, json: async () => ({ text }) }); }
-  };
-}
+const harness = (source = candidate.source, options) => createDictationHarness(source, options);
 
 test('baseline reproduces the cross-field asynchronous overwrite', async () => {
   const h = harness(baseline); h.buttons[0].click(); h.result('erster text'); const pending = h.end();
@@ -132,4 +102,115 @@ test('reading CSS is scoped to Studio and includes 48px controls, wrapping and f
 test('button text contrast exceeds WCAG AA minimum in idle and listening states', () => {
   const lum = hex => { const [r,g,b] = hex.match(/../g).map(v => parseInt(v,16)/255).map(v => v <= .04045 ? v/12.92 : ((v+.055)/1.055)**2.4); return .2126*r+.7152*g+.0722*b; };
   for (const background of ['075d56', '873820']) assert.ok(1.05/(lum(background)+.05) >= 4.5);
+});
+
+// DE-04: browser events, not just assignments while a fetch awaits.
+test('baseline overwrites a manual edit during listening', () => {
+  const h = harness(baseline); h.buttons[0].click(); h.result('Text', false);
+  h.edit('a', 'Meine Änderung'); h.result('Späteres Ergebnis');
+  assert.notEqual(h.targets.a.value, 'Meine Änderung');
+});
+for (const [name, value] of [['typing', 'Meine Änderung'], ['deletion', ''], ['paste and newlines', '  Äpfel\nÖl\n\nGrüße  ']]) {
+  test('manual ' + name + ' during listening survives late results and end', async () => {
+    const h = harness(candidate.source, { delayedEnd: true }); h.buttons[0].click(); h.result('Zwischentext', false);
+    h.edit('a', value); assert.equal(h.state.stops, 1);
+    h.result('Verspäteter Text'); await h.end();
+    assert.equal(h.targets.a.value, value); assert.equal(h.state.requests.length, 0);
+    assert.equal(h.targets.a.focused, 0); assert.match(h.statuses[0].textContent, /Änderungen bleiben erhalten/);
+    assert.equal(h.buttons[0].attrs['aria-pressed'], 'false');
+    assert.equal(h.targets.a.listeners.input.size, 0);
+  });
+}
+test('programmatic changes without input events are preserved before result and before end', async () => {
+  for (const lateResult of [false, true]) {
+    const h = harness(candidate.source, { delayedEnd: true }); h.buttons[0].click(); h.result('Text', false);
+    h.targets.a.value = 'Externe Änderung'; if (lateResult) h.result('Später Text'); await h.end();
+    assert.equal(h.targets.a.value, 'Externe Änderung'); assert.equal(h.state.requests.length, 0);
+  }
+});
+test('composition start protects an IME edit before its first character arrives', async () => {
+  const h = harness(candidate.source, { delayedEnd: true }); h.buttons[0].click(); h.result('Text', false);
+  h.edit('a', h.targets.a.value, 'compositionstart'); h.result('late'); h.edit('a', 'Schöne Grüße'); await h.end();
+  assert.equal(h.targets.a.value, 'Schöne Grüße'); assert.equal(h.state.requests.length, 0);
+});
+test('own dictation input events do not stop recognition or accumulate listeners', async () => {
+  const h = harness();
+  for (let i = 0; i < 3; i++) {
+    h.buttons[0].click(); h.result('Text'); assert.equal(h.state.stops, 0);
+    const pending = h.end(); h.resolve(i, 'Text.'); await pending;
+    assert.equal(h.targets.a.listeners.input.size, 0);
+  }
+});
+test('manual edit before onstart remains protected when stop initially throws', async () => {
+  const h = harness(candidate.source, { delayedStart: true, delayedEnd: true }); h.buttons[0].click();
+  h.state.stopError = new Error('not started yet');
+  assert.doesNotThrow(() => h.edit('a', 'Schon bearbeitet'));
+  h.state.stopError = null; h.state.recognition.onstart();
+  assert.ok(h.state.stops >= 2); h.result('late'); await h.end();
+  assert.equal(h.targets.a.value, 'Schon bearbeitet'); assert.equal(h.state.requests.length, 0);
+});
+test('duplicate stop clicks while browser is ending do not throw', async () => {
+  const h = harness(candidate.source, { delayedStart: true, delayedEnd: true }); h.buttons[0].click();
+  h.state.stopError = new Error('already ending');
+  assert.doesNotThrow(() => { h.buttons[0].click(); h.buttons[0].click(); });
+  h.state.stopError = null; await h.end();
+});
+test('no speech preserves whitespace exactly and does not emit a save-triggering input', async () => {
+  const h = harness(); h.targets.a.value = '  Absatz\n\n  '; h.buttons[0].click(); await h.end();
+  assert.equal(h.targets.a.value, '  Absatz\n\n  '); assert.equal(h.targets.a.inputs, 0);
+});
+test('new dictation after manual edit starts from the edited text', async () => {
+  const h = harness(); h.buttons[0].click(); h.edit('a', 'Meine Änderung'); await h.state.ending;
+  h.buttons[0].click(); h.result('Fortsetzung'); const pending = h.end(); h.resolve(0, 'Fortsetzung.'); await pending;
+  assert.equal(h.targets.a.value, 'Meine Änderung Fortsetzung.');
+});
+// DE-05: saved book preference is authoritative; language UI remains independent.
+test('saved German book dictation preference wins over an older Italian browser preference', () => {
+  const h = harness(candidate.source, { bookLanguage: 'de-DE', storedLanguage: 'it-IT' }); h.buttons[0].click();
+  assert.equal(h.state.recognition.lang, 'de-DE');
+});
+test('saved Italian book dictation is not forced to German by the UI or browser', () => {
+  const h = harness(candidate.source, { bookLanguage: 'it-IT', storedLanguage: 'de-DE' }); h.buttons[0].click();
+  assert.equal(h.state.recognition.lang, 'it-IT'); assert.match(h.statuses[0].textContent, /Mikrofon/);
+});
+// DE-06: result slots identify duplicates; textual similarity does not.
+test('baseline collapses distinct repeated or umlaut-different result slots', () => {
+  for (const words of [['ja', 'ja'], ['schon', 'schön']]) {
+    const h = harness(baseline); h.buttons[0].click(); h.results(words.map(text => [text, true]));
+    assert.notEqual(h.targets.a.value, 'Vorgeschichte A. ' + words.join(' '));
+  }
+});
+for (const phrase of [['ja', 'ja'], ['schon', 'schön'], ['Masse', 'Maße'], ['Es war schön', 'schön war es']]) {
+  test('distinct result slots preserve ' + phrase.join(' / '), () => {
+    const h = harness(); h.buttons[0].click(); h.results(phrase.map(text => [text, true]));
+    assert.equal(h.targets.a.value, 'Vorgeschichte A. ' + phrase.join(' '));
+  });
+}
+test('repeated event and cumulative result list do not duplicate text', () => {
+  const h = harness(); h.buttons[0].click(); h.results([['Hallo', true]]);
+  h.results([['Hallo', true]]); h.results([['Hallo', true], ['Welt', false]], 1);
+  h.results([['Hallo', true], ['Welt', true]], 1);
+  assert.equal(h.targets.a.value, 'Vorgeschichte A. Hallo Welt');
+});
+test('shrinking interim list removes only the obsolete hypothesis', () => {
+  const h = harness(); h.buttons[0].click(); h.results([['Grüße', true], ['aus Berlin', false]]);
+  h.results([['Grüße', true]], 1); assert.equal(h.targets.a.value, 'Vorgeschichte A. Grüße');
+});
+test('empty interim result returns exact original text without sending AI', async () => {
+  const h = harness(); h.targets.a.value = '  Anfang\n\n'; h.buttons[0].click(); h.results([['vielleicht', false]]);
+  h.results([], 0); await h.end(); assert.equal(h.targets.a.value, '  Anfang\n\n'); assert.equal(h.state.requests.length, 0);
+});
+
+test('edit then undo while correction waits still invalidates the older response', async () => {
+  const h = harness(); h.buttons[0].click(); h.result('Text'); const pending = h.end(); const committed = h.targets.a.value;
+  h.edit('a', 'Zwischenfassung'); h.edit('a', committed); h.resolve(0, 'Alte Korrektur'); await pending;
+  assert.equal(h.targets.a.value, committed); assert.equal(h.targets.a.listeners.input.size, 0);
+});
+test('a correction response cannot steal focus from another control', async () => {
+  const h = harness(); h.document.activeElement = h.buttons[0]; h.buttons[0].click(); h.result('Text'); const pending = h.end();
+  h.document.activeElement = h.targets.b; h.resolve(0, 'Text.'); await pending; assert.equal(h.targets.a.focused, 0);
+});
+for (const invalid of [{ unexpected: 'object' }, '   ', 42]) test('malformed correction text is ignored: ' + JSON.stringify(invalid), async () => {
+  const h = harness(); h.buttons[0].click(); h.result('Text'); const pending = h.end(); const committed = h.targets.a.value;
+  h.resolve(0, invalid); await pending; assert.equal(h.targets.a.value, committed);
 });

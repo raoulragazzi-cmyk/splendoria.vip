@@ -5,6 +5,10 @@ Baseline: `d0ad61ddbc73e708f73fd20c238875cf6e17cff2`, branch canonica `splendori
 Candidato indipendente: `ux/de-dictation-safety-audit-20260917`.
 Stato: **DRAFT. Nessun merge/deploy, nessuna modifica a D1 remoto, account o manoscritti.**
 
+## Aggiornamento della continuazione v2
+
+Il programma corrente e la verifica del candidato sono in [DE_RELEASE_PROGRESS_20260917.md](DE_RELEASE_PROGRESS_20260917.md): **69 test mirati PASS**, 28 script PASS e 1 smoke storico FAIL, DE-04/05/06 implementati nel candidato, residui pubblici mirati corretti, asset finale `de-v2` verificato. PR ancora DRAFT: nessun rilascio. Restano staging, collaudo autenticato/acustico, inventario privato e integrazione #62. Le sezioni seguenti conservano le evidenze e i limiti dell'audit iniziale; i loro stati TODO e i 20 test iniziali sono superati dal programma v2, non una seconda checklist parallela.
+
 ## Esito e copertura effettiva
 
 La piattaforma serve pagine tedesche e i principali pulsanti di accesso sono tradotti, ma la localizzazione non è completa. Sono stati confermati residui misti IT/DE in superfici pubbliche e riprodotti problemi del controller vocale. Non è una certificazione end-to-end dell’intera piattaforma.

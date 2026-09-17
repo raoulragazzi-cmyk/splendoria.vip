@@ -1,7 +1,7 @@
 /** German dictation candidate. No DOM/Worker dependency; fail unchanged on drift. */
 const START = 'const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;';
 const END = "document.querySelectorAll('textarea[data-word-count]')";
-const MARKER = 'spl-dictation-de-ux-v1';
+const MARKER = 'spl-dictation-de-ux-v2';
 
 export const GERMAN_DICTATION_CSS = `
 .studio-editor-page .spl-dictation-control{min-height:48px;min-width:160px;padding:12px 18px;font:700 18px/1.35 var(--font-ui,system-ui);white-space:normal;overflow-wrap:anywhere;background:#075d56;color:#fff;border:2px solid transparent}
@@ -39,12 +39,19 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         denied: 'Erlaube den Mikrofonzugriff in den Browser-Einstellungen. Dein vorhandener Text bleibt erhalten.',
         interrupted: 'Das Diktat wurde unterbrochen. Prüfe deinen Text und starte bei Bedarf erneut.',
         correcting: 'Grammatik und Zeichensetzung werden geprüft. Dein Text bleibt bearbeitbar.',
-        finished: 'Diktat beendet. Prüfe deinen Text vor dem Speichern.'
+        finished: 'Diktat beendet. Prüfe deinen Text vor dem Speichern.',
+        stopping: 'Das Diktat wird beendet. Bitte warte auf die Bestätigung.',
+        editing: 'Das Diktat wird beendet. Deine Änderungen bleiben erhalten.',
+        edited: 'Diktat beendet. Deine Änderungen bleiben erhalten.'
       },`);
     once('let activeButton = null;', `// ${MARKER}
     let voiceRun = 0;
     let voiceStatusId = 0;
     let activeVoiceLanguage = '';
+    let voiceInitialValue = '';
+    let voiceLastValue = '';
+    let voiceManualEdit = false;
+    let voiceStopRequested = false;
     const voiceTargetRuns = new WeakMap();
     let activeButton = null;`);
     once("button.setAttribute('aria-pressed', live ? 'true' : 'false');", `button.setAttribute('aria-pressed', live ? 'true' : 'false');
@@ -61,6 +68,50 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         button.setAttribute('aria-describedby', status.id);
         status.textContent = text;
       }`);
+    // Result indices, not equal-looking words, identify repeated browser notifications.
+    // Distinct final slots must preserve repetitions and umlauts (Web Speech results contract).
+    const mergeStart = voice.indexOf('const speechWords = value =>');
+    const mergeEnd = voice.indexOf('const setStatus = (button, text, live = false) =>', mergeStart);
+    if (mergeStart < 0 || mergeEnd <= mergeStart) throw new Error('segment-contract-mismatch');
+    const oldMerge = voice.slice(mergeStart, mergeEnd);
+    if (!oldMerge.includes('const mergeRecognitionText = (current, incoming) =>')) throw new Error('segment-contract-mismatch');
+    once(oldMerge, `// recognitionSegments deduplicates by result slot, never by vocabulary.
+    const mergeRecognitionText = (current, incoming) => joinText(current, incoming);
+    `);
+    once('if (languageSelect) {', `const requestVoiceStop = () => {
+      if (!activeButton || !recognition) return;
+      voiceStopRequested = true;
+      setStatus(activeButton, message(voiceManualEdit ? 'editing' : 'stopping'), true);
+      // The browser can still be starting or already stopping. onstart retries;
+      // activeTarget stays owned by this session until its onend arrives.
+      try { recognition.stop(); } catch {}
+    };
+    const preserveVoiceEdit = event => {
+      if (!activeTarget) return false;
+      if (!voiceManualEdit && event?.type !== 'compositionstart' && activeTarget.value === voiceLastValue) return false;
+      voiceManualEdit = true;
+      if (!voiceStopRequested) requestVoiceStop();
+      return true;
+    };
+    const removeVoiceEditListeners = target => {
+      target?.removeEventListener('input', preserveVoiceEdit);
+      target?.removeEventListener('compositionstart', preserveVoiceEdit);
+    };
+    if (languageSelect) {`);
+    once("const savedLanguage = localStorage.getItem('splendoria-voice-language');", `// A server-rendered preference belongs to this book, not the last book in this browser.
+        const bookBoundLanguage = languageSelect.getAttribute('name') === 'dictationLanguage' && languageSelect.getAttribute('form') === 'spl-book-settings';
+        const savedLanguage = bookBoundLanguage ? null : localStorage.getItem('splendoria-voice-language');`);
+    once('if (activeButton && recognition) recognition.stop();', 'if (activeButton && recognition) requestVoiceStop();');
+    once("document.querySelectorAll('[data-voice-target]').forEach(button => setStatus(button, recognition ? message('ready') : message('unavailable')));", "document.querySelectorAll('[data-voice-target]').forEach(button => { if (button !== activeButton) setStatus(button, recognition ? message('ready') : message('unavailable')); });");
+    once("if (activeButton) setStatus(activeButton, message('listening'), true);", "if (voiceStopRequested) { requestVoiceStop(); return; }\n        if (activeButton) setStatus(activeButton, message('listening'), true);");
+    once('if (!activeTarget) return;', 'if (!activeTarget || preserveVoiceEdit()) return;');
+    once('activeTarget.value = joinText(baseText, mergeRecognitionText(finalTranscript, interimTranscript));', `const spokenText = mergeRecognitionText(finalTranscript, interimTranscript);
+        const nextValue = spokenText ? joinText(baseText, spokenText) : voiceInitialValue;
+        if (activeTarget.value === nextValue) return;
+        voiceLastValue = nextValue;
+        activeTarget.value = nextValue;`);
+    once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", "if (activeButton && !voiceManualEdit) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));");
+    once('if (activeButton) { recognition.stop(); return; }', 'if (activeButton) { requestVoiceStop(); return; }');
     const onEndStart = voice.indexOf('recognition.onend = async () => {');
     const onEndFinish = voice.indexOf("document.querySelectorAll('[data-voice-target]').forEach(button => {", onEndStart);
     if (onEndStart < 0 || onEndFinish < 0) throw new Error('end-contract-mismatch');
@@ -72,15 +123,35 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         const completedBase = baseText;
         const completedLanguage = activeVoiceLanguage;
         const completedWithError = endedWithError;
+        const completedFocus = document.activeElement;
+        const completedManualEdit = voiceManualEdit || Boolean(activeTarget && activeTarget.value !== voiceLastValue);
+        removeVoiceEditListeners(activeTarget);
         const button = activeButton;`)
+      .replace('if (target) {', 'if (target && rawFinal && !completedManualEdit && target.value !== committed) {')
+      .replace('if (button && !endedWithError && rawFinal && target)', 'if (button && !endedWithError && !completedManualEdit && rawFinal && target)')
       .replaceAll('joinText(baseText,', 'joinText(completedBase,')
       .replaceAll('!endedWithError', '!completedWithError')
       .replace('language: selectedLanguage()', 'language: completedLanguage')
-      .replace('if (result?.text && target.value === committed)', 'if (result?.text && target.value === committed && voiceTargetRuns.get(target) === completedRun)')
-      .replace("if (button && !completedWithError) setStatus(button, message('finished'));", "if (button && !completedWithError && voiceTargetRuns.get(target) === completedRun && button !== activeButton) setStatus(button, message('finished'));")
-      .replace('target?.focus();', 'if (voiceRun === completedRun && !activeButton) target?.focus();');
+      .replace("setStatus(button, message('correcting'));", `setStatus(button, message('correcting'));
+          let correctionWasEdited = false;
+          const invalidateCorrection = () => { correctionWasEdited = true; };
+          target.addEventListener('input', invalidateCorrection);
+          target.addEventListener('compositionstart', invalidateCorrection);`)
+      .replace('} catch {}', `} catch {} finally {
+            target.removeEventListener('input', invalidateCorrection);
+            target.removeEventListener('compositionstart', invalidateCorrection);
+          }`)
+      .replace('if (result?.text && target.value === committed)', "if (typeof result?.text === 'string' && result.text.trim() && !correctionWasEdited && target.value === committed && voiceTargetRuns.get(target) === completedRun)")
+      .replace("if (button && !completedWithError) setStatus(button, message('finished'));", "if (button && voiceTargetRuns.get(target) === completedRun && button !== activeButton) { if (completedManualEdit) setStatus(button, message('edited')); else if (!completedWithError) setStatus(button, message('finished')); }")
+      .replace('target?.focus();', 'if (!completedManualEdit && voiceRun === completedRun && !activeButton && document.activeElement === completedFocus && completedFocus === button) target?.focus();');
     once(originalEnd, safeEnd);
     once('recognition.lang = selectedLanguage();\n        recognition.start();', `activeVoiceLanguage = selectedLanguage();
+        voiceInitialValue = target.value;
+        voiceLastValue = target.value;
+        voiceManualEdit = false;
+        voiceStopRequested = false;
+        target.addEventListener('input', preserveVoiceEdit);
+        target.addEventListener('compositionstart', preserveVoiceEdit);
         const startedRun = ++voiceRun;
         voiceTargetRuns.set(target, startedRun);
         recognition.lang = activeVoiceLanguage;
@@ -88,6 +159,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
           recognition.start();
         } catch (error) {
           endedWithError = true;
+          removeVoiceEditListeners(target);
           activeButton = null;
           activeTarget = null;
           setStatus(button, error?.name === 'NotAllowedError' ? message('denied') : message('interrupted'));

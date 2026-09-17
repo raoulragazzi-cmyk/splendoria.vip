@@ -52,6 +52,12 @@ function polishLegalLabels(html, locale, basePath) {
   if (locale === "de") {
     out = out.split("Partita IVA").join("USt-IdNr.");
     out = out.split("Email:").join("E-Mail:");
+    const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+    out = out.replace(/(Zuletzt aktualisiert:\s*)(\d{1,2}) (gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre) (\d{4})(?=\s*<\/p>)/g, (match, label, day, month, year) => {
+      const date = new Date(Date.UTC(Number(year), months.indexOf(month), Number(day)));
+      if (date.getUTCDate() !== Number(day) || date.getUTCMonth() !== months.indexOf(month)) return match;
+      return label + new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
+    });
     if (basePath === "/privacy-policy") {
       out = out.split("Privacy Policy").join("Datenschutzerklärung");
       out = out.split("6. Backup copy in the browser").join("6. Sicherungskopie im Browser");

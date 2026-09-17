@@ -22,7 +22,7 @@ async function fetchUiRuntime(request, env, ctx) {
   headers.delete("content-length");
   const localized = bindUiMessagesToLocale(await response.text(), locale);
   const candidate = buildGermanDictationCandidate(localized, locale);
-  if (locale === "de") headers.set("x-spl-dictation-ux", candidate.applied ? "de-v1" : "baseline");
+  if (locale === "de") headers.set("x-spl-dictation-ux", candidate.applied ? "de-v2" : "baseline");
   return new Response(candidate.source, {
     status: response.status,
     statusText: response.statusText,
