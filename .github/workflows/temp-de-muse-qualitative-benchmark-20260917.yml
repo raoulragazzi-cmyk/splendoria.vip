@@ -6,7 +6,9 @@ on:
     paths:
       - "test/fixtures/de-muse-qualitative-cases.json"
       - "test/fixtures/de-muse-editorial-challenges.json"
+      - "test/fixtures/de-muse-fact-check-challenges.json"
       - "scripts/de-muse-qualitative-benchmark.mjs"
+      - "scripts/de-muse-fact-check-benchmark.mjs"
       - "src/de-muse-benchmark-worker.js"
       - "wrangler.de-muse-benchmark.jsonc"
       - ".github/workflows/temp-de-muse-qualitative-benchmark-20260917.yml"
@@ -60,8 +62,10 @@ jobs:
           echo "Benchmark worker failed to become ready."
           cat /tmp/bench-health || true
           exit 1
-      - name: Run live model comparison
+      - name: Run live narrative and editorial comparison
         run: node scripts/de-muse-qualitative-benchmark.mjs
+      - name: Run factual verdict comparison
+        run: node scripts/de-muse-fact-check-benchmark.mjs
       - name: Upload qualitative reports
         if: always()
         uses: actions/upload-artifact@v4
