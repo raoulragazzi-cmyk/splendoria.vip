@@ -1,0 +1,47 @@
+name: Splendoria DE candidate snapshot (temporary)
+
+on:
+  push:
+    branches: ["ux/de-dictation-safety-audit-20260917"]
+    paths: [".github/workflows/de-continuation-snapshot-20260917.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: de-continuation-snapshot-20260917
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Prepare tracked source and exact SHA (no secrets or remote app)
+        run: |
+          mkdir -p qa-reports
+          git rev-parse HEAD | tee qa-reports/source-sha.txt
+          git archive --format=tar.gz -o qa-reports/source.tgz HEAD
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Package offline runtime dependency
+        run: tar -czf qa-reports/bcryptjs.tgz node_modules/bcryptjs
+      - name: Run candidate controller regressions
+        run: |
+          set -o pipefail
+          node --test test/studio-dictation-de-ux.test.mjs | tee qa-reports/dictation.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: splendoria-de-source-${{ github.sha }}
+          path: qa-reports/
+          retention-days: 1
+          if-no-files-found: error
