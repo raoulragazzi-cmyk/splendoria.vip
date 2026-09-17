@@ -1,0 +1,77 @@
+name: TEMP production bridge 2026-09-17
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths: [".github/workflows/temp-production-bridge-20260917.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-production-release
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout production branch
+        uses: actions/checkout@v5
+        with:
+          ref: splendoria.vip
+          fetch-depth: 0
+
+      - name: Verify production config and credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '"name": "splendoria-v2"' wrangler.jsonc
+          grep -Fq '"main": "src/german-editorial-room-worker.js"' wrangler.jsonc
+          grep -Fq '"database_name": "splendoria-db"' wrangler.jsonc
+          grep -Fq '"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"' wrangler.jsonc
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing staging Cloudflare token"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing Cloudflare account id"; exit 1; }
+          ! grep -R --include='temp-production-bridge-20260917.yml' -Fq 'wrangler d1 migrations apply' .github/workflows
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run release tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/worker.js
+          node --check src/studio-worker.js
+          node --check src/german-editorial-room-worker.js
+          for test_file in test/i18n-*.mjs; do
+            echo "Running $test_file"
+            node "$test_file"
+          done
+          node test/studio-dictation-de-ux.test.mjs
+          node test/de-release-runtime.test.mjs
+
+      - name: Production Wrangler dry run
+        run: npx wrangler deploy --dry-run --outdir dist-production-bridge
+
+      - name: Deploy production Worker only
+        run: npx wrangler deploy
+
+      - name: Immediate production smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://www.splendoria.vip"
+          for path in /healthz / /de/ /en/ /de/guida /en/guida /de/area-clienti /de/registrati /en/area-clienti; do
+            code="$(curl -L -sS -o /tmp/body -w '%{http_code}' "$base$path")"
+            test "$code" = "200" || { echo "HTTP $code for $path"; cat /tmp/body; exit 1; }
+          done
+          de_meta="$(curl -L -sS "$base/de/area-clienti")"
+          printf '%s' "$de_meta" | grep -Fq 'Splendoria verwandelt deine Geschichte in ein Buch'
+          ! printf '%s' "$de_meta" | grep -Fq 'Splendoria trasforma la tua storia in un libro'
+          echo "Production bridge deploy and smoke passed."
