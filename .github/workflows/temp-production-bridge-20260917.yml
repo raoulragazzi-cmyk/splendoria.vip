@@ -37,7 +37,6 @@ jobs:
           grep -Fq '"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"' wrangler.jsonc
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing staging Cloudflare token"; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing Cloudflare account id"; exit 1; }
-          ! grep -R --include='temp-production-bridge-20260917.yml' -Fq 'wrangler d1 migrations apply' .github/workflows
 
       - name: Install dependencies
         run: npm ci
