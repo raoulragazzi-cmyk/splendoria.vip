@@ -11,8 +11,6 @@ on:
 permissions:
   contents: read
 
-environment: staging
-
 jobs:
   benchmark:
     runs-on: ubuntu-latest
