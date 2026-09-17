@@ -25,8 +25,28 @@
     "source": "2008 übernahm Eva die Geschäftsführung. Heute beschäftigt das Unternehmen 46 Personen.",
     "draft": "2008 übernahm Eva die Geschäftsführung. Dieser Schritt war nicht nur ein mutiger Wendepunkt, sondern auch ein Meilenstein, der das Unternehmen bis heute prägt. Heute beschäftigt das Unternehmen 46 Personen.",
     "mustKeep": ["2008", "Eva", "46 Personen"],
-    "mustRemove": ["nicht nur", "mutiger Wendepunkt", "Meilenstein", "bis heute prägt"],
+    "mustRemove": ["nicht nur", "mutiger Wendepunkt", "Meilenstein", "bis heute prägt", "Wendepunkt"],
     "mustNotAdd": ["Vision", "Innovation", "Erfolg", "Wachstum"],
+    "exactPhrases": []
+  },
+  {
+    "id": "unsupported-emotion",
+    "label": "Emozione plausibile ma non documentata",
+    "source": "Nach Annas Tod war das Haus plötzlich sehr still. Ich blieb dort wohnen.",
+    "draft": "Nach Annas Tod war das Haus plötzlich sehr still. Ich war von tiefer Trauer überwältigt und fühlte mich wochenlang innerlich leer. Trotzdem blieb ich dort wohnen.",
+    "mustKeep": ["Annas Tod", "Haus", "sehr still", "blieb", "wohnen"],
+    "mustRemove": ["tiefer Trauer", "überwältigt", "wochenlang", "innerlich leer"],
+    "mustNotAdd": ["Depression", "einsam", "Tränen", "Schmerz"],
+    "exactPhrases": []
+  },
+  {
+    "id": "unsupported-causality",
+    "label": "Causalità non documentata",
+    "source": "1994 zog die Firma in eine größere Halle um. Weitere Gründe für den Umzug sind in den Quellen nicht genannt.",
+    "draft": "1994 zog die Firma in eine größere Halle um, weil der Umsatz stark gestiegen war und die bisherige Produktion mit dem schnellen Wachstum nicht mehr Schritt halten konnte.",
+    "mustKeep": ["1994", "größere Halle"],
+    "mustRemove": ["weil der Umsatz stark gestiegen", "schnellen Wachstum", "nicht mehr Schritt halten"],
+    "mustNotAdd": ["Kunden", "Export", "Aufträge", "Mitarbeiter"],
     "exactPhrases": []
   },
   {
