@@ -1,0 +1,38 @@
+[
+  {
+    "id": "supported-company-facts",
+    "source": "2008 übernahm Eva die Geschäftsführung. Heute beschäftigt das Unternehmen 46 Personen.",
+    "text": "2008 übernahm Eva die Geschäftsführung. Heute beschäftigt das Unternehmen 46 Personen.",
+    "expected": "APPROVATO"
+  },
+  {
+    "id": "unsupported-significance",
+    "source": "2008 übernahm Eva die Geschäftsführung. Heute beschäftigt das Unternehmen 46 Personen.",
+    "text": "2008 übernahm Eva die Geschäftsführung. Dieser Wendepunkt prägt das Unternehmen bis heute. Heute beschäftigt das Unternehmen 46 Personen.",
+    "expected": "RIFIUTATO"
+  },
+  {
+    "id": "unsupported-emotion",
+    "source": "Nach Annas Tod war das Haus plötzlich sehr still. Ich blieb dort wohnen.",
+    "text": "Nach Annas Tod war das Haus plötzlich sehr still. Ich fühlte mich wochenlang innerlich leer. Ich blieb dort wohnen.",
+    "expected": "RIFIUTATO"
+  },
+  {
+    "id": "unsupported-causality",
+    "source": "1994 zog die Firma in eine größere Halle um. Weitere Gründe für den Umzug sind in den Quellen nicht genannt.",
+    "text": "1994 zog die Firma wegen des starken Umsatzwachstums in eine größere Halle um.",
+    "expected": "RIFIUTATO"
+  },
+  {
+    "id": "preserved-contradiction",
+    "source": "Notiz A nennt 1982, ein späteres Interview nennt 1984. Der Autor ist beim Jahr nicht sicher. Sicher ist nur: Danach wohnte die Familie in Meran.",
+    "text": "Ob der Umzug 1982 oder 1984 war, kann ich heute nicht sicher sagen. Danach wohnten wir in Meran.",
+    "expected": "APPROVATO"
+  },
+  {
+    "id": "altered-direct-quote",
+    "source": "Meine Großmutter sagte wörtlich: ‚Tu nicht so wichtig, Bub.‘",
+    "text": "Meine Großmutter sagte: ‚Nimm dich nicht so wichtig, Bub.‘",
+    "expected": "RIFIUTATO"
+  }
+]
