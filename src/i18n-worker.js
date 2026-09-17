@@ -15,6 +15,7 @@ const SHARED = [
   ["Come funziona", { de: "So funktioniert es", en: "How it works" }],
   ["Listino", { de: "Preise", en: "Pricing" }],
   ["Guida", { de: "Leitfaden", en: "Guide" }],
+  ['aria-label="Informazioni e assistenza"', { de: 'aria-label="Informationen und Unterstützung"' }],
   ["Contattaci", { de: "Kontakt", en: "Contact" }],
   ["Il mio Studio", { de: "Mein Studio", en: "My Studio" }],
   ["Account", { de: "Konto", en: "Account" }],
@@ -223,7 +224,10 @@ const META = {
 function translate(html, locale) {
   if (locale === "it") return html;
   let out = html;
-  for (const [italian, target] of [...SHARED, ...HOME]) {
+  // Full German phrases must precede their shorter substrings; EN keeps its contract.
+  const pairs = [...SHARED, ...HOME];
+  if (locale === "de") pairs.sort((a, b) => b[0].length - a[0].length);
+  for (const [italian, target] of pairs) {
     const translated = target[locale];
     if (!translated || !italian) continue;
     out = out.split(italian).join(translated);

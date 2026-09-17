@@ -11,6 +11,14 @@ function localizeClientActions(html, locale) {
     .split('href="/account/esporta.json"').join(`href="/${locale}/account/esporta.json"`);
 }
 
+function localizeMetadata(html, locale) {
+  const source = "Splendoria trasforma la tua storia in un libro, con Muse digitali, controllo dell’autore e supervisione umana.";
+  const target = locale === "de"
+    ? "Splendoria verwandelt deine Geschichte in ein Buch – mit digitalen Musen, Kontrolle durch den Autor und menschlicher Aufsicht."
+    : "Splendoria turns your story into a book, with digital Muses, author control and human oversight.";
+  return String(html || "").split(source).join(target);
+}
+
 function translateLogoutMessage(value, locale) {
   const source = "Sei uscito dal tuo Studio. Puoi rientrare con le stesse credenziali.";
   if (value !== source) return value;
@@ -49,7 +57,8 @@ async function fetchSession(request, env, ctx) {
   if (!locale || request.method !== "GET" || !response.ok || !(response.headers.get("content-type") || "").includes("text/html")) return response;
   const headers = new Headers(response.headers);
   headers.delete("content-length");
-  return new Response(localizeClientActions(await response.text(), locale), {
+  const html = localizeMetadata(localizeClientActions(await response.text(), locale), locale);
+  return new Response(html, {
     status: response.status,
     statusText: response.statusText,
     headers

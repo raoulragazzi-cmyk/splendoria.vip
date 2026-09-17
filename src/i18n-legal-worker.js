@@ -12,6 +12,7 @@ const COMMON = [
   ["Come funziona", { de: "So funktioniert es", en: "How it works" }],
   ["Listino", { de: "Preise", en: "Pricing" }],
   ["Guida", { de: "Leitfaden", en: "Guide" }],
+  ['aria-label="Informazioni e assistenza"', { de: 'aria-label="Informationen und Unterstützung"' }],
   ["Contattaci", { de: "Kontakt", en: "Contact" }],
   ["Il mio Studio", { de: "Mein Studio", en: "My Studio" }],
   ["Account", { de: "Konto", en: "Account" }],
@@ -222,6 +223,8 @@ const PAGE_CONFIG = {
 
 function applyPairs(html, locale, pairs) {
   let out = html;
+  // Work on a copy: do not mutate the shared catalog or the English ordering.
+  if (locale === "de") pairs = [...pairs].sort((a, b) => b[0].length - a[0].length);
   for (const [source, target] of pairs) if (target[locale]) out = out.split(source).join(target[locale]);
   return out;
 }

@@ -1,4 +1,5 @@
 import editorCopyWorker from "./i18n-editor-copy-worker.js";
+import { buildGermanDictationCandidate } from "./studio-dictation-de-ux.js";
 
 const LOCALES = new Set(["de", "en"]);
 
@@ -19,7 +20,10 @@ async function fetchUiRuntime(request, env, ctx) {
 
   const headers = new Headers(response.headers);
   headers.delete("content-length");
-  return new Response(bindUiMessagesToLocale(await response.text(), locale), {
+  const localized = bindUiMessagesToLocale(await response.text(), locale);
+  const candidate = buildGermanDictationCandidate(localized, locale);
+  if (locale === "de") headers.set("x-spl-dictation-ux", candidate.applied ? "de-v2" : "baseline");
+  return new Response(candidate.source, {
     status: response.status,
     statusText: response.statusText,
     headers

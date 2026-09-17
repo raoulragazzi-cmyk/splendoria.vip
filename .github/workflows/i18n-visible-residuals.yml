@@ -26,10 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout i18n branch
+      - name: Checkout triggering commit
         uses: actions/checkout@v5
         with:
-          ref: i18n/public-de-en-phase1
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Fetch production baseline
