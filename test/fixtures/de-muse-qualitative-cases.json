@@ -1,0 +1,74 @@
+[
+  {
+    "id": "south-tyrol-memory",
+    "label": "Südtirol / memoria locale",
+    "source": "Ich bin 1948 in Bozen geboren. Zu Hause sprachen wir meist Deutsch, mit den Nachbarn oft Italienisch. Mein Vater hatte eine kleine Werkstatt. Sonntags fuhren wir manchmal nach Kaltern. Ich erinnere mich an den Geruch von Öl in der Werkstatt und an die langen Gespräche meiner Eltern am Küchentisch. Mehr weiß ich über diese Jahre nicht genau.",
+    "task": "Schreibe eine autobiografische Passage in der Ich-Form. Bewahre die Südtiroler Realität und erfinde keine weiteren Orts-, Familien- oder Geschichtsdetails.",
+    "mustKeep": ["1948", "Bozen", "Deutsch", "Italienisch", "Werkstatt", "Kaltern", "Öl"],
+    "mustNotAdd": ["Krieg", "Bomben", "Faschismus", "Weinberg", "Dolomiten", "Großvater"],
+    "voice": "ältere Person, schlicht, konkret, ohne Nostalgie-Kitsch"
+  },
+  {
+    "id": "elderly-voice",
+    "label": "Voce anziana",
+    "source": "Ich rede nicht gern groß über Gefühle. Wenn etwas schwierig war, hat man es gemacht. Meine Frau hieß Anna. Wir waren 52 Jahre verheiratet. Sie sagte oft: ‚Mach nicht so viel Aufhebens.‘ Nach ihrem Tod war das Haus plötzlich sehr still.",
+    "task": "Schreibe eine kurze Memoir-Passage. Die Stimme soll zurückhaltend bleiben; keine psychologischen Erklärungen erfinden.",
+    "mustKeep": ["Anna", "52 Jahre", "Mach nicht so viel Aufhebens", "Haus", "still"],
+    "mustNotAdd": ["Krankheit", "Kinder", "Beerdigung", "Tränen", "Depression"],
+    "voice": "knapp, würdevoll, unpathetisch"
+  },
+  {
+    "id": "company-biography",
+    "label": "Biografia aziendale",
+    "source": "Der Betrieb wurde 1987 von Martin Hofer gegründet. Anfangs gab es drei Mitarbeiter. 1994 zog die Firma in eine größere Halle um. 2008 übernahm Tochter Eva die Geschäftsführung. Heute beschäftigt das Unternehmen 46 Personen. Weitere Angaben zur Umsatzentwicklung oder zu einzelnen Kunden liegen nicht vor.",
+    "task": "Schreibe einen Abschnitt für eine Unternehmensbiografie. Sachlich, lebendig, nicht werblich. Keine Marktführerschaft, Umsätze, Kunden oder Erfolge erfinden.",
+    "mustKeep": ["1987", "Martin Hofer", "drei Mitarbeiter", "1994", "2008", "Eva", "46"],
+    "mustNotAdd": ["Marktführer", "Umsatz", "international", "Export", "Kunden", "Innovation"] ,
+    "voice": "professionell, nüchtern, menschlich"
+  },
+  {
+    "id": "fragmented-memory",
+    "label": "Memoria frammentaria",
+    "source": "Es muss Ende der sechziger Jahre gewesen sein, vielleicht 1968 oder 1969. Ich weiß nur noch, dass wir mit dem Zug gefahren sind. Ob es München oder Innsbruck war, kann ich nicht mehr sicher sagen. Meine Schwester war dabei. An den Anlass erinnere ich mich nicht.",
+    "task": "Forme eine erzählerische Passage, aber bewahre jede Unsicherheit ausdrücklich. Entscheide nicht zwischen 1968/1969 oder München/Innsbruck.",
+    "mustKeep": ["1968", "1969", "München", "Innsbruck", "Schwester", "Zug"],
+    "mustNotAdd": ["Bahnhof", "Hotel", "Konzert", "Urlaub", "Vater", "Mutter"],
+    "voice": "ehrlich, erinnernd, Unsicherheit sichtbar"
+  },
+  {
+    "id": "thin-sources",
+    "label": "Pochi dati",
+    "source": "1976 begann ich in einer Bäckerei zu arbeiten. Der Meister hieß Franz. Ich blieb dort ungefähr drei Jahre.",
+    "task": "Schreibe nur so viel, wie diese Quellen tragen. Wenn Material fehlt, bleibe kurz statt typische Bäckerei-Szenen zu erfinden.",
+    "mustKeep": ["1976", "Bäckerei", "Franz", "drei Jahre"],
+    "mustNotAdd": ["Mehl", "Ofen", "Brotduft", "Lehrling", "Morgengrauen", "Kunden"],
+    "voice": "knapp, konkret, ohne Fülltext"
+  },
+  {
+    "id": "contradiction",
+    "label": "Contraddizioni",
+    "source": "In einer Notiz steht: ‚Wir zogen 1982 nach Meran.‘ In einem späteren Interview sagte ich: ‚Nein, das war erst 1984.‘ Ich kann heute nicht sicher sagen, welches Jahr stimmt. Sicher ist: Wir wohnten danach in Meran.",
+    "task": "Schreibe die Passage so, dass der Widerspruch erhalten bleibt und nicht künstlich aufgelöst wird.",
+    "mustKeep": ["1982", "1984", "Meran", "nicht sicher"],
+    "mustNotAdd": ["1983", "Mietvertrag", "Archiv", "wahrscheinlich", "tatsächlich"],
+    "voice": "präzise, transparent, nicht spekulativ"
+  },
+  {
+    "id": "quotation-integrity",
+    "label": "Citazioni",
+    "source": "Mein Großonkel sagte immer: ‚A bissl geht immer.‘ Diesen Satz will ich genau so im Buch behalten. Er sprach sonst meist Dialekt, aber weitere wörtliche Sätze habe ich nicht mehr sicher im Kopf.",
+    "task": "Schreibe einen kurzen Abschnitt und bewahre das Zitat bytegetreu. Erfinde keine weiteren wörtlichen Aussagen oder Dialektformen.",
+    "mustKeep": ["A bissl geht immer."],
+    "mustNotAdd": ["sagte er", "pflegte er zu sagen", "Bua", "Madl"],
+    "voice": "warm, zurückhaltend, Zitat unverändert"
+  },
+  {
+    "id": "already-good-text",
+    "label": "Testo già buono",
+    "source": "Am Abend blieb ich oft noch einen Moment vor der Werkstatt stehen. Nicht weil dort etwas Besonderes geschah, sondern weil der Tag dort endete. Das Licht war aus, die Straße ruhig, und ich wusste: Morgen würde ich wiederkommen.",
+    "task": "Redigiere conservativamente: verbessere nur, wenn wirklich nötig. Bewahre Rhythmus, Bilder und Zurückhaltung; keine zusätzliche Metapher oder Erklärung.",
+    "mustKeep": ["Werkstatt", "Das Licht war aus", "die Straße ruhig", "Morgen würde ich wiederkommen"],
+    "mustNotAdd": ["Herz", "Seele", "Lebenswerk", "Schicksal", "Heimat"],
+    "voice": "bereits literarisch gut, minimale Eingriffe"
+  }
+]
