@@ -57,11 +57,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq '"main": "src/i18n-email-worker.js"' wrangler.jsonc
+          grep -Fq '"main": "src/german-editorial-room-worker.js"' wrangler.jsonc
+          grep -Fq '"name": "splendoria-v2"' wrangler.jsonc
+          grep -Fq '"database_name": "splendoria-db"' wrangler.jsonc
           test -f src/i18n-worker.js
           test -f src/i18n-email-worker.js
+          test -f src/german-editorial-room-worker.js
           test -f test/i18n-visible-residuals-smoke.mjs
           test -f test/i18n-layout-safety-smoke.mjs
+          test -f test/studio-dictation-de-ux.test.mjs
+          test -f test/de-release-runtime.test.mjs
           ! grep -Fq '"/admin"' src/i18n-client-worker.js
           ! grep -Fq '"/area-amministratore"' src/i18n-client-worker.js
 
@@ -74,10 +79,13 @@ jobs:
           set -euo pipefail
           node --check src/worker.js
           node --check src/studio-worker.js
+          node --check src/german-editorial-room-worker.js
           for test_file in test/i18n-*.mjs; do
             echo "Running $test_file"
             node "$test_file"
           done
+          node test/studio-dictation-de-ux.test.mjs
+          node test/de-release-runtime.test.mjs
 
       - name: Guard existing Italian smoke suite
         shell: bash
@@ -99,7 +107,7 @@ jobs:
           fi
 
       - name: Production Wrangler dry run
-        run: npm run check
+        run: npx wrangler deploy --dry-run
 
       - name: Stop safely when deploy is disabled
         if: ${{ !inputs.deploy_production }}
@@ -129,7 +137,7 @@ jobs:
         run: |
           set -euo pipefail
           base="https://www.splendoria.vip"
-          for path in /healthz / /de/ /en/ /de/guida /en/guida /area-clienti /de/area-clienti /en/area-clienti; do
+          for path in /healthz / /de/ /en/ /de/guida /en/guida /area-clienti /de/area-clienti /en/area-clienti /de/registrati /en/registrati; do
             code="$(curl -sS -o /tmp/production-smoke-body -w '%{http_code}' "$base$path")"
             case "$code" in
               200|204|301|302|303|307|308) ;;
@@ -141,4 +149,9 @@ jobs:
                 ;;
             esac
           done
-          echo "Production smoke passed for health, IT/DE/EN public routes and client entry points."
+
+          de_area="$(curl -fsS "$base/de/area-clienti")"
+          printf '%s' "$de_area" | grep -Fq '<title>Kundenbereich — Splendoria</title>'
+          ! printf '%s' "$de_area" | grep -Fq 'Splendoria trasforma la tua storia in un libro'
+
+          echo "Production smoke passed for health, IT/DE/EN routes, client entry points and DE metadata."
