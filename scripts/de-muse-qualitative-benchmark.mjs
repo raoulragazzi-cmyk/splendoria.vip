@@ -1,22 +1,21 @@
 import fs from 'node:fs/promises';
 
 const cases = JSON.parse(await fs.readFile('test/fixtures/de-muse-qualitative-cases.json', 'utf8'));
-const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-const token = process.env.CLOUDFLARE_API_TOKEN;
-if (!accountId || !token) throw new Error('Missing Cloudflare benchmark credentials');
+const benchmarkUrl = String(process.env.BENCHMARK_URL || '').replace(/\/$/, '');
+const benchToken = process.env.BENCH_TOKEN;
+if (!benchmarkUrl || !benchToken) throw new Error('Missing isolated benchmark URL/token');
 
 const WRITER = '@cf/qwen/qwen3.8-27b';
 const EDITOR = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-const endpoint = model => `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
 
 async function run(model, messages, temperature = 0.25, max_tokens = 900) {
-  const res = await fetch(endpoint(model), {
+  const res = await fetch(`${benchmarkUrl}/run`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, temperature, max_tokens })
+    headers: { Authorization: `Bearer ${benchToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages, temperature, max_tokens })
   });
-  const body = await res.json();
-  if (!res.ok || !body?.success) throw new Error(`${model} failed: ${JSON.stringify(body).slice(0,1200)}`);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body?.ok) throw new Error(`${model} failed via benchmark worker: HTTP ${res.status} ${JSON.stringify(body).slice(0,1200)}`);
   const result = body.result || {};
   return String(result.response ?? result?.choices?.[0]?.message?.content ?? result.text ?? '').trim();
 }
