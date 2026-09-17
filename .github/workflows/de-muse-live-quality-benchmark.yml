@@ -4,7 +4,8 @@ on:
   push:
     branches: ["ai/de-muse-dual-model-20260917"]
     paths:
-      - "test/de-muse-live-quality-benchmark.mjs"
+      - "benchmark/de-muse-quality-worker.js"
+      - "wrangler.benchmark.jsonc"
       - ".github/workflows/de-muse-live-quality-benchmark.yml"
 
 permissions:
@@ -13,6 +14,7 @@ permissions:
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BENCH_URL: https://splendoria-muse-benchmark-20260917.raoulragazzi.workers.dev
 
 jobs:
   benchmark:
@@ -32,13 +34,24 @@ jobs:
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing staging token"; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing account id"; exit 1; }
-      - name: Run synthetic live benchmark only
-        run: node test/de-muse-live-quality-benchmark.mjs
+          grep -Fq '"name": "splendoria-muse-benchmark-20260917"' wrangler.benchmark.jsonc
+          ! grep -Fq 'd1_databases' wrangler.benchmark.jsonc
+      - name: Deploy isolated AI-only benchmark worker
+        run: npx wrangler deploy --config wrangler.benchmark.jsonc
+      - name: Run live benchmark through Worker AI binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS "$BENCH_URL/healthz"
+          curl -fsS -X POST "$BENCH_URL/benchmark" -H 'content-type: application/json' -o de-muse-live-quality.json
+          node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('de-muse-live-quality.json','utf8')); if(!Array.isArray(j.results)||j.results.length!==8) process.exit(1); console.log('cases='+j.results.length)"
       - name: Upload benchmark outputs
         uses: actions/upload-artifact@v4
         with:
           name: de-muse-live-quality
-          path: |
-            artifacts/de-muse-live-quality.json
-            artifacts/de-muse-live-quality.md
+          path: de-muse-live-quality.json
           retention-days: 7
+      - name: Remove isolated benchmark worker
+        if: ${{ always() }}
+        continue-on-error: true
+        run: npx wrangler delete --config wrangler.benchmark.jsonc --force
