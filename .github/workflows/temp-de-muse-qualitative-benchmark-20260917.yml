@@ -5,6 +5,7 @@ on:
     branches: ["ai/de-muse-dual-model-20260917"]
     paths:
       - "test/fixtures/de-muse-qualitative-cases.json"
+      - "test/fixtures/de-muse-editorial-challenges.json"
       - "scripts/de-muse-qualitative-benchmark.mjs"
       - "src/de-muse-benchmark-worker.js"
       - "wrangler.de-muse-benchmark.jsonc"
