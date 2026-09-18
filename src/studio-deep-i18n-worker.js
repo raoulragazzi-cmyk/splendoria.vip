@@ -181,6 +181,46 @@ const EN_RUNTIME_PAIRS = [
   ["'Narrative scope: ' + scope", "'Narrative scope: ' + ({'Una stagione decisiva':'A decisive period','Una vita intera':'A whole life','Una storia generazionale':'A multigenerational story','Un’impresa e la sua visione':'A company and its vision'}[scope] || scope)"],
 ];
 
+const DE_STATIC_EDITOR_PAIRS = [
+  ['<p class="eyebrow">DAMMI ALTRI DATI E FATTI</p>', '<p class="eyebrow">GIB MIR WEITERE DATEN UND FAKTEN</p>'],
+  ['<h3>Più realtà mi affidi, più il racconto sarà tuo.</h3>', '<h3>Je mehr Wirklichkeit du mir anvertraust, desto mehr bleibt die Geschichte deine.</h3>'],
+  ['Inserisci qui la maggiore quantità possibile di materiale concreto: date, luoghi, nomi e ruoli dei personaggi, relazioni, eventi, parole ricordate, conseguenze e ogni altro dettaglio reale. Più elementi fornisci, più la Musa potrà comporre un testo preciso, ricco e fedele alla tua voce.', 'Füge hier möglichst viele konkrete Informationen ein: Daten, Orte, Namen und Rollen der Personen, Beziehungen, Ereignisse, erinnerte Worte, Folgen und jedes weitere reale Detail. Je mehr du bereitstellst, desto genauer, reicher und deiner Stimme treuer kann die Muse den Text gestalten.'],
+  ['<span class="sr-only">Dati e fatti aggiuntivi</span>', '<span class="sr-only">Zusätzliche Daten und Fakten</span>'],
+  ['placeholder="Per esempio: nel 1987 ci trasferimmo a Milano; mia madre Anna lavorava…"', 'placeholder="Zum Beispiel: 1987 zogen wir nach Mailand; meine Mutter Anna arbeitete…"'],
+  ['● Aggiungi dati a voce', '● Daten per Spracheingabe hinzufügen'],
+  ['<label class="field">Racconta liberamente la storia<textarea', '<label class="field">Erzähle deine Geschichte frei<textarea'],
+  ['placeholder="Scrivi come parleresti a una persona cara. Non preoccuparti dello stile: a quello penseremo insieme."', 'placeholder="Schreibe so, wie du einer vertrauten Person erzählen würdest. Um den Stil kümmern wir uns gemeinsam."'],
+  ['● Racconta a voce', '● Per Sprache erzählen'],
+  ['<label class="field">I protagonisti<textarea', '<label class="field">Die Hauptpersonen<textarea'],
+  ['<label class="field">I momenti decisivi<textarea', '<label class="field">Die entscheidenden Momente<textarea'],
+  ['<label class="field">Ciò che vuoi lasciare<textarea', '<label class="field">Was du hinterlassen möchtest<textarea'],
+  ['<p class="eyebrow">Intervista narrativa</p>', '<p class="eyebrow">Narratives Interview</p>'],
+  ['<h3>La Musa diventa la tua giornalista personale</h3>', '<h3>Die Muse wird zu deiner persönlichen Interviewerin</h3>'],
+  ['<p class="eyebrow">La tua Musa</p>', '<p class="eyebrow">Deine Muse</p>'],
+  ['<p class="muse-role">Guida digitale, sensibilità umana</p>', '<p class="muse-role">Digitale Begleitung, menschliches Feingefühl</p>'],
+  ['<h3 id="muse-title">Racconta con la tua voce.</h3>', '<h3 id="muse-title">Erzähle mit deiner eigenen Stimme.</h3>']
+];
+
+const EN_STATIC_EDITOR_PAIRS = [
+  ['<p class="eyebrow">DAMMI ALTRI DATI E FATTI</p>', '<p class="eyebrow">GIVE ME MORE DATA AND FACTS</p>'],
+  ['<h3>Più realtà mi affidi, più il racconto sarà tuo.</h3>', '<h3>The more reality you entrust to me, the more the story remains yours.</h3>'],
+  ['Inserisci qui la maggiore quantità possibile di materiale concreto: date, luoghi, nomi e ruoli dei personaggi, relazioni, eventi, parole ricordate, conseguenze e ogni altro dettaglio reale. Più elementi fornisci, più la Musa potrà comporre un testo preciso, ricco e fedele alla tua voce.', 'Add as much concrete material as possible here: dates, places, names and roles, relationships, events, remembered words, consequences and any other real detail. The more you provide, the more precisely and richly the Muse can shape a text that remains faithful to your voice.'],
+  ['<span class="sr-only">Dati e fatti aggiuntivi</span>', '<span class="sr-only">Additional data and facts</span>'],
+  ['placeholder="Per esempio: nel 1987 ci trasferimmo a Milano; mia madre Anna lavorava…"', 'placeholder="For example: in 1987 we moved to Milan; my mother Anna worked…"'],
+  ['● Aggiungi dati a voce', '● Add facts by voice'],
+  ['<label class="field">Racconta liberamente la storia<textarea', '<label class="field">Tell the story freely<textarea'],
+  ['placeholder="Scrivi come parleresti a una persona cara. Non preoccuparti dello stile: a quello penseremo insieme."', 'placeholder="Write as you would speak to someone close to you. Do not worry about style: we will work on that together."'],
+  ['● Racconta a voce', '● Tell it by voice'],
+  ['<label class="field">I protagonisti<textarea', '<label class="field">The main people<textarea'],
+  ['<label class="field">I momenti decisivi<textarea', '<label class="field">The turning points<textarea'],
+  ['<label class="field">Ciò che vuoi lasciare<textarea', '<label class="field">What you want to leave behind<textarea'],
+  ['<p class="eyebrow">Intervista narrativa</p>', '<p class="eyebrow">Narrative interview</p>'],
+  ['<h3>La Musa diventa la tua giornalista personale</h3>', '<h3>The Muse becomes your personal interviewer</h3>'],
+  ['<p class="eyebrow">La tua Musa</p>', '<p class="eyebrow">Your Muse</p>'],
+  ['<p class="muse-role">Guida digitale, sensibilità umana</p>', '<p class="muse-role">Digital guidance, human sensitivity</p>'],
+  ['<h3 id="muse-title">Racconta con la tua voce.</h3>', '<h3 id="muse-title">Tell it in your own voice.</h3>']
+];
+
 const DE_HTML_PAIRS = [
   ["Il tuo posto nella storia", "Dein Platz in der Geschichte"],
   ["Riprendiamo da dove avevi lasciato: la tua storia ti aspetta qui.", "Mach dort weiter, wo du aufgehört hast: Deine Geschichte wartet hier auf dich."],
@@ -246,7 +286,8 @@ function protectAuthored(html) {
 
 export function localizeDeepStudioHtml(html, locale) {
   if (!LOCALES.has(locale)) return String(html || "");
-  const protectedHtml = protectAuthored(html);
+  const staticLocalized = replacePairs(String(html || ""), locale === "de" ? DE_STATIC_EDITOR_PAIRS : EN_STATIC_EDITOR_PAIRS);
+  const protectedHtml = protectAuthored(staticLocalized);
   let out = replacePairs(protectedHtml.html, locale === "de" ? DE_HTML_PAIRS : EN_HTML_PAIRS);
   if (locale === "de") {
     out = out.replace(/(\d[\d.,]*) parole · ([\d.,]+) pagine stimate/g, "$1 Wörter · $2 geschätzte Seiten");
