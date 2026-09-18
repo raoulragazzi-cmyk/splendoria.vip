@@ -1,0 +1,46 @@
+name: TEMP validate historical workflow cleanup 2026-09-18
+
+on:
+  push:
+    branches: ["cleanup/historical-self-mutating-workflows-20260918"]
+    paths:
+      - ".github/workflows/temp-validate-historical-workflow-cleanup-20260918.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Prove historical artifacts are gone
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e .github/workflows/splendoria-writing-hardening-20260907.yml.
+          test ! -e .github/workflows/splendoria-handwritten-qa-fix-20260831.yml
+          test ! -e .github/scripts/splendoria_handwritten_qa_fix_20260831.py
+          ! grep -R --line-number -E 'splendoria-writing-hardening-20260907|splendoria_handwritten_qa_fix_20260831|splendoria-handwritten-qa-fix-20260831' .github src test --exclude='temp-validate-historical-workflow-cleanup-20260918.yml'
+      - name: Regression and security
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_file in test/i18n-*.mjs; do
+            [ -e "$test_file" ] || continue
+            node "$test_file"
+          done
+          node test/studio-deep-i18n-smoke.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
+          node test/studio-dictation-de-ux.test.mjs
+          node test/de-release-runtime.test.mjs
+          node test/german-editorial-room-smoke.mjs
+          node test/german-editorial-quality-cases.mjs
+          npm audit --audit-level=high
+          npx wrangler deploy --dry-run --env=""
