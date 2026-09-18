@@ -96,3 +96,5 @@ jobs:
           echo "Staging candidate verified from served assets."
 
 # rerun after final dynamic residual fixes
+
+# rerun after rendered separator coverage
