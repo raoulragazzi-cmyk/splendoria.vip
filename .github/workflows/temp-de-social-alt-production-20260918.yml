@@ -1,0 +1,72 @@
+name: TEMP DE social-alt production release 2026-09-18
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths:
+      - ".github/workflows/temp-de-social-alt-production-20260918.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APPROVED_APP_SHA: e3afafe9312d8ab965a0c263126c9818f99669c6
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Freeze approved candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$APPROVED_APP_SHA"...HEAD)"
+          test "$changed" = ".github/workflows/temp-de-social-alt-production-20260918.yml" || {
+            echo "Unexpected changes after approved candidate:"
+            printf '%s\n' "$changed"
+            exit 1
+          }
+          grep -Fq '"name": "splendoria-v2"' wrangler.jsonc
+          grep -Fq '"main": "src/german-editorial-room-worker.js"' wrangler.jsonc
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+      - run: npm ci
+      - name: Validate metadata candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node test/de-release-runtime.test.mjs
+          node test/i18n-visible-residuals-smoke.mjs
+          npx wrangler deploy --dry-run --env=""
+      - name: Deploy production Worker only
+        run: npx wrangler deploy --env=""
+      - name: Verify live metadata and health
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://www.splendoria.vip"
+          curl -fsS "$base/healthz" -o /tmp/health
+          grep -Fq '"status":"ok"' /tmp/health
+          curl -fsS "$base/de/" -o /tmp/de-home
+          curl -fsS "$base/en/" -o /tmp/en-home
+          grep -Fq 'property="og:image:alt" content="Gebundenes Splendoria-Biografiebuch mit goldenen Veredelungen"' /tmp/de-home
+          grep -Fq 'name="twitter:image:alt" content="Gebundenes Splendoria-Biografiebuch mit goldenen Veredelungen"' /tmp/de-home
+          grep -Fq 'property="og:image:alt" content="Bound Splendoria biography book with gold detailing"' /tmp/en-home
+          grep -Fq 'name="twitter:image:alt" content="Bound Splendoria biography book with gold detailing"' /tmp/en-home
+          ! grep -Fq 'Libro biografico Splendoria rilegato con finiture dorate' /tmp/de-home
+          ! grep -Fq 'Libro biografico Splendoria rilegato con finiture dorate' /tmp/en-home
+          echo "Production social-alt read-back passed."
