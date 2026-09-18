@@ -1,4 +1,4 @@
-import worker from "../src/i18n-editor-delete-worker.js";
+import worker from "../src/german-editorial-room-worker.js";
 
 const USER = {
   id: "qa-user",
@@ -162,7 +162,13 @@ const HIGH_SIGNAL_ITALIAN = [
   /pagine stimate/,
   /parole raccolte/,
   /Pagina non trovata/,
-  /Torna alla home/
+  /Torna alla home/,
+  /DAMMI ALTRI DATI E FATTI/,
+  /Più realtà mi affidi, più il racconto sarà tuo/,
+  /Inserisci qui la maggiore quantità possibile di materiale concreto/,
+  /Racconta liberamente la storia/,
+  /La Musa diventa la tua giornalista personale/,
+  /Guida digitale, sensibilità umana/
 ];
 
 const EXPECTED_MARKERS = {
