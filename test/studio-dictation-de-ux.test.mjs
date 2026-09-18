@@ -75,6 +75,66 @@ test('permission denial performs no AI correction and retains recognized text', 
   const h = harness(); h.buttons[0].click(); h.result('Mein Text'); h.state.recognition.onerror({ error: 'not-allowed' }); await h.end();
   assert.equal(h.state.requests.length, 0); assert.equal(h.targets.a.value, 'Vorgeschichte A. Mein Text'); assert.match(h.statuses[0].textContent, /Mikrofonzugriff/);
 });
+test('pagehide stops an active dictation exactly once and preserves the transcript', async () => {
+  const h = harness(candidate.source, { delayedEnd: true });
+  h.buttons[0].click(); h.result('Hintergrund Text', false);
+  h.pagehide();
+  assert.equal(h.state.stops, 1);
+  assert.match(h.statuses[0].textContent, /beendet|Bestätigung/);
+  h.visibility('hidden');
+  assert.equal(h.state.stops, 1, 'background events must not stack stop requests');
+  await h.end();
+  assert.equal(h.targets.a.value, 'Vorgeschichte A. Hintergrund Text');
+  assert.equal(h.state.requests.length, 1, 'recognized speech may still receive the normal final correction');
+});
+
+test('visibilitychange stops only when the document becomes hidden', async () => {
+  const h = harness(candidate.source, { delayedEnd: true });
+  h.buttons[0].click(); h.result('Sichtbar', false);
+  h.visibility('visible');
+  assert.equal(h.state.stops, 0);
+  h.visibility('hidden');
+  assert.equal(h.state.stops, 1);
+  await h.end();
+});
+
+test('voluntary browser aborted error is not exposed as a dictation failure', async () => {
+  const h = harness(candidate.source, { delayedEnd: true });
+  h.buttons[0].click(); h.result('Mein Text');
+  h.buttons[0].click();
+  assert.equal(h.state.stops, 1);
+  h.error('aborted');
+  const pending = h.end();
+  h.resolve(0, 'Mein Text.');
+  await pending;
+  assert.doesNotMatch(h.statuses[0].textContent, /unterbrochen/);
+  assert.match(h.statuses[0].textContent, /Diktat beendet/);
+});
+
+for (const [error, pattern] of [
+  ['no-speech', /Keine Sprache erkannt/],
+  ['audio-capture', /Kein Mikrofon verfügbar/],
+  ['network', /nicht erreichbar/],
+  ['service-not-allowed', /Mikrofonzugriff/]
+]) {
+  test('speech recognition error has specific German guidance: ' + error, async () => {
+    const h = harness(candidate.source, { delayedEnd: true });
+    h.buttons[0].click();
+    h.error(error);
+    await h.end();
+    assert.match(h.statuses[0].textContent, pattern);
+    assert.equal(h.state.requests.length, 0);
+    assert.equal(h.targets.a.value, 'Vorgeschichte A.');
+  });
+}
+
+test('background events are harmless when no dictation is active', () => {
+  const h = harness();
+  h.visibility('hidden');
+  h.pagehide();
+  assert.equal(h.state.stops, 0);
+});
+
 test('missing browser support retains an explicit alternative', () => {
   const h = harness(candidate.source, { supported: false }); assert.equal(h.buttons[0].disabled, true); assert.match(h.statuses[0].textContent, /tippen/); assert.equal(h.state.instances, 0);
 });
