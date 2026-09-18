@@ -26,7 +26,7 @@ const DE_RUNTIME_PAIRS = [
   [". Non devi scriverne 350: quello è l’obiettivo della Musa per una sezione.", ". Du musst nicht 350 Wörter selbst schreiben: Das ist das Schreibziel der Muse für einen Abschnitt."],
   ["Ripristinare l’ultima versione salvata del libro? Lo stato attuale verrà conservato come versione precedente, quindi potrai tornare indietro.", "Die zuletzt gespeicherte Buchversion wiederherstellen? Der aktuelle Stand wird als vorherige Version gesichert, sodass du bei Bedarf zurückkehren kannst."],
   ["Metto al sicuro le tue parole…", "Ich sichere deine Worte…"],
-  ["Non sono riuscita a salvare in sicurezza ciò che hai scritto. Le tue parole restano qui: riprova tra un momento.", "Ich konnte deinen Text nicht sicher speichern. Deine Worte bleiben hier erhalten; versuche es in einem Moment erneut."]
+  ["Non sono riuscita a salvare in sicurezza ciò che hai scritto. Le tue parole restano qui: riprova tra un momento.", "Ich konnte deinen Text nicht sicher speichern. Deine Worte bleiben hier erhalten; versuche es in einem Moment erneut."],
   // Dynamic Studio UI added after the first i18n rollout.
   // Keep these phrases exact and specific: they are visible runtime copy, not
   // authored book content or machine values.
@@ -107,7 +107,7 @@ const EN_RUNTIME_PAIRS = [
   [". Non devi scriverne 350: quello è l’obiettivo della Musa per una sezione.", ". You do not need to write 350 words yourself: that is the Muse’s writing target for one section."],
   ["Ripristinare l’ultima versione salvata del libro? Lo stato attuale verrà conservato come versione precedente, quindi potrai tornare indietro.", "Restore the latest saved version of the book? The current state will be kept as the previous version, so you can return to it if needed."],
   ["Metto al sicuro le tue parole…", "Safeguarding your words…"],
-  ["Non sono riuscita a salvare in sicurezza ciò che hai scritto. Le tue parole restano qui: riprova tra un momento.", "I could not save what you wrote safely. Your words are still here; please try again in a moment."]
+  ["Non sono riuscita a salvare in sicurezza ciò che hai scritto. Le tue parole restano qui: riprova tra un momento.", "I could not save what you wrote safely. Your words are still here; please try again in a moment."],
   // Dynamic Studio UI added after the first i18n rollout.
   ["La Musa sta rileggendo", "The Muse is reviewing your text"],
   ["La Musa sta scrivendo", "The Muse is writing"],
