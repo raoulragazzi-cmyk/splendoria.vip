@@ -14,7 +14,6 @@ on:
       - "src/i18n-auth-worker.js"
       - "src/i18n-client-worker.js"
       - "src/i18n-session-worker.js"
-      - "src/i18n-editor-worker.js"
       - "src/i18n-editor-safe-worker.js"
       - "src/i18n-commercial-worker.js"
       - "src/i18n-flow-worker.js"
@@ -81,7 +80,6 @@ jobs:
           node --check src/i18n-auth-worker.js
           node --check src/i18n-client-worker.js
           node --check src/i18n-session-worker.js
-          node --check src/i18n-editor-worker.js
           node --check src/i18n-editor-safe-worker.js
           node --check src/i18n-commercial-worker.js
           node --check src/i18n-flow-worker.js
