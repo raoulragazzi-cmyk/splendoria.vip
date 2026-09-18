@@ -20,6 +20,19 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - run: node --test test/studio-dictation-de-ux.test.mjs
-
-# rerun after paragraph-boundary fix
+      - name: Run dictation suite and capture diagnostics
+        shell: bash
+        run: |
+          set +e
+          node --test test/studio-dictation-de-ux.test.mjs > /tmp/mic-test.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/mic-test.log
+          echo "$status" > /tmp/mic-test.status
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mic-test-diagnostics
+          path: |
+            /tmp/mic-test.log
+            /tmp/mic-test.status
+          retention-days: 2
