@@ -87,7 +87,9 @@ const DE_RUNTIME_PAIRS = [
   ["Indice editoriale orientativo: ", "Redaktioneller Orientierungswert: "],
   ["'Pagina ' + (activePage + 1) + ' di ' + pages.length", "'Seite ' + (activePage + 1) + ' von ' + pages.length"],
   ["totalWords + ' parole \\xB7 ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate')", "totalWords + ' Wörter \\xB7 ' + pages.length + (pages.length === 1 ? ' geschätzte Seite' : ' geschätzte Seiten')"],
+  ["totalWords + ' parole · ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate')", "totalWords + ' Wörter · ' + pages.length + (pages.length === 1 ? ' geschätzte Seite' : ' geschätzte Seiten')"],
   ["'Capitolo ' + (index + 1) + ' \\xB7 '", "'Kapitel ' + (index + 1) + ' \\xB7 '"],
+  ["'Capitolo ' + (index + 1) + ' · '", "'Kapitel ' + (index + 1) + ' · '"],
   ["nodes.join(', ') || 'da approfondire'", "nodes.join(', ') || 'im Interview weiter vertiefen'"],
   ["'Erzählumfang des Buches: ' + scope", "'Erzählumfang des Buches: ' + ({'Una stagione decisiva':'Eine entscheidende Lebensphase','Una vita intera':'Ein ganzes Leben','Una storia generazionale':'Eine generationenübergreifende Geschichte','Un’impresa e la sua visione':'Ein Unternehmen und seine Vision'}[scope] || scope)"],
 ];
@@ -172,7 +174,9 @@ const EN_RUNTIME_PAIRS = [
   ["Indice editoriale orientativo: ", "Editorial guidance score: "],
   ["'Pagina ' + (activePage + 1) + ' di ' + pages.length", "'Page ' + (activePage + 1) + ' of ' + pages.length"],
   ["totalWords + ' parole \\xB7 ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate')", "totalWords + ' words \\xB7 ' + pages.length + (pages.length === 1 ? ' estimated page' : ' estimated pages')"],
+  ["totalWords + ' parole · ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate')", "totalWords + ' words · ' + pages.length + (pages.length === 1 ? ' estimated page' : ' estimated pages')"],
   ["'Capitolo ' + (index + 1) + ' \\xB7 '", "'Chapter ' + (index + 1) + ' \\xB7 '"],
+  ["'Capitolo ' + (index + 1) + ' · '", "'Chapter ' + (index + 1) + ' · '"],
   ["nodes.join(', ') || 'da approfondire'", "nodes.join(', ') || 'explore further in the interview'"],
   ["'Narrative scope: ' + scope", "'Narrative scope: ' + ({'Una stagione decisiva':'A decisive period','Una vita intera':'A whole life','Una storia generazionale':'A multigenerational story','Un’impresa e la sua visione':'A company and its vision'}[scope] || scope)"],
 ];
