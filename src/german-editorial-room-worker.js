@@ -20,6 +20,7 @@ Du bist in diesem Arbeitsgang der Ghostwriter. Schreibe oder entwickle Text aus 
 Du bist in diesem Arbeitsgang der konservative Lektor. Verbessere Sprache, ohne den Inhalt neu zu schreiben.
 - Korrigiere Orthografie, Grammatik, Kasus, Kongruenz, Verbposition, Präpositionen, Zeichensetzung, unklare Bezüge und inkonsistente Zeitformen.
 - Bewahre Bedeutung, Fakten, Erzählperspektive, Reihenfolge, Ton, charakteristische Wortwahl und Absatzlogik, soweit sie sprachlich funktionieren.
+- Direkte Zitate, ihre Wortfolge, Schreibweise und Anführungszeichen bleiben bytegetreu unverändert.
 - Keine neuen Beispiele, Bilder, Dialoge, Details oder Deutungen hinzufügen.
 - Eine eigenwillige, glaubwürdige Autorenformulierung darf stehen bleiben, wenn sie korrekt und verständlich ist.
 - Ziel ist ein druckreifer Text, nicht ein stilistisch anderer Text.`,
@@ -27,7 +28,9 @@ Du bist in diesem Arbeitsgang der konservative Lektor. Verbessere Sprache, ohne 
   stilredaktion: `ROLLE — STILREDAKTION
 Du bist in diesem Arbeitsgang die Stilredaktion. Arbeite am vorhandenen Text, nicht an den Tatsachen.
 - Verbessere Lesefluss, Rhythmus, Präzision, Übergänge und Wortwahl, ohne Information, Perspektive oder Stimme zu verändern.
+- Direkte Zitate, ihre Wortfolge, Schreibweise und Anführungszeichen bleiben bytegetreu unverändert.
 - Entferne unnötige Wiederholungen, Füllwörter, schwache Verb-Substantiv-Konstruktionen, Bürokratendeutsch, Werbefloskeln und erkennbare KI-Muster.
+- Entferne unbelegte Deutungen oder Wertungen aus dem Entwurf, statt sie sprachlich zu veredeln.
 - Variiere Satzlängen organisch; keine dekorative Eleganz, keine künstlichen Synonyme und keine Pathos-Steigerung.
 - Nutze frisches, heutiges Standarddeutsch, aber kein erzwungenes Jugendvokabular, keine Trendwörter und kein unnötiges Denglisch.
 - Wenn eine stilistische Verbesserung neue Tatsachen voraussetzen würde, unterlasse sie.`,
@@ -79,16 +82,15 @@ export function isGermanMachineControl(options) {
 
 export function germanEditorialModel(model, options, requestedRole = "ghostwriter") {
   const text = instructionText(options);
-  if (isGermanMachineControl(options)) return GERMAN_EDITOR_MODEL;
-  if (requestedRole === "lektor" || requestedRole === "stilredaktion" || requestedRole === "faktenkontrolle") return GERMAN_EDITOR_MODEL;
+  // Faktenkontrolle keeps the model selected by the canonical core. Live
+  // benchmarks gave both Qwen and Llama 6/6 on verdict-only fact checks, so
+  // there is no evidence that justifies overriding the core here.
+  if (isGermanMachineControl(options) || requestedRole === "faktenkontrolle") return model;
+  if (requestedRole === "lektor" || requestedRole === "stilredaktion") return GERMAN_EDITOR_MODEL;
   const isExistingFinalEditorialPass = /revisore letterario finale di Splendoria|testo revisionato|Prima di riscrivere, confronta internamente ogni affermazione concreta/i.test(text);
   if (isExistingFinalEditorialPass) return GERMAN_EDITOR_MODEL;
 
   // Writer calls deliberately keep the model chosen by the canonical core.
-  // The core already selects Qwen for the chapter-generation path and may
-  // select another proven model for structure/interview/other Muse flows.
-  // The German wrapper must enrich editorial behaviour, not create a second
-  // competing model-selection policy.
   return model;
 }
 
