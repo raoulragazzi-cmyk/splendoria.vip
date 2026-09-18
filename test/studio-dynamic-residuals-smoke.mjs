@@ -84,7 +84,7 @@ const lateDynamicItalianMarkers = [
   'Parole-soglia: ',
   'Indice editoriale orientativo: ',
   "'Pagina ' + (activePage + 1) + ' di ' + pages.length",
-  "totalWords + ' parole · ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate')",
+  "totalWords + ' parole \\xB7 ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate')",
   "'Capitolo ' + (index + 1) + ' · '",
   "nodes.join(', ') || 'da approfondire'"
 ];
@@ -106,7 +106,7 @@ for (const expected of [
   'Die Muse liest deinen Text noch einmal',
   'Die beiden Passwörter stimmen nicht überein.',
   "'Seite ' + (activePage + 1) + ' von ' + pages.length",
-  "totalWords + ' Wörter · ' + pages.length",
+  "totalWords + ' Wörter \\xB7 ' + pages.length",
   "'Kapitel ' + (index + 1) + ' · '",
   "nodes.join(', ') || 'im Interview weiter vertiefen'",
   "'Erzählumfang des Buches: ' + ({'Una stagione decisiva':'Eine entscheidende Lebensphase'"
