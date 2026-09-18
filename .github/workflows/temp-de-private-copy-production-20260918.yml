@@ -1,0 +1,82 @@
+name: TEMP DE private copy production 2026-09-18
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths:
+      - ".github/workflows/temp-de-private-copy-production-20260918.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APPROVED_APP_SHA: df4571a4a88a339c1abeb4a5c808834a37d11a30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Freeze exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$APPROVED_APP_SHA"...HEAD)"
+          test "$changed" = ".github/workflows/temp-de-private-copy-production-20260918.yml" || {
+            echo "Unexpected changes after approved candidate:"
+            printf '%s\n' "$changed"
+            exit 1
+          }
+          grep -Fq '"name": "splendoria-v2"' wrangler.jsonc
+          grep -Fq '"main": "src/german-editorial-room-worker.js"' wrangler.jsonc
+          grep -Fq '"database_name": "splendoria-db"' wrangler.jsonc
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+
+      - run: npm ci
+
+      - name: Validate private DE copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          node test/i18n-visible-residuals-smoke.mjs
+          node test/studio-deep-i18n-smoke.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
+          npx wrangler deploy --dry-run --env=""
+
+      - name: Deploy production Worker
+        id: deploy
+        shell: bash
+        run: |
+          set +e
+          npx wrangler deploy --env="" 2>&1 | tee /tmp/deploy.log
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          grep -Eq 'Uploaded splendoria-v2|Deployed splendoria-v2 triggers' /tmp/deploy.log
+
+      - name: Production read-back
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS https://www.splendoria.vip/healthz -o /tmp/health
+          grep -Fq '"status":"ok"' /tmp/health
+          curl -fsS             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/splendoria-v2/content/v2"             -o /tmp/worker.multipart
+          grep -Fq 'GIB MIR WEITERE DATEN UND FAKTEN' /tmp/worker.multipart
+          grep -Fq 'Je mehr Wirklichkeit du mir anvertraust' /tmp/worker.multipart
+          grep -Fq 'Erzähle deine Geschichte frei' /tmp/worker.multipart
+          echo "Production private-copy candidate published and verified."
