@@ -1,0 +1,50 @@
+name: TEMP production binding audit 2026-09-18
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths:
+      - ".github/workflows/temp-prod-binding-audit-20260918.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      EXPECTED_PROD_DB: 1a46b8b0-2e6f-44cf-a22f-4950259f9434
+    steps:
+      - uses: actions/checkout@v5
+      - name: Read current Worker settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          curl -fsS             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/splendoria-v2/settings"             -o /tmp/settings.json
+          jq -e '.success == true' /tmp/settings.json >/dev/null
+          jq -c '.result.bindings[] | {name,type,id,namespace_id,bucket_name,dataset}' /tmp/settings.json || true
+          db_id="$(jq -r '.result.bindings[] | select(.name=="DB" and .type=="d1") | (.id // .namespace_id // empty)' /tmp/settings.json | head -n1)"
+          test -n "$db_id" || { echo "DB binding not found"; exit 1; }
+          if [ "$db_id" = "$EXPECTED_PROD_DB" ]; then
+            echo "PRODUCTION_DB_BINDING_OK"
+          else
+            echo "PRODUCTION_DB_BINDING_MISMATCH:$db_id"
+            exit 42
+          fi
+      - name: Read live DE EN metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS https://www.splendoria.vip/de/ -o /tmp/de
+          curl -fsS https://www.splendoria.vip/en/ -o /tmp/en
+          grep -Fq 'Gebundenes Splendoria-Biografiebuch mit goldenen Veredelungen' /tmp/de
+          grep -Fq 'Bound Splendoria biography book with gold detailing' /tmp/en
+          ! grep -Fq 'Libro biografico Splendoria rilegato con finiture dorate' /tmp/de
+          ! grep -Fq 'Libro biografico Splendoria rilegato con finiture dorate' /tmp/en
+          echo "SOCIAL_ALT_LIVE_OK"
