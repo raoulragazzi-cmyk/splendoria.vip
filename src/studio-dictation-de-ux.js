@@ -37,6 +37,9 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         unavailable: 'Hier ist keine Browser-Diktierfunktion verfügbar. Du kannst tippen oder die Diktierfunktion deines Geräts verwenden.',
         listening: 'Das Mikrofon ist aktiv. Sprich in deinem Tempo.',
         denied: 'Erlaube den Mikrofonzugriff in den Browser-Einstellungen. Dein vorhandener Text bleibt erhalten.',
+        noSpeech: 'Keine Sprache erkannt. Sprich etwas näher am Mikrofon und starte erneut.',
+        noMicrophone: 'Kein Mikrofon verfügbar. Prüfe Gerät und Browserberechtigung.',
+        network: 'Die Spracherkennung ist gerade nicht erreichbar. Dein Text bleibt erhalten.',
         interrupted: 'Das Diktat wurde unterbrochen. Prüfe deinen Text und starte bei Bedarf erneut.',
         correcting: 'Grammatik und Zeichensetzung werden geprüft. Dein Text bleibt bearbeitbar.',
         finished: 'Diktat beendet. Prüfe deinen Text vor dem Speichern.',
@@ -86,6 +89,14 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
       // activeTarget stays owned by this session until its onend arrives.
       try { recognition.stop(); } catch {}
     };
+    const stopVoiceForBackground = () => {
+      if (!activeButton || !recognition || voiceStopRequested) return;
+      requestVoiceStop();
+    };
+    window.addEventListener('pagehide', stopVoiceForBackground);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') stopVoiceForBackground();
+    });
     const preserveVoiceEdit = event => {
       if (!activeTarget) return false;
       if (!voiceManualEdit && event?.type !== 'compositionstart' && activeTarget.value === voiceLastValue) return false;
@@ -110,7 +121,19 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         if (activeTarget.value === nextValue) return;
         voiceLastValue = nextValue;
         activeTarget.value = nextValue;`);
-    once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", "if (activeButton && !voiceManualEdit) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));");
+    once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", `if (event.error === 'aborted' && voiceStopRequested) return;
+        if (activeButton && !voiceManualEdit) {
+          const errorMessage = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+            ? message('denied')
+            : event.error === 'no-speech'
+              ? message('noSpeech')
+              : event.error === 'audio-capture'
+                ? message('noMicrophone')
+                : event.error === 'network'
+                  ? message('network')
+                  : message('interrupted');
+          setStatus(activeButton, errorMessage);
+        }`);
     once('if (activeButton) { recognition.stop(); return; }', 'if (activeButton) { requestVoiceStop(); return; }');
     const onEndStart = voice.indexOf('recognition.onend = async () => {');
     const onEndFinish = voice.indexOf("document.querySelectorAll('[data-voice-target]').forEach(button => {", onEndStart);
