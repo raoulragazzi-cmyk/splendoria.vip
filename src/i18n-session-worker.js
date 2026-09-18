@@ -16,7 +16,13 @@ function localizeMetadata(html, locale) {
   const target = locale === "de"
     ? "Splendoria verwandelt deine Geschichte in ein Buch – mit digitalen Musen, Kontrolle durch den Autor und menschlicher Aufsicht."
     : "Splendoria turns your story into a book, with digital Muses, author control and human oversight.";
-  return String(html || "").split(source).join(target);
+  const imageAltSource = "Libro biografico Splendoria rilegato con finiture dorate";
+  const imageAltTarget = locale === "de"
+    ? "Gebundenes Splendoria-Biografiebuch mit goldenen Veredelungen"
+    : "Bound Splendoria biography book with gold detailing";
+  return String(html || "")
+    .split(source).join(target)
+    .split(imageAltSource).join(imageAltTarget);
 }
 
 function translateLogoutMessage(value, locale) {
