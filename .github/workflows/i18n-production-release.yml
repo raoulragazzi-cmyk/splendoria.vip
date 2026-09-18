@@ -73,6 +73,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Dependency security gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --audit-level=high
+
       - name: Run full multilingual release suite
         shell: bash
         run: |
@@ -107,7 +113,7 @@ jobs:
           fi
 
       - name: Production Wrangler dry run
-        run: npx wrangler deploy --dry-run
+        run: npx wrangler deploy --dry-run --env=""
 
       - name: Stop safely when deploy is disabled
         if: ${{ !inputs.deploy_production }}
@@ -127,9 +133,31 @@ jobs:
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
 
+      - name: Preflight Cloudflare production permissions and bindings
+        if: ${{ inputs.deploy_production }}
+        shell: bash
+        env:
+          EXPECTED_PROD_DB_ID: 1a46b8b0-2e6f-44cf-a22f-4950259f9434
+        run: |
+          set -euo pipefail
+
+          curl -fsS             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/splendoria-v2/settings"             -o /tmp/splendoria-worker-settings.json
+
+          jq -e '.success == true' /tmp/splendoria-worker-settings.json >/dev/null
+          actual_db_id="$(jq -r '.result.bindings[] | select(.name=="DB" and .type=="d1") | (.id // .namespace_id // empty)' /tmp/splendoria-worker-settings.json | head -n1)"
+          test "$actual_db_id" = "$EXPECTED_PROD_DB_ID" || {
+            echo "Refusing deploy: production Worker DB binding is not the expected production D1 database."
+            exit 1
+          }
+
+          curl -fsS             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/email/routing/rules/plan"             -o /tmp/splendoria-email-routing-plan.json
+
+          jq -e '.success == true' /tmp/splendoria-email-routing-plan.json >/dev/null
+          echo "Cloudflare production preflight passed: Worker access, production D1 binding and Email Routing read are available."
+
       - name: Deploy exact candidate to Cloudflare Workers
         if: ${{ inputs.deploy_production }}
-        run: npx wrangler deploy
+        run: npx wrangler deploy --env=""
 
       - name: Immediate production smoke test
         if: ${{ inputs.deploy_production }}
@@ -154,4 +182,12 @@ jobs:
           printf '%s' "$de_area" | grep -Fq '<title>Kundenbereich — Splendoria</title>'
           ! printf '%s' "$de_area" | grep -Fq 'Splendoria trasforma la tua storia in un libro'
 
-          echo "Production smoke passed for health, IT/DE/EN routes, client entry points and DE metadata."
+          curl -fsS             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/splendoria-v2/settings"             -o /tmp/splendoria-worker-settings-postdeploy.json
+          jq -e '.success == true' /tmp/splendoria-worker-settings-postdeploy.json >/dev/null
+          postdeploy_db_id="$(jq -r '.result.bindings[] | select(.name=="DB" and .type=="d1") | (.id // .namespace_id // empty)' /tmp/splendoria-worker-settings-postdeploy.json | head -n1)"
+          test "$postdeploy_db_id" = "1a46b8b0-2e6f-44cf-a22f-4950259f9434" || {
+            echo "Production smoke failed: Worker DB binding changed unexpectedly."
+            exit 1
+          }
+
+          echo "Production smoke passed for health, IT/DE/EN routes, client entry points, DE metadata and production D1 binding."
