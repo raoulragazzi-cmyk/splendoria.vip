@@ -1,0 +1,36 @@
+name: TEMP validate MIC-01 2026-09-18
+
+on:
+  push:
+    branches: ["ux/de-dictation-background-errors-20260918"]
+    paths:
+      - ".github/workflows/temp-validate-mic01-20260918.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: MIC-01 browser edge cases
+        run: node --test test/studio-dictation-de-ux.test.mjs
+      - name: Related runtime regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node test/i18n-ui-runtime-smoke.mjs
+          node test/de-release-runtime.test.mjs
+          node test/studio-button-contract-smoke.mjs
+      - name: Security and production dry run
+        shell: bash
+        run: |
+          npm audit --audit-level=high
+          npx wrangler deploy --dry-run --env=""
