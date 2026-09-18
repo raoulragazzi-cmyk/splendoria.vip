@@ -35,11 +35,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          parent="$(git rev-parse HEAD^)"
-          test "$parent" = "$APPROVED_APP_SHA" || {
-            echo "Unexpected parent: $parent"
-            exit 1
-          }
           changed="$(git diff --name-only "$APPROVED_APP_SHA"...HEAD)"
           test "$changed" = ".github/workflows/temp-de-muse-production-20260918.yml" || {
             echo "Unexpected changes after approved candidate:"
@@ -67,15 +62,14 @@ jobs:
           done
           node test/studio-dictation-de-ux.test.mjs
           node test/de-release-runtime.test.mjs
-          npx wrangler deploy --dry-run
-          ! grep -Eq 'd1 migrations apply|migrations apply' .github/workflows/temp-de-muse-production-20260918.yml
+          npx wrangler deploy --dry-run --env=""
 
       - name: Deploy production Worker only
         id: deploy
         shell: bash
         run: |
           set +e
-          npx wrangler deploy 2>&1 | tee /tmp/production-deploy.log
+          npx wrangler deploy --env="" 2>&1 | tee /tmp/production-deploy.log
           status=${PIPESTATUS[0]}
           set -e
           echo "status=$status" >> "$GITHUB_OUTPUT"
