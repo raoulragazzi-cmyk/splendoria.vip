@@ -40,6 +40,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         noSpeech: 'Keine Sprache erkannt. Sprich etwas näher am Mikrofon und starte erneut.',
         noMicrophone: 'Kein Mikrofon verfügbar. Prüfe Gerät und Browserberechtigung.',
         network: 'Die Spracherkennung ist gerade nicht erreichbar. Dein Text bleibt erhalten.',
+        background: 'Diktat beendet, weil Splendoria in den Hintergrund gewechselt ist. Prüfe deinen Text.',
         interrupted: 'Das Diktat wurde unterbrochen. Prüfe deinen Text und starte bei Bedarf erneut.',
         correcting: 'Grammatik und Zeichensetzung werden geprüft. Dein Text bleibt bearbeitbar.',
         finished: 'Diktat beendet. Prüfe deinen Text vor dem Speichern.',
@@ -55,6 +56,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
     let voiceLastValue = '';
     let voiceManualEdit = false;
     let voiceStopRequested = false;
+    let voiceBackgroundStop = false;
     const voiceTargetRuns = new WeakMap();
     let activeButton = null;`);
     once("button.setAttribute('aria-pressed', live ? 'true' : 'false');", `button.setAttribute('aria-pressed', live ? 'true' : 'false');
@@ -91,6 +93,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
     };
     const stopVoiceForBackground = () => {
       if (!activeButton || !recognition || voiceStopRequested) return;
+      voiceBackgroundStop = true;
       requestVoiceStop();
     };
     window.addEventListener('pagehide', stopVoiceForBackground);
@@ -150,6 +153,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         const completedWithError = endedWithError;
         const completedFocus = document.activeElement;
         const completedManualEdit = voiceManualEdit || Boolean(activeTarget && activeTarget.value !== voiceLastValue);
+        const completedBackgroundStop = voiceBackgroundStop;
         removeVoiceEditListeners(activeTarget);
         const button = activeButton;`)
       .replace('if (target) {', 'if (target && rawFinal && !completedManualEdit && target.value !== committed) {')
@@ -167,7 +171,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
             target.removeEventListener('compositionstart', invalidateCorrection);
           }`)
       .replace('if (result?.text && target.value === committed)', "if (typeof result?.text === 'string' && result.text.trim() && !correctionWasEdited && target.value === committed && voiceTargetRuns.get(target) === completedRun)")
-      .replace("if (button && !completedWithError) setStatus(button, message('finished'));", "if (button && voiceTargetRuns.get(target) === completedRun && button !== activeButton) { if (completedManualEdit) setStatus(button, message('edited')); else if (!completedWithError) setStatus(button, message('finished')); }")
+      .replace("if (button && !completedWithError) setStatus(button, message('finished'));", "if (button && voiceTargetRuns.get(target) === completedRun && button !== activeButton) { if (completedManualEdit) setStatus(button, message('edited')); else if (completedBackgroundStop) setStatus(button, message('background')); else if (!completedWithError) setStatus(button, message('finished')); }")
       .replace('target?.focus();', 'if (!completedManualEdit && voiceRun === completedRun && !activeButton && document.activeElement === completedFocus && completedFocus === button) target?.focus();');
     once(originalEnd, safeEnd);
     once('recognition.lang = selectedLanguage();\n        recognition.start();', `activeVoiceLanguage = selectedLanguage();
@@ -175,6 +179,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         voiceLastValue = target.value;
         voiceManualEdit = false;
         voiceStopRequested = false;
+        voiceBackgroundStop = false;
         target.addEventListener('input', preserveVoiceEdit);
         target.addEventListener('compositionstart', preserveVoiceEdit);
         const startedRun = ++voiceRun;
