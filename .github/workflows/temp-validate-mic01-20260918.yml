@@ -34,3 +34,5 @@ jobs:
         run: |
           npm audit --audit-level=high
           npx wrangler deploy --dry-run --env=""
+
+# rerun after background-stop refinement
