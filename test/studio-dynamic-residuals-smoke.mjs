@@ -82,7 +82,11 @@ const lateDynamicItalianMarkers = [
   'Dimensione della trama del libro: ',
   'Nodi cruciali: ',
   'Parole-soglia: ',
-  'Indice editoriale orientativo: '
+  'Indice editoriale orientativo: ',
+  "'Pagina ' + (activePage + 1) + ' di ' + pages.length",
+  "totalWords + ' parole · ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate')",
+  "'Capitolo ' + (index + 1) + ' · '",
+  "nodes.join(', ') || 'da approfondire'"
 ];
 
 for (const locale of ['de', 'en']) {
@@ -100,7 +104,12 @@ for (const expected of [
   'Letztes Kapitel',
   'Speichern und zum nächsten Kapitel \\u2192',
   'Die Muse liest deinen Text noch einmal',
-  'Die beiden Passwörter stimmen nicht überein.'
+  'Die beiden Passwörter stimmen nicht überein.',
+  "'Seite ' + (activePage + 1) + ' von ' + pages.length",
+  "totalWords + ' Wörter · ' + pages.length",
+  "'Kapitel ' + (index + 1) + ' · '",
+  "nodes.join(', ') || 'im Interview weiter vertiefen'",
+  "'Erzählumfang des Buches: ' + ({'Una stagione decisiva':'Eine entscheidende Lebensphase'"
 ]) assert.ok(germanCore.includes(expected), `de: expected polished Studio copy missing: ${expected}`);
 
 const germanOnce = strengthenMuseOptions({
