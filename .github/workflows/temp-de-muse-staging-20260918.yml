@@ -94,3 +94,5 @@ jobs:
             test "$code" = "200"
           done
           echo "Staging candidate verified from served assets."
+
+# rerun after final dynamic residual fixes
