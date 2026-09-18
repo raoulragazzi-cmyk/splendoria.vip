@@ -121,8 +121,10 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         if (activeTarget.value === nextValue) return;
         voiceLastValue = nextValue;
         activeTarget.value = nextValue;`);
-    once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", `if (event.error === 'aborted' && voiceStopRequested) return;
-        if (activeButton && !voiceManualEdit) {
+    once("recognition.onerror = event => {\n        endedWithError = true;", `recognition.onerror = event => {
+        if (event.error === 'aborted' && voiceStopRequested) return;
+        endedWithError = true;`);
+    once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", `if (activeButton && !voiceManualEdit) {
           const errorMessage = event.error === 'not-allowed' || event.error === 'service-not-allowed'
             ? message('denied')
             : event.error === 'no-speech'
