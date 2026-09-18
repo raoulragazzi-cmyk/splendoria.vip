@@ -1,0 +1,114 @@
+name: TEMP DE Muse production release 2026-09-18
+
+on:
+  push:
+    branches: ["splendoria.vip"]
+    paths:
+      - ".github/workflows/temp-de-muse-production-20260918.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APPROVED_APP_SHA: 0054cde6322124187d10182031afbea4a12c0073
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Freeze approved application candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          parent="$(git rev-parse HEAD^)"
+          test "$parent" = "$APPROVED_APP_SHA" || {
+            echo "Unexpected parent: $parent"
+            exit 1
+          }
+          changed="$(git diff --name-only "$APPROVED_APP_SHA"...HEAD)"
+          test "$changed" = ".github/workflows/temp-de-muse-production-20260918.yml" || {
+            echo "Unexpected changes after approved candidate:"
+            printf '%s\n' "$changed"
+            exit 1
+          }
+          grep -Fq '"name": "splendoria-v2"' wrangler.jsonc
+          grep -Fq '"main": "src/german-editorial-room-worker.js"' wrangler.jsonc
+          grep -Fq '"database_name": "splendoria-db"' wrangler.jsonc
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate exact production candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node test/german-editorial-room-smoke.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
+          for test_file in test/i18n-*.mjs; do
+            [ -e "$test_file" ] || continue
+            node "$test_file"
+          done
+          node test/studio-dictation-de-ux.test.mjs
+          node test/de-release-runtime.test.mjs
+          npx wrangler deploy --dry-run
+          ! grep -Eq 'd1 migrations apply|migrations apply' .github/workflows/temp-de-muse-production-20260918.yml
+
+      - name: Deploy production Worker only
+        id: deploy
+        shell: bash
+        run: |
+          set +e
+          npx wrangler deploy 2>&1 | tee /tmp/production-deploy.log
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "Wrangler exit status: $status"
+
+      - name: Verify production read-back
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://www.splendoria.vip"
+          for attempt in 1 2 3 4 5 6; do
+            code="$(curl -sS -o /tmp/health -w '%{http_code}' "$base/healthz" || true)"
+            if [ "$code" = "200" ] && grep -Fq '"status":"ok"' /tmp/health; then break; fi
+            sleep $((attempt * 2))
+          done
+          grep -Fq '"status":"ok"' /tmp/health
+
+          curl -fsS "$base/assets/studio.js?lang=de" -o /tmp/studio-de.js
+          curl -fsS "$base/assets/studio.js?lang=en" -o /tmp/studio-en.js
+
+          for marker in             'Weitere Überarbeitungen'             'Automatisches Speichern aktiv'             'Vorheriges Kapitel'             'Letztes Kapitel'             'Die Muse liest deinen Text noch einmal'             'Die beiden Passwörter stimmen nicht überein.'             "'Seite ' + (activePage + 1) + ' von ' + pages.length"             "totalWords + ' Wörter · ' + pages.length"             "'Kapitel ' + (index + 1) + ' · '"             "nodes.join(', ') || 'im Interview weiter vertiefen'"; do
+            grep -Fq "$marker" /tmp/studio-de.js
+          done
+
+          for marker in             'Altri interventi editoriali'             'Salvataggio automatico attivo'             'Capitolo precedente'             'Ultimo capitolo'             'La Musa sta rileggendo'             "'Pagina ' + (activePage + 1) + ' di ' + pages.length"             "totalWords + ' parole · ' + pages.length"             "'Capitolo ' + (index + 1) + ' · '"             "nodes.join(', ') || 'da approfondire'"; do
+            ! grep -Fq "$marker" /tmp/studio-de.js
+          done
+
+          grep -Fq 'More editorial options' /tmp/studio-en.js
+          grep -Fq 'Automatic saving is on' /tmp/studio-en.js
+
+          for path in / /de/ /en/ /de/area-clienti /en/area-clienti /de/registrati /en/registrati; do
+            code="$(curl -sS -o /tmp/body -w '%{http_code}' "$base$path")"
+            case "$code" in 200|204|301|302|303|307|308) ;; *) exit 1 ;; esac
+          done
+          echo "Production read-back passed."
