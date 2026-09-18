@@ -5,6 +5,7 @@ import { projectIdFromPath, readPreference } from "./studio-language-worker.js";
 
 const ROOM_MARKER = "INTERNE REDAKTION SPLENDORIA — DEUTSCH";
 const GERMAN_CONTEXT = /PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH|VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE|LINGUA DELL'OPERA:\s*TEDESCO/i;
+const GERMAN_EDITOR_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 const ROLE_CONTRACTS = {
   ghostwriter: `ROLLE — GHOSTWRITER
@@ -19,6 +20,7 @@ Du bist in diesem Arbeitsgang der Ghostwriter. Schreibe oder entwickle Text aus 
 Du bist in diesem Arbeitsgang der konservative Lektor. Verbessere Sprache, ohne den Inhalt neu zu schreiben.
 - Korrigiere Orthografie, Grammatik, Kasus, Kongruenz, Verbposition, Präpositionen, Zeichensetzung, unklare Bezüge und inkonsistente Zeitformen.
 - Bewahre Bedeutung, Fakten, Erzählperspektive, Reihenfolge, Ton, charakteristische Wortwahl und Absatzlogik, soweit sie sprachlich funktionieren.
+- Direkte Zitate, ihre Wortfolge, Schreibweise und Anführungszeichen bleiben bytegetreu unverändert.
 - Keine neuen Beispiele, Bilder, Dialoge, Details oder Deutungen hinzufügen.
 - Eine eigenwillige, glaubwürdige Autorenformulierung darf stehen bleiben, wenn sie korrekt und verständlich ist.
 - Ziel ist ein druckreifer Text, nicht ein stilistisch anderer Text.`,
@@ -26,7 +28,9 @@ Du bist in diesem Arbeitsgang der konservative Lektor. Verbessere Sprache, ohne 
   stilredaktion: `ROLLE — STILREDAKTION
 Du bist in diesem Arbeitsgang die Stilredaktion. Arbeite am vorhandenen Text, nicht an den Tatsachen.
 - Verbessere Lesefluss, Rhythmus, Präzision, Übergänge und Wortwahl, ohne Information, Perspektive oder Stimme zu verändern.
+- Direkte Zitate, ihre Wortfolge, Schreibweise und Anführungszeichen bleiben bytegetreu unverändert.
 - Entferne unnötige Wiederholungen, Füllwörter, schwache Verb-Substantiv-Konstruktionen, Bürokratendeutsch, Werbefloskeln und erkennbare KI-Muster.
+- Entferne unbelegte Deutungen oder Wertungen aus dem Entwurf, statt sie sprachlich zu veredeln.
 - Variiere Satzlängen organisch; keine dekorative Eleganz, keine künstlichen Synonyme und keine Pathos-Steigerung.
 - Nutze frisches, heutiges Standarddeutsch, aber kein erzwungenes Jugendvokabular, keine Trendwörter und kein unnötiges Denglisch.
 - Wenn eine stilistische Verbesserung neue Tatsachen voraussetzen würde, unterlasse sie.`,
@@ -72,14 +76,22 @@ export function isGermanMachineControl(options) {
   const hasInsufficientSentinel = /\[FONTI_INSUFFICIENTI\]/.test(text);
   const hasControlIntent = /controllo qualit|controllo.*fedelt|valuta|verifica|fonti.*sufficient|quality control|fidelity check|qualit[aä]tskontroll|quellenkontroll|pr[uü]f/i.test(text);
   const hasRewriteIntent = /riscriv|scrivi|riscrivere|testo revisionato|versione completa e fedele|rewrite|write\b|schreib|[uü]berarbeit|redig/i.test(text);
-
-  // APPROVATO/RIFIUTATO is unambiguously a verdict-only contract, even if the
-  // checker says "senza riscriverle". A lone [FONTI_INSUFFICIENTI] sentinel is
-  // different: Splendoria also uses it inside strict-facts *rewriting* retries.
-  // Those retries must stay in the Ghostwriter path and produce prose whenever
-  // the sources are sufficient.
   if (hasVerdictPair && hasControlIntent) return true;
   return hasInsufficientSentinel && hasControlIntent && !hasRewriteIntent;
+}
+
+export function germanEditorialModel(model, options, requestedRole = "ghostwriter") {
+  const text = instructionText(options);
+  // Faktenkontrolle keeps the model selected by the canonical core. Live
+  // benchmarks gave both Qwen and Llama 6/6 on verdict-only fact checks, so
+  // there is no evidence that justifies overriding the core here.
+  if (isGermanMachineControl(options) || requestedRole === "faktenkontrolle") return model;
+  if (requestedRole === "lektor" || requestedRole === "stilredaktion") return GERMAN_EDITOR_MODEL;
+  const isExistingFinalEditorialPass = /revisore letterario finale di Splendoria|testo revisionato|Prima di riscrivere, confronta internamente ogni affermazione concreta/i.test(text);
+  if (isExistingFinalEditorialPass) return GERMAN_EDITOR_MODEL;
+
+  // Writer calls deliberately keep the model chosen by the canonical core.
+  return model;
 }
 
 export function canonicalEditorialPath(pathname) {
@@ -115,14 +127,12 @@ export function applyGermanEditorialRole(options, requestedRole = "ghostwriter",
   if (!options || typeof options !== "object") return options;
   const existing = instructionText(options);
   if (existing.includes(ROOM_MARKER)) return options;
-
   const machineControl = isGermanMachineControl(options);
   if (!machineControl && !GERMAN_CONTEXT.test(existing)) return options;
   const role = machineControl ? "faktenkontrolle" : requestedRole;
   if (!ROLE_CONTRACTS[role]) return options;
   const block = editorialBlock(role, action);
   const out = { ...options };
-
   if (Array.isArray(options.messages)) {
     let injected = false;
     out.messages = options.messages.map(message => {
@@ -136,7 +146,6 @@ export function applyGermanEditorialRole(options, requestedRole = "ghostwriter",
   } else {
     return options;
   }
-
   return out;
 }
 
@@ -168,7 +177,8 @@ function envWithEditorialRoom(env, role, action) {
   Object.assign(wrapped, env);
   wrapped.AI = {
     run(model, options) {
-      return binding.run(model, composeGermanEditorialOptions(options, role, action));
+      const selectedModel = germanEditorialModel(model, options, role);
+      return binding.run(selectedModel, composeGermanEditorialOptions(options, role, action));
     }
   };
   return wrapped;
@@ -177,17 +187,13 @@ function envWithEditorialRoom(env, role, action) {
 async function editorialFetch(request, env, ctx) {
   const url = new URL(request.url);
   if (request.method !== "POST") return studioDeepWorker.fetch(request, env, ctx);
-
   const initialRole = editorialRequestRole(url.pathname);
   if (!initialRole) return studioDeepWorker.fetch(request, env, ctx);
-
   const projectId = projectIdFromPath(url.pathname);
   if (!projectId) return studioDeepWorker.fetch(request, env, ctx);
-
   const pref = await readPreference(env, projectId);
   const language = pref.museOutputLanguage || pref.bookLanguage || "it-IT";
   if (language !== "de-DE") return studioDeepWorker.fetch(request, env, ctx);
-
   const action = await requestAction(request, url.pathname);
   const role = editorialRequestRole(url.pathname, action) || initialRole;
   return studioDeepWorker.fetch(request, envWithEditorialRoom(env, role, action), ctx);

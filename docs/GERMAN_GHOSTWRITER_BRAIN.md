@@ -1,10 +1,10 @@
-# Splendoria — cervello tedesco Ghostwriter
+# Splendoria — Musa tedesca e redazione DACH
 
-Branch: `postprod/de-ghostwriter-brain-v2`
+Branch candidata: `ai/de-muse-dual-model-20260917` — PR #67.
 
 ## Obiettivo
 
-Portare la Musa tedesca da una buona localizzazione linguistica a un comportamento da ghostwriter/editor professionale in tedesco contemporaneo, senza modificare il contratto italiano e senza degradare il percorso inglese.
+Migliorare la Musa tedesca e l'esperienza Studio DE senza creare una seconda regia dei modelli, senza modificare il core italiano e senza aggiungere chiamate AI obbligatorie.
 
 ## Bussola editoriale
 
@@ -16,121 +16,82 @@ Ordine di priorità non negoziabile:
 4. struttura narrativa e ritmo;
 5. eleganza stilistica.
 
-Quando due obiettivi entrano in conflitto, vince sempre quello più in alto.
+Quando due obiettivi entrano in conflitto, vince quello più in alto.
 
-## Principi
+## Redazione tedesca
 
-- Standarddeutsch contemporaneo, naturale e idiomatico, adatto al mercato DACH.
-- Voce dell'autore prioritaria rispetto alla levigatura stilistica.
-- Nessuna invenzione di fatti, dialoghi, ricordi, emozioni, motivazioni, dettagli sensoriali o cronologia.
-- Lessico attuale e preciso, evitando sia burocratese/nominalizzazioni sia slang o anglicismi forzati.
-- Ritmo variato, verbi concreti, periodi leggibili, transizioni naturali.
-- Riduzione di cliché narrativi, linguaggio promozionale e segnali tipici della prosa generata da AI.
-- Nessuna imitazione di autori identificabili.
-- Citazioni, nomi propri, dati e token macchina invariati.
-
-## Style pass v2 — moderno, fresco, fluido
-
-Il secondo layer editoriale aggiunge best practice di microstile senza cambiare i contenuti:
-
-- preferenza per verbi forti e concreti rispetto a costruzioni nominali pesanti;
-- riduzione di formule amministrative come `im Rahmen von`, `in Bezug auf`, `hinsichtlich`, quando una forma più semplice è più precisa;
-- uso prudente di anglicismi e buzzword;
-- niente lessico volutamente alla moda se non appartiene alla voce dell'autore;
-- paragrafi con funzione narrativa chiara e ritmo non meccanico;
-- limitazione di triadi, simmetrie, contrasti stereotipati, mini-morali e altre impronte tipiche della prosa AI;
-- linguaggio moderno senza anacronismi: citazioni storiche, documenti e termini d'epoca non vengono modernizzati;
-- termini regionali e culturali di Germania, Austria, Svizzera e Südtirol vengono preservati quando provengono dalle fonti.
-
-## Modalità editoriali
-
-Il wrapper sceglie automaticamente una modalità sulla base delle istruzioni tecniche, senza riscrivere i materiali dell'autore:
-
-1. `narrative`: ghostwriting di capitoli e sezioni;
-2. `editor`: revisione e rifinitura conservativa;
-3. `interview`: domande naturali, aperte e non suggestive;
-4. `outline`: indice e titoli concreti, vari e non promozionali.
-
-## Redazione tedesca interna
-
-`src/german-editorial-room-worker.js` aggiunge una redazione virtuale con quattro ruoli distinti. Non esegue quattro chiamate AI: seleziona il contratto editoriale corretto per la chiamata che Splendoria sta già effettuando.
+`src/german-editorial-room-worker.js` assegna un contratto editoriale alla chiamata AI che Splendoria sta già eseguendo. Non aggiunge una cascata obbligatoria di modelli.
 
 ### Ghostwriter
 
-Usato per generazione capitolo, Affidati alla Musa, struttura e intervista. Organizza e sviluppa soltanto materiale autorizzato. Se le fonti sono sottili, scrive meno invece di inventare.
+Generazione capitolo, Affidati alla Musa, struttura e intervista mantengono il **modello scelto dal core canonico**. Il wrapper tedesco migliora istruzioni e disciplina editoriale senza sostituire la politica di routing già esistente.
 
 ### Lektor
 
-Usato per `grammar`. È deliberatamente conservativo: corregge ortografia, grammatica, sintassi, riferimenti e tempi verbali senza riscrivere stile, fatti o voce.
+Per `grammar` viene usato `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. Corregge lingua e sintassi in modo conservativo. Citazioni dirette, grafia e segni di citazione devono restare byte-identici.
 
 ### Stilredaktion
 
-Usata da Migliora e dagli strumenti `improve`, `clarity`, `emotional`, `vivid`, `elegant`, `short`. Ogni azione riceve un sotto-contratto specifico. Per esempio `vivid` può rendere più leggibili i dettagli già presenti, ma non può aggiungere colori, gesti o percezioni sensoriali non documentati.
+Per `improve`, `clarity`, `emotional`, `vivid`, `elegant` e `short` viene usato Llama 3.3 70B Fast. Deve migliorare il testo senza diventare autore: niente fatti, emozioni, causalità o interpretazioni non sostenuti dalle fonti. Le valutazioni non documentate vanno eliminate, non rese più eleganti.
 
 ### Faktenkontrolle
 
-Non richiede una nuova chiamata obbligatoria. Quando una chiamata esistente è già un controllo di qualità/fedeltà con token macchina (`APPROVATO`, `RIFIUTATO`, `[FONTI_INSUFFICIENTI]`), il ruolo passa automaticamente a Faktenkontrolle. Il controllo confronta le affermazioni esclusivamente con le fonti fornite e conserva esattamente il protocollo di risposta macchina richiesto dal chiamante.
+I controlli macchina `APPROVATO/RIFIUTATO` e `[FONTI_INSUFFICIENTI]` ricevono il contratto Faktenkontrolle ma **mantengono il modello scelto dal core**. Nel benchmark a verdetto puro Qwen e Llama hanno entrambi ottenuto 6/6; non esiste quindi evidenza sufficiente per imporre un override del modello.
 
-Questa architettura evita costo e latenza di una pipeline rigida a quattro agenti, ma rende esplicita la responsabilità editoriale di ogni operazione.
+## Evidenza qualitativa
 
-## Profili di genere
+I benchmark sono stati eseguiti tramite Worker AI isolato, senza D1, email o route applicative, e rimossi dopo l'esecuzione.
 
-Il layer v2 adatta la tecnica editoriale al genere già dichiarato nel progetto, senza modificare il valore macchina:
+### Otto casi narrativi difficili
 
-- Autobiografia;
-- Memoir / Memoriale;
-- Storia di famiglia;
-- Biografia aziendale;
-- Romanzo / forma narrativa letteraria.
+Copertura: Südtirol/DACH, voce anziana, biografia aziendale, memoria frammentaria, fonti scarse, contraddizioni, citazioni e testo già buono.
 
-Il genere può cambiare ritmo, distanza narrativa e struttura, mai i fatti.
+Dopo aver allineato Qwen alla configurazione Workers AI usata dal prodotto (`chat_template_kwargs.enable_thinking=false`):
+- 0 draft vuoti;
+- 0 violazioni fattuali rilevate;
+- buona disciplina di non-intervento sui testi già riusciti;
+- contraddizioni e incertezze mantenute;
+- citazioni protette con guardrail byte-identico.
 
-## Profili tono esistenti
+### Casi editoriali avversariali
 
-I valori macchina già esistenti restano canonici e vengono solo interpretati dal cervello tedesco:
+Sono stati provati grammatica difettosa, burocratese, retorica AI non supportata, emozioni plausibili ma non documentate, causalità inventata e citazioni.
 
-- `Emozionante e autentico` → emotional und authentisch;
-- `Intimo e riflessivo` → intim und reflektiert;
-- `Leggero e brillante` → leicht und geistreich;
-- `Professionale e autorevole` → professionell und souverän.
+Il risultato ha escluso una soluzione semplicistica “un modello fa tutto”: Llama è adatto a Lektor/Stilredaktion, ma non viene promosso a giudice universale dei fatti; Qwen può essere molto disciplinato ma in alcuni casi editoriali diventa eccessivamente conservativo.
 
-La rilevazione può leggere il contesto per scegliere il profilo, ma il contenuto dell'autore non viene modificato dal layer di selezione.
+## Interfaccia Studio DE/EN
 
-## Strategia tecnica
+`src/studio-deep-i18n-worker.js` copre anche il copy dinamico introdotto nel core dopo il primo rollout i18n. Sono protetti con test, tra gli altri:
 
-`src/german-ghostwriter-worker.js` aggiunge il contratto ghostwriter sopra `src/studio-deep-i18n-worker.js`.
+- progressi della Musa;
+- “Weitere Überarbeitungen”;
+- “Automatisches Speichern aktiv”;
+- navigazione capitoli;
+- stati di autosalvataggio;
+- messaggi password;
+- placeholder dell'editor;
+- Assessment/editorial project sheet.
 
-`src/german-ghostwriter-style-v2-worker.js` aggiunge un secondo pass dedicato a lessico contemporaneo, ritmo, genere, regionalità e anti-cliché. Interviene solo sul tedesco già marcato dal primo layer.
+Il test `test/studio-dynamic-residuals-smoke.mjs` scansiona sia il patch Studio sia il vero `studioScript()` in `src/worker.js`, così nuove stringhe italiane dinamiche non passano inosservate.
 
-`src/german-editorial-room-worker.js` è l'entry point candidato di PR #45. Legge la lingua del progetto, interviene solo se `museOutputLanguage`/`bookLanguage` è `de-DE`, assegna il ruolo in base alla route e all'azione del pulsante e lascia italiano e inglese sul percorso precedente.
+## Sicurezza del perimetro
 
-Italiano e inglese passano invariati. I wrapper sono idempotenti: se un contratto è già presente non viene aggiunto una seconda volta.
+- `src/worker.js`, `src/studio-worker.js` e `src/studio-language-worker.js` restano invariati rispetto alla produzione.
+- Il layer `src/studio-deep-i18n-worker.js` è modificabile soltanto perché è parte esplicita di questa release DE/EN ed è protetto dai test dedicati.
+- Nessuna migrazione D1.
+- Nessuna modifica ai dati degli utenti.
+- Italiano e inglese mantengono i percorsi canonici; l'inglese riceve soltanto le equivalenti coperture runtime delle stringhe dinamiche.
+- Nessun file o Worker di benchmark deve restare nella PR finale.
 
-## Controlli finali silenziosi
+## Gate prima del merge
 
-Prima della consegna la Musa tedesca verifica internamente:
+1. German ghostwriter brain verde.
+2. Studio deep i18n/Muse verde.
+3. Studio trilingue verde.
+4. suite i18n/app esistenti verdi.
+5. Wrangler dry-run verde.
+6. staging isolato e read-back delle risorse DE/EN.
+7. residual scan sul JavaScript servito da staging.
+8. PR fuori da Draft solo dopo questi controlli.
 
-1. fattualità;
-2. fedeltà alla voce;
-3. grammatica e idiomaticità;
-4. ritmo e ripetizioni;
-5. freschezza lessicale;
-6. assenza di cliché e segnali tipici della prosa AI;
-7. coerenza temporale e regionale.
-
-La checklist non deve mai comparire nell'output del libro.
-
-## Deep pass pulsanti
-
-`test/studio-button-contract-smoke.mjs` protegge le route e i valori macchina dietro i pulsanti Studio, distingue controlli submit da controlli JavaScript `type="button"`, controlla `formnovalidate` per le azioni Musa/Migliora, verifica le traduzioni DE/EN e mantiene i token distruttivi `ELIMINA` / `CANCELLA` canonici. L'inventario è in `docs/STUDIO_BUTTON_AUDIT.md`.
-
-## Gate prima della produzione
-
-- `src/worker.js`, `src/studio-worker.js`, `src/studio-language-worker.js` e `src/studio-deep-i18n-worker.js` byte-identici alla produzione;
-- test dedicati per modalità, toni, generi, ruoli redazionali, idempotenza, token macchina, citazioni storiche, pulsanti e contenuti utente;
-- suite Studio/i18n/app esistenti verdi;
-- Wrangler dry-run verde;
-- branch preview Cloudflare verde;
-- nessun merge finché il PR è Draft.
-
-Il branch preview può essere usato per collaudare il cervello tedesco, ma il nuovo layer non viene promosso sul dominio reale finché il PR non viene esplicitamente portato fuori da Draft e approvato per il merge.
+La produzione viene aggiornata soltanto dopo staging e verifica esplicita del candidato.

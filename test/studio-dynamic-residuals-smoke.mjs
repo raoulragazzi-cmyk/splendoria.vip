@@ -38,6 +38,90 @@ for (const locale of ['de', 'en']) {
   assert.match(localized, /window\.location\.pathname\.match\(\/\^\\\/\(\?:\(\?:de\|en\)\\\/\)\?libro/, `${locale}: localized route-aware book id parser required`);
 }
 
+
+const coreSource = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
+const coreStart = coreSource.indexOf('function studioScript()');
+const coreReturn = coreSource.indexOf('return new Response(source', coreStart);
+const coreEnd = coreSource.indexOf('\nfunction ', coreReturn);
+assert.ok(coreStart >= 0 && coreReturn > coreStart, 'core studioScript must remain extractable');
+const coreStudioRuntime = coreSource.slice(coreStart, coreEnd > coreReturn ? coreEnd : undefined);
+
+const lateDynamicItalianMarkers = [
+  'La Musa sta rileggendo',
+  'La Musa sta scrivendo',
+  'Confronta il testo con le tue parole e ne preserva il significato…',
+  'Raccoglie le tue parole e le fonti autorizzate…',
+  'Controlla grammatica, sintassi e fluidità…',
+  'Verifica che fatti, nomi e voce siano rimasti fedeli…',
+  'Completa l’ultima rilettura editoriale…',
+  'Altri interventi editoriali',
+  'Salvataggio automatico attivo',
+  'Navigazione tra i capitoli',
+  'Il tuo posto nella storia',
+  'Capitolo precedente',
+  'Scegli il capitolo',
+  'Capitolo successivo',
+  'Capitoli successivi bloccati',
+  'Ultimo capitolo',
+  'Salva e passa al capitolo successivo →',
+  'Salva e passa al capitolo successivo \\u2192',
+  'Ogni capitolo comincia da una prima frase.',
+  'Il capitolo sta prendendo forma.',
+  'Sei vicino alla lunghezza prevista.',
+  'Le tue parole appariranno qui mentre scrivi o detti il capitolo.',
+  'Sto custodendo le tue parole…',
+  'Le tue nuove parole saranno salvate tra pochi secondi…',
+  'Le tue parole sono al sicuro · Salvato alle ',
+  'Salvataggio online automatico attivo nel tuo account',
+  'Sto custodendo i tuoi ricordi…',
+  'Conferma la dichiarazione sui contenuti per attivare il salvataggio automatico',
+  'Le modifiche saranno salvate tra pochi secondi…',
+  'Le due password non coincidono.',
+  'Assessment editoriale · ',
+  'SCHEDA TECNICA DEL PROGETTO EDITORIALE',
+  'Dimensione della trama del libro: ',
+  'Nodi cruciali: ',
+  'Parole-soglia: ',
+  'Indice editoriale orientativo: ',
+  "'Pagina ' + (activePage + 1) + ' di ' + pages.length",
+  "totalWords + ' parole \\xB7 ' + pages.length + (pages.length === 1 ? ' pagina stimata' : ' pagine stimate')",
+  "'Capitolo ' + (index + 1) + ' \\xB7 '",
+  "nodes.join(', ') || 'da approfondire'"
+];
+
+for (const locale of ['de', 'en']) {
+  const localizedCore = localizeDeepStudioScript(coreStudioRuntime, locale);
+  for (const marker of lateDynamicItalianMarkers) {
+    assert.ok(!localizedCore.includes(marker), `${locale}: late dynamic Studio residual: ${marker}`);
+  }
+}
+
+const renderedCoreStudioRuntime = coreStudioRuntime.replace(/\\xB7/g, '·');
+for (const locale of ['de', 'en']) {
+  const localizedRenderedCore = localizeDeepStudioScript(renderedCoreStudioRuntime, locale);
+  assert.ok(!localizedRenderedCore.includes("totalWords + ' parole · '"), `${locale}: rendered word counter stayed Italian`);
+  assert.ok(!localizedRenderedCore.includes("'Capitolo ' + (index + 1) + ' · '"), `${locale}: rendered chapter label stayed Italian`);
+}
+const germanRenderedCore = localizeDeepStudioScript(renderedCoreStudioRuntime, 'de');
+assert.ok(germanRenderedCore.includes("totalWords + ' Wörter · ' + pages.length"), 'de: rendered German word counter missing');
+assert.ok(germanRenderedCore.includes("'Kapitel ' + (index + 1) + ' · '"), 'de: rendered German chapter label missing');
+
+const germanCore = localizeDeepStudioScript(coreStudioRuntime, 'de');
+for (const expected of [
+  'Weitere Überarbeitungen',
+  'Automatisches Speichern aktiv',
+  'Vorheriges Kapitel',
+  'Letztes Kapitel',
+  'Speichern und zum nächsten Kapitel \\u2192',
+  'Die Muse liest deinen Text noch einmal',
+  'Die beiden Passwörter stimmen nicht überein.',
+  "'Seite ' + (activePage + 1) + ' von ' + pages.length",
+  "totalWords + ' Wörter \\xB7 ' + pages.length",
+  "'Kapitel ' + (index + 1) + ' \\xB7 '",
+  "nodes.join(', ') || 'im Interview weiter vertiefen'",
+  "'Erzählumfang des Buches: ' + ({'Una stagione decisiva':'Eine entscheidende Lebensphase'"
+]) assert.ok(germanCore.includes(expected), `de: expected polished Studio copy missing: ${expected}`);
+
 const germanOnce = strengthenMuseOptions({
   messages: [{ role: 'system', content: "LINGUA DELL'OPERA: TEDESCO. Scrivi senza inventare." }]
 });
