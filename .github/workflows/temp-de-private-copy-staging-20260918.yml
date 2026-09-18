@@ -1,0 +1,47 @@
+name: TEMP DE private copy staging 2026-09-18
+
+on:
+  push:
+    branches: ["fix/de-private-static-copy-20260918"]
+    paths:
+      - ".github/workflows/temp-de-private-copy-staging-20260918.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      STAGING_BASE_URL: https://splendoria-v2-staging.raoulragazzi.workers.dev
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Validate private DE copy through final entrypoint
+        run: |
+          node test/i18n-visible-residuals-smoke.mjs
+          node test/studio-deep-i18n-smoke.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
+          npm run check:staging
+      - name: Guard isolated target
+        run: |
+          grep -Fq '"name": "splendoria-v2-staging"' wrangler.jsonc
+          grep -Fq '"database_name": "splendoria-v2-test"' wrangler.jsonc
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+      - name: Deploy staging only
+        run: npx wrangler deploy --env staging
+      - name: Read-back
+        run: |
+          curl -fsS "$STAGING_BASE_URL/healthz" -o /tmp/health
+          grep -Fq '"status":"ok"' /tmp/health
+          curl -fsS "$STAGING_BASE_URL/de/" -o /tmp/de
+          grep -Fq 'Dein Leben als Roman' /tmp/de
