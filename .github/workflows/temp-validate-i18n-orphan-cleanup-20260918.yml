@@ -1,0 +1,58 @@
+name: TEMP validate orphan i18n cleanup 2026-09-18
+
+on:
+  push:
+    branches: ["cleanup/i18n-orphan-editor-worker-20260918"]
+    paths:
+      - ".github/workflows/temp-validate-i18n-orphan-cleanup-20260918.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Prove removed worker is unreferenced
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e src/i18n-editor-worker.js
+          ! grep -R --line-number --fixed-strings 'i18n-editor-worker.js' src test .github/workflows --exclude='temp-validate-i18n-orphan-cleanup-20260918.yml'
+      - name: Full i18n regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_file in test/i18n-*.mjs; do
+            [ -e "$test_file" ] || continue
+            node "$test_file"
+          done
+          node test/studio-deep-i18n-smoke.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
+          node test/studio-dictation-de-ux.test.mjs
+          node test/de-release-runtime.test.mjs
+          node test/german-editorial-room-smoke.mjs
+          node test/german-editorial-quality-cases.mjs
+      - name: Existing app smoke with known baseline guard
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          npm test 2>&1 | tee /tmp/smoke.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            grep -Fq 'Vetrina: asset JavaScript non versionato contro la cache del browser' /tmp/smoke.log || exit "$status"
+          fi
+      - name: Security and Wrangler dry run
+        shell: bash
+        run: |
+          npm audit --audit-level=high
+          npx wrangler deploy --dry-run --env=""
