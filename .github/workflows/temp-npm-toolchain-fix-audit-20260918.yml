@@ -1,0 +1,66 @@
+name: TEMP npm toolchain fix audit 2026-09-18
+
+on:
+  push:
+    branches: ["infra/npm-toolchain-fix-20260918"]
+    paths:
+      - ".github/workflows/temp-npm-toolchain-fix-audit-20260918.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Baseline toolchain versions
+        shell: bash
+        run: |
+          node -p "require('./node_modules/wrangler/package.json').version"
+          npm ls wrangler miniflare sharp undici --all || true
+      - name: Apply audit fix only inside runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp package-lock.json /tmp/package-lock.before.json
+          npm audit fix --package-lock-only
+          changed="$(git diff --name-only)"
+          echo "changed_files=$changed"
+          test "$changed" = "package-lock.json"
+          git diff --stat -- package-lock.json
+          npm ci
+      - name: Verify vulnerabilities removed
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > /tmp/audit-after.json
+          status=$?
+          set -e
+          jq -c '{vulnerabilities:.metadata.vulnerabilities}' /tmp/audit-after.json
+          jq -r '.vulnerabilities | to_entries[] | [.key,.value.severity,.value.isDirect,(.value.fixAvailable|tostring)] | @tsv' /tmp/audit-after.json
+          high="$(jq -r '.metadata.vulnerabilities.high // 0' /tmp/audit-after.json)"
+          critical="$(jq -r '.metadata.vulnerabilities.critical // 0' /tmp/audit-after.json)"
+          test "$high" = "0"
+          test "$critical" = "0"
+          echo "npm_audit_exit=$status"
+      - name: Updated toolchain versions
+        run: npm ls wrangler miniflare sharp undici --all || true
+      - name: Regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test
+          for test_file in test/i18n-*.mjs; do
+            [ -e "$test_file" ] || continue
+            node "$test_file"
+          done
+          node test/studio-dictation-de-ux.test.mjs
+          node test/de-release-runtime.test.mjs
+          npx wrangler deploy --dry-run --env=""
