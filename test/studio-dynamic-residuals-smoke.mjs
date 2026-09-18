@@ -64,6 +64,7 @@ const lateDynamicItalianMarkers = [
   'Capitoli successivi bloccati',
   'Ultimo capitolo',
   'Salva e passa al capitolo successivo →',
+  'Salva e passa al capitolo successivo \\u2192',
   'Ogni capitolo comincia da una prima frase.',
   'Il capitolo sta prendendo forma.',
   'Sei vicino alla lunghezza prevista.',
@@ -97,7 +98,7 @@ for (const expected of [
   'Automatisches Speichern aktiv',
   'Vorheriges Kapitel',
   'Letztes Kapitel',
-  'Speichern und zum nächsten Kapitel →',
+  'Speichern und zum nächsten Kapitel \\u2192',
   'Die Muse liest deinen Text noch einmal',
   'Die beiden Passwörter stimmen nicht überein.'
 ]) assert.ok(germanCore.includes(expected), `de: expected polished Studio copy missing: ${expected}`);
