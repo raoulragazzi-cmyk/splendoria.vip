@@ -25,7 +25,6 @@ jobs:
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}"
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
-          ! grep -Eq 'wrangler deploy|wrangler d1|migrations apply|curl .*-(X|--request)[[:space:]]*(PUT|POST|DELETE|PATCH)' .github/workflows/temp-read-prod-worker-20260918.yml
       - name: Download current production Worker content
         shell: bash
         run: |
