@@ -30,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p worker-snapshot
-          curl -fsS             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/splendoria-v2/content"             -o worker-snapshot/splendoria-v2.multipart
+          curl -fsS             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/splendoria-v2/content/v2"             -o worker-snapshot/splendoria-v2.multipart
           test -s worker-snapshot/splendoria-v2.multipart
           wc -c worker-snapshot/splendoria-v2.multipart
       - name: Upload snapshot
