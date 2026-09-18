@@ -72,10 +72,17 @@ function preserveToneValues(html, locale) {
     "Leggero e brillante": "Light and lively",
     "Professionale e autorevole": "Professional and authoritative"
   };
-  let out = html;
+  let out = String(html || "");
   for (const [canonical, display] of Object.entries(labels)) {
-    const escaped = canonical.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    out = out.replace(new RegExp(`<option( selected)?>(?:${escaped})<\\/option>`, "g"), (_m, selected = "") => `<option value="${canonical}"${selected || ""}>${display}</option>`);
+    const escapedText = canonical.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const optionPattern = new RegExp(`<option\\b([^>]*)>${escapedText}<\\/option>`, "g");
+    out = out.replace(optionPattern, (_match, rawAttrs = "") => {
+      let attrs = String(rawAttrs || "");
+      const valuePattern = /\bvalue\s*=\s*(["\'])(.*?)\1/i;
+      if (valuePattern.test(attrs)) attrs = attrs.replace(valuePattern, `value="${canonical}"`);
+      else attrs = ` value="${canonical}"${attrs}`;
+      return `<option${attrs}>${display}</option>`;
+    });
   }
   return out;
 }

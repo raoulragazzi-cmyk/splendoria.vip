@@ -29,13 +29,18 @@ const PROJECT = {
   updatedAt: "2026-01-03T10:00:00.000Z"
 };
 
+const projectUpdates = [];
+
 function makeDb(withUser = true) {
   return {
     prepare(sql = "") {
       let bindings = [];
       return {
         bind(...values) { bindings = values; return this; },
-        async run() { return { success: true, meta: { changes: 1 }, bindings }; },
+        async run() {
+          if (sql.includes('UPDATE "BookProject" SET title=?,tone=?,audience=?,targetPages=?')) projectUpdates.push([...bindings]);
+          return { success: true, meta: { changes: 1 }, bindings };
+        },
         async first() {
           if (sql === "SELECT 1 AS ok") return { ok: 1 };
           if (sql.includes('FROM "Session" s JOIN "User"')) return withUser ? { ...USER } : null;
@@ -93,11 +98,23 @@ const escapeHtml = value => String(value)
 const cases = {
   de: {
     markers: ["Deine Schreibreise", "Vorschau durchblättern", "Die Seele des Buches", "Buchstruktur", "Deine Muse", "Fortschritt des Buches"],
-    preview: ["Drucken öffnen / PDF speichern", "Persönliche Ausgabe", "Inhaltsverzeichnis"]
+    preview: ["Drucken öffnen / PDF speichern", "Persönliche Ausgabe", "Inhaltsverzeichnis"],
+    tones: {
+      "Emozionante e autentico": "Emotional und authentisch",
+      "Intimo e riflessivo": "Intim und nachdenklich",
+      "Leggero e brillante": "Leicht und lebendig",
+      "Professionale e autorevole": "Professionell und souverän"
+    }
   },
   en: {
     markers: ["Your writing journey", "Browse preview", "The soul of the book", "Book structure", "Your Muse", "Book progress"],
-    preview: ["Open print / Save PDF", "Personal edition", "Table of contents"]
+    preview: ["Open print / Save PDF", "Personal edition", "Table of contents"],
+    tones: {
+      "Emozionante e autentico": "Emotional and authentic",
+      "Intimo e riflessivo": "Intimate and reflective",
+      "Leggero e brillante": "Light and lively",
+      "Professionale e autorevole": "Professional and authoritative"
+    }
   }
 };
 
@@ -121,7 +138,21 @@ for (const [locale, expected] of Object.entries(cases)) {
     const preserved = editor.includes(value) || editor.includes(escapeHtml(value));
     if (!preserved) throw new Error(`editor ${locale}: contenuto autore alterato: ${value}`);
   }
-  if (!editor.includes('value="Emozionante e autentico" selected')) throw new Error(`editor ${locale}: valore canonico tono non preservato`);
+  const toneSelect = editor.match(/<select name="tone">([\s\S]*?)<\/select>/)?.[1] || "";
+  if (!toneSelect) throw new Error(`editor ${locale}: select tono mancante`);
+  const toneOptions = [...toneSelect.matchAll(/<option\b([^>]*)>([^<]*)<\/option>/g)];
+  for (const [canonical, display] of Object.entries(expected.tones)) {
+    const option = toneOptions.find(([, attrs]) => attrs.includes(`value="${canonical}"`) || attrs.includes(`value=\'${canonical}\'`));
+    if (!option) throw new Error(`editor ${locale}: option canonica tono mancante: ${canonical}`);
+    const [, attrs, label] = option;
+    if (label !== display) throw new Error(`editor ${locale}: label tono errata per ${canonical}: ${label}`);
+    const selected = /\bselected\b/.test(attrs);
+    if (canonical === PROJECT.tone && !selected) throw new Error(`editor ${locale}: tono selezionato perso per ${canonical}`);
+    if (canonical !== PROJECT.tone && selected) throw new Error(`editor ${locale}: selezione tono spostata su ${canonical}`);
+  }
+  for (const italian of Object.keys(expected.tones)) {
+    if (toneOptions.some(([, , label]) => label === italian)) throw new Error(`editor ${locale}: label italiana tono ancora visibile: ${italian}`);
+  }
   if (editor.includes('action="/libro/book-1/salva"')) throw new Error(`editor ${locale}: azione salva esce dal namespace lingua`);
 
   const previewResponse = await send(`/${locale}/libro/book-1/anteprima`);
@@ -145,6 +176,9 @@ for (const [locale, expected] of Object.entries(cases)) {
   });
   if (saveResponse.status < 300 || saveResponse.status >= 400) throw new Error(`editor ${locale}: save non redirige`);
   if (saveResponse.headers.get("location") !== `https://www.splendoria.vip/${locale}/libro/book-1`) throw new Error(`editor ${locale}: save perde la lingua: ${saveResponse.headers.get("location")}`);
+  const savedProject = projectUpdates.at(-1);
+  if (!savedProject) throw new Error(`editor ${locale}: UPDATE progetto non osservato`);
+  if (savedProject[1] !== PROJECT.tone) throw new Error(`editor ${locale}: POST ha alterato il valore canonico del tono: ${savedProject[1]}`);
 
   const anonymous = await send(`/${locale}/libro/book-1`, {}, false);
   if (anonymous.status < 300 || anonymous.status >= 400 || anonymous.headers.get("location") !== `https://www.splendoria.vip/${locale}/area-clienti`) throw new Error(`editor ${locale}: redirect anonimo errato`);
