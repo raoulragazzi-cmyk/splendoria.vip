@@ -38,6 +38,70 @@ for (const locale of ['de', 'en']) {
   assert.match(localized, /window\.location\.pathname\.match\(\/\^\\\/\(\?:\(\?:de\|en\)\\\/\)\?libro/, `${locale}: localized route-aware book id parser required`);
 }
 
+
+const coreSource = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
+const coreStart = coreSource.indexOf('function studioScript()');
+const coreReturn = coreSource.indexOf('return new Response(source', coreStart);
+const coreEnd = coreSource.indexOf('\nfunction ', coreReturn);
+assert.ok(coreStart >= 0 && coreReturn > coreStart, 'core studioScript must remain extractable');
+const coreStudioRuntime = coreSource.slice(coreStart, coreEnd > coreReturn ? coreEnd : undefined);
+
+const lateDynamicItalianMarkers = [
+  'La Musa sta rileggendo',
+  'La Musa sta scrivendo',
+  'Confronta il testo con le tue parole e ne preserva il significato…',
+  'Raccoglie le tue parole e le fonti autorizzate…',
+  'Controlla grammatica, sintassi e fluidità…',
+  'Verifica che fatti, nomi e voce siano rimasti fedeli…',
+  'Completa l’ultima rilettura editoriale…',
+  'Altri interventi editoriali',
+  'Salvataggio automatico attivo',
+  'Navigazione tra i capitoli',
+  'Il tuo posto nella storia',
+  'Capitolo precedente',
+  'Scegli il capitolo',
+  'Capitolo successivo',
+  'Capitoli successivi bloccati',
+  'Ultimo capitolo',
+  'Salva e passa al capitolo successivo →',
+  'Ogni capitolo comincia da una prima frase.',
+  'Il capitolo sta prendendo forma.',
+  'Sei vicino alla lunghezza prevista.',
+  'Le tue parole appariranno qui mentre scrivi o detti il capitolo.',
+  'Sto custodendo le tue parole…',
+  'Le tue nuove parole saranno salvate tra pochi secondi…',
+  'Le tue parole sono al sicuro · Salvato alle ',
+  'Salvataggio online automatico attivo nel tuo account',
+  'Sto custodendo i tuoi ricordi…',
+  'Conferma la dichiarazione sui contenuti per attivare il salvataggio automatico',
+  'Le modifiche saranno salvate tra pochi secondi…',
+  'Le due password non coincidono.',
+  'Assessment editoriale · ',
+  'SCHEDA TECNICA DEL PROGETTO EDITORIALE',
+  'Dimensione della trama del libro: ',
+  'Nodi cruciali: ',
+  'Parole-soglia: ',
+  'Indice editoriale orientativo: '
+];
+
+for (const locale of ['de', 'en']) {
+  const localizedCore = localizeDeepStudioScript(coreStudioRuntime, locale);
+  for (const marker of lateDynamicItalianMarkers) {
+    assert.ok(!localizedCore.includes(marker), `${locale}: late dynamic Studio residual: ${marker}`);
+  }
+}
+
+const germanCore = localizeDeepStudioScript(coreStudioRuntime, 'de');
+for (const expected of [
+  'Weitere Überarbeitungen',
+  'Automatisches Speichern aktiv',
+  'Vorheriges Kapitel',
+  'Letztes Kapitel',
+  'Speichern und zum nächsten Kapitel →',
+  'Die Muse liest deinen Text noch einmal',
+  'Die beiden Passwörter stimmen nicht überein.'
+]) assert.ok(germanCore.includes(expected), `de: expected polished Studio copy missing: ${expected}`);
+
 const germanOnce = strengthenMuseOptions({
   messages: [{ role: 'system', content: "LINGUA DELL'OPERA: TEDESCO. Scrivi senza inventare." }]
 });
