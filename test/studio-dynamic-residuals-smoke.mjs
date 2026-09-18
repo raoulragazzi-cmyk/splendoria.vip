@@ -96,6 +96,16 @@ for (const locale of ['de', 'en']) {
   }
 }
 
+const renderedCoreStudioRuntime = coreStudioRuntime.replace(/\\xB7/g, '·');
+for (const locale of ['de', 'en']) {
+  const localizedRenderedCore = localizeDeepStudioScript(renderedCoreStudioRuntime, locale);
+  assert.ok(!localizedRenderedCore.includes("totalWords + ' parole · '"), `${locale}: rendered word counter stayed Italian`);
+  assert.ok(!localizedRenderedCore.includes("'Capitolo ' + (index + 1) + ' · '"), `${locale}: rendered chapter label stayed Italian`);
+}
+const germanRenderedCore = localizeDeepStudioScript(renderedCoreStudioRuntime, 'de');
+assert.ok(germanRenderedCore.includes("totalWords + ' Wörter · ' + pages.length"), 'de: rendered German word counter missing');
+assert.ok(germanRenderedCore.includes("'Kapitel ' + (index + 1) + ' · '"), 'de: rendered German chapter label missing');
+
 const germanCore = localizeDeepStudioScript(coreStudioRuntime, 'de');
 for (const expected of [
   'Weitere Überarbeitungen',
