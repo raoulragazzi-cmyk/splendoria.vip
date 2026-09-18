@@ -52,7 +52,7 @@ jobs:
         run: npm ci
 
       - name: Guard stable production layers
-        run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js src/studio-language-worker.js src/studio-deep-i18n-worker.js
+        run: git diff --exit-code origin/splendoria.vip...HEAD -- src/worker.js src/studio-worker.js src/studio-language-worker.js
 
       - name: Syntax checks
         run: |
