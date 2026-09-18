@@ -73,6 +73,19 @@ test('customer auth metadata is localized in German and English', async () => {
     }
   }
 });
+test('social image alt metadata is localized in German and English', async () => {
+  const expected = {
+    de: 'Gebundenes Splendoria-Biografiebuch mit goldenen Veredelungen',
+    en: 'Bound Splendoria biography book with gold detailing'
+  };
+  for (const locale of ['de', 'en']) {
+    const html = await (await get('/' + locale + '/')).text();
+    assert.ok(html.includes(`property="og:image:alt" content="${expected[locale]}"`), locale + ' og:image:alt not localized');
+    assert.ok(html.includes(`name="twitter:image:alt" content="${expected[locale]}"`), locale + ' twitter:image:alt not localized');
+    assert.doesNotMatch(html, /Libro biografico Splendoria rilegato con finiture dorate/);
+  }
+});
+
 test('home assistance labels are German but form values stay canonical', async () => {
   const html = await (await get('/de/')).text();
   const governance = html.match(/<select[^>]*name="governance"[^>]*>([\s\S]*?)<\/select>/)[1];
