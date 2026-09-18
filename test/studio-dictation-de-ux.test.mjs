@@ -75,7 +75,7 @@ test('permission denial performs no AI correction and retains recognized text', 
   const h = harness(); h.buttons[0].click(); h.result('Mein Text'); h.state.recognition.onerror({ error: 'not-allowed' }); await h.end();
   assert.equal(h.state.requests.length, 0); assert.equal(h.targets.a.value, 'Vorgeschichte A. Mein Text'); assert.match(h.statuses[0].textContent, /Mikrofonzugriff/);
 });
-test('pagehide stops an active dictation exactly once and preserves the transcript', async () => {
+test('pagehide stops an active dictation exactly once, preserves transcript and skips AI correction', async () => {
   const h = harness(candidate.source, { delayedEnd: true });
   h.buttons[0].click(); h.result('Hintergrund Text', false);
   h.pagehide();
@@ -85,10 +85,11 @@ test('pagehide stops an active dictation exactly once and preserves the transcri
   assert.equal(h.state.stops, 1, 'background events must not stack stop requests');
   await h.end();
   assert.equal(h.targets.a.value, 'Vorgeschichte A. Hintergrund Text');
-  assert.equal(h.state.requests.length, 1, 'recognized speech may still receive the normal final correction');
+  assert.equal(h.state.requests.length, 0, 'background stop must not start an AI correction request');
+  assert.match(h.statuses[0].textContent, /Hintergrund gewechselt/);
 });
 
-test('visibilitychange stops only when the document becomes hidden', async () => {
+test('visibilitychange stops only when the document becomes hidden and skips AI correction', async () => {
   const h = harness(candidate.source, { delayedEnd: true });
   h.buttons[0].click(); h.result('Sichtbar', false);
   h.visibility('visible');
@@ -96,6 +97,8 @@ test('visibilitychange stops only when the document becomes hidden', async () =>
   h.visibility('hidden');
   assert.equal(h.state.stops, 1);
   await h.end();
+  assert.equal(h.state.requests.length, 0);
+  assert.match(h.statuses[0].textContent, /Hintergrund gewechselt/);
 });
 
 test('voluntary browser aborted error is not exposed as a dictation failure', async () => {
