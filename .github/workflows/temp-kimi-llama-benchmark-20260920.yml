@@ -1,0 +1,57 @@
+name: TEMP Kimi vs Llama Muse benchmark 2026-09-20
+
+on:
+  push:
+    branches: ["bench/de-muse-kimi-vs-llama-20260920"]
+    paths:
+      - ".github/workflows/temp-kimi-llama-benchmark-20260920.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BENCH_URL: https://splendoria-muse-benchmark-20260920.raoulragazzi.workers.dev
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Deploy isolated AI-only benchmark Worker
+        run: npx wrangler deploy --config benchmark/kimi-llama/wrangler.jsonc
+      - name: Wait for benchmark Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6 7 8; do
+            code="$(curl -sS -o /tmp/health -w '%{http_code}' "$BENCH_URL/healthz" || true)"
+            if [ "$code" = "200" ]; then break; fi
+            sleep $((attempt * 2))
+          done
+          grep -Fq '"status":"ok"' /tmp/health
+      - name: Run benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 180 "$BENCH_URL/run" -o /tmp/kimi-llama-report.json
+          jq -e '.cases | length == 6' /tmp/kimi-llama-report.json >/dev/null
+          jq -c '.cases[] | {id, llama:{ok:.llama.ok,words:.llama.words,withinTarget:.llama.withinTarget,ms:.llama.ms,error:.llama.error}, kimi:{ok:.kimi.ok,words:.kimi.words,withinTarget:.kimi.withinTarget,ms:.kimi.ms,error:.kimi.error}}' /tmp/kimi-llama-report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kimi-llama-muse-report
+          path: /tmp/kimi-llama-report.json
+          retention-days: 2
+      - name: Delete isolated benchmark Worker
+        if: always()
+        shell: bash
+        run: |
+          curl -fsS -X DELETE             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/splendoria-muse-benchmark-20260920"             -o /tmp/delete.json || true
+          cat /tmp/delete.json || true
