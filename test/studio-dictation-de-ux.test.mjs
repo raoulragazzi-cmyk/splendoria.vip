@@ -21,6 +21,20 @@ new vm.Script(candidate.source);
 
 const harness = (source = candidate.source, options) => createDictationHarness(source, options);
 
+const studioWorkerSource = readFileSync(new URL('../src/studio-worker.js', import.meta.url), 'utf8');
+
+test('section dictation assigns a valid initial target before first focus', () => {
+  const block = studioWorkerSource.slice(
+    studioWorkerSource.indexOf("const voiceButton = form.querySelector('[data-voice-target]');"),
+    studioWorkerSource.indexOf("document.querySelectorAll('[data-restore-book-form]')")
+  );
+  assert.match(block, /sectionAreas\[0\]/);
+  assert.match(block, /!sectionAreas\.some\(area => area\.id === voiceButton\.dataset\.voiceTarget\)/);
+  assert.match(block, /voiceButton\.dataset\.voiceTarget = sectionAreas\[0\]\.id/);
+  assert.match(block, /area\.addEventListener\('focus'/);
+});
+
+
 test('baseline reproduces the cross-field asynchronous overwrite', async () => {
   const h = harness(baseline); h.buttons[0].click(); h.result('erster text'); const pending = h.end();
   h.buttons[1].click(); h.resolve(0, 'Erster Text.'); await pending;
