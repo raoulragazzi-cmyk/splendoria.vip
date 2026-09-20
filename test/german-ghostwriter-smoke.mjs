@@ -30,6 +30,10 @@ assert.match(ghostNarrative.messages[0].content, /DACH-Raum/);
 assert.match(ghostNarrative.messages[0].content, /aktuellen, frischen Wortschatz/);
 assert.match(ghostNarrative.messages[0].content, /Keine erfundenen Dialoge/);
 assert.match(ghostNarrative.messages[0].content, /typische KI-Signale/);
+assert.match(ghostNarrative.messages[0].content, /LÄNGENSTEUERUNG/);
+assert.match(ghostNarrative.messages[0].content, /±10 %/);
+assert.match(ghostNarrative.messages[0].content, /Quellenlage hat Vorrang vor Umfang/);
+assert.match(ghostNarrative.messages[0].content, /300 bis 400 Wörter/);
 assert.equal(ghostNarrative.messages[1].content, authored, 'author text must remain byte-identical');
 assert.equal(ghostNarrative.temperature, 0.2);
 
