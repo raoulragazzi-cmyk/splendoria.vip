@@ -284,6 +284,9 @@ const STUDIO_JS_PATCH = String.raw`
     updateCounters();
 
     const voiceButton = form.querySelector('[data-voice-target]');
+    if (voiceButton && sectionAreas[0] && !sectionAreas.some(area => area.id === voiceButton.dataset.voiceTarget)) {
+      voiceButton.dataset.voiceTarget = sectionAreas[0].id;
+    }
     sectionAreas.forEach(area => area.addEventListener('focus', () => {
       if (voiceButton) voiceButton.dataset.voiceTarget = area.id;
     }));
