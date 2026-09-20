@@ -85,5 +85,8 @@ assert.match(studioLanguage, /function projectIdFromPath\(pathname\)[\s\S]{0,220
 has(studio, "sectionMuse.type = 'submit'", 'section Muse submit type');
 has(studio, "sectionMuse.name = 'museSection'", 'section Muse canonical field');
 has(studio, "sectionMuse.value = String(index)", 'section Muse canonical index');
+has(studio, "if (voiceButton && sectionAreas[0]) voiceButton.dataset.voiceTarget = sectionAreas[0].id;", 'dictation gets a first-section target before focus');
+assert.match(studio, /sectionAreas\.forEach\(area => area\.addEventListener\('focus',[\s\S]{0,180}voiceButton\.dataset\.voiceTarget = area\.id/, 'dictation target follows section focus');
+
 
 console.log('studio button/action contract deep-pass: ok');
