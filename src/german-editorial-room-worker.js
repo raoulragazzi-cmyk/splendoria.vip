@@ -7,6 +7,15 @@ const ROOM_MARKER = "INTERNE REDAKTION SPLENDORIA — DEUTSCH";
 const GERMAN_CONTEXT = /PROFESSIONELLER GHOSTWRITER-MODUS — DEUTSCH|VERBINDLICHER SPRACHVERTRAG FÜR DIE MUSE|LINGUA DELL'OPERA:\s*TEDESCO/i;
 const GERMAN_EDITOR_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
+const STYLE_FINGERPRINT_CONTRACT = `STIMMPROFIL — VOR JEDEM EINGRIFF INTERN ERFASSEN
+- Bewahre Erzählperson, Zeitform, Erzähldistanz und Grad der emotionalen Offenheit.
+- Bewahre die typische Satzlänge und den Rhythmus des Autors. Kurze, nüchterne Sätze dürfen kurz und nüchtern bleiben.
+- Bewahre charakteristische Wörter, Understatement, Wiederholungen mit erkennbarer Absicht und belegte regionale Wendungen.
+- Hebe das sprachliche Register nicht künstlich an. Ersetze einfache Wörter nicht nur deshalb durch literarischere Synonyme.
+- Keine künstliche Pointe, Moral, Lebensweisheit oder abschließende Zusammenfassung ergänzen, wenn sie im Material nicht angelegt ist.
+- Ein bereits guter Satz darf unverändert bleiben. Redaktion ist kein Beweis dafür, dass jedes Wort geändert werden muss.`;
+
+
 const ROLE_CONTRACTS = {
   ghostwriter: `ROLLE — GHOSTWRITER
 Du bist in diesem Arbeitsgang der Ghostwriter. Schreibe oder entwickle Text aus dem freigegebenen Material, ohne die Persönlichkeit des Autors durch eine neutrale KI-Stimme zu ersetzen.
@@ -46,17 +55,17 @@ Du bist in diesem Arbeitsgang ausschließlich die Fakten- und Quellenkontrolle. 
 
 const STYLE_ACTIONS = {
   improve: `AUFTRAG — ALLGEMEINE STILVERBESSERUNG
-Verbessere Klarheit, Rhythmus und Präzision moderat. Bewahre Länge und Eigenart, sofern kein offensichtlicher Ballast vorliegt.`,
+Verbessere Klarheit, Rhythmus und Präzision moderat. Bewahre Eigenart, Informationsdichte und ungefähr die Länge des Ausgangstextes, sofern kein ausdrückliches Längenziel vorliegt.`,
   clarity: `AUFTRAG — KLARHEIT UND FLUSS
-Mache Bezüge eindeutig, entzerre unnötig komplizierte Sätze und verbessere Übergänge. Vereinfache nicht auf Kosten von Nuancen.`,
+Mache Bezüge eindeutig, entzerre unnötig komplizierte Sätze und verbessere Übergänge. Vereinfache nicht auf Kosten von Nuancen und blähe kurze Sätze nicht auf.`,
   emotional: `AUFTRAG — EMOTIONALE WIRKUNG
-Verstärke nur die emotionale Wirkung, die bereits durch belegte Ereignisse, Aussagen oder Reaktionen im Text angelegt ist. Keine Gefühle, Motive oder dramatischen Details erfinden.`,
+Verstärke nur die emotionale Wirkung, die bereits durch belegte Ereignisse, Aussagen oder Reaktionen im Text angelegt ist. Keine Gefühle, Motive oder dramatischen Details erfinden. Understatement des Autors hat Vorrang vor emotionaler Intensivierung.`,
   vivid: `AUFTRAG — ANSCHAULICHKEIT
-Mache vorhandene, belegte Details klarer und konkreter. Keine Farben, Gerüche, Gesten, Räume oder Sinneseindrücke ergänzen, die nicht im Material stehen.`,
+Mache vorhandene, belegte Details klarer und konkreter. Keine Farben, Gerüche, Gesten, Räume oder Sinneseindrücke ergänzen, die nicht im Material stehen. Wenn keine konkreten Details vorliegen, nicht künstlich anschaulich werden.`,
   elegant: `AUFTRAG — ELEGANZ
-Glätte Rhythmus, Syntax und Wortwahl mit Zurückhaltung. Eleganz bedeutet Präzision und Leichtigkeit, nicht gehobene Ersatzwörter oder literarische Verzierung.`,
+Glätte Rhythmus, Syntax und Wortwahl mit Zurückhaltung. Eleganz bedeutet Präzision und Leichtigkeit, nicht gehobene Ersatzwörter, längere Sätze oder literarische Verzierung.`,
   short: `AUFTRAG — VERDICHTUNG
-Kürze Wiederholungen, Umwege und Füllwörter. Erhalte alle eigenständigen Fakten, notwendigen Bezüge, wichtigen Nuancen und die Stimme des Autors.`
+Ziele auf ungefähr 70–80 % der Ausgangslänge. Kürze zuerst Wiederholungen, Umwege und Füllwörter. Erhalte alle eigenständigen Fakten, notwendigen Bezüge, wichtigen Nuancen und die Stimme des Autors.`
 };
 
 function instructionText(options) {
@@ -117,10 +126,47 @@ export function editorialDefaultAction(pathname) {
   return "";
 }
 
-function editorialBlock(role, action) {
+function explicitTargetWords(options) {
+  const text = instructionText(options);
+  const patterns = [
+    /(?:circa|etwa|ungefähr|about|approximately)\s+(\d{2,4})\s+(?:parole|wörter|words)\b/i,
+    /(?:obiettivo|ziel|target)\D{0,20}(\d{2,4})\s*(?:parole|wörter|words)\b/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = Number(match?.[1] || 0);
+    if (value >= 20 && value <= 5000) return value;
+  }
+  return 0;
+}
+
+function lengthContract(options, role, action) {
+  if (role === "faktenkontrolle") return "";
+  const target = explicitTargetWords(options);
+  if (target) return `LÄNGENVERTRAG
+- Zielgröße: ungefähr ${target} Wörter, normalerweise innerhalb von ±10 %.
+- Fakten- und Quellentreue haben Vorrang vor der Zielzahl. Bei zu wenig belastbarem Material bewusst kürzer bleiben; niemals auffüllen oder erfinden.
+- Keine Wiederholung, Meta-Erklärung oder künstliche Schlusswendung nur zum Erreichen der Zielzahl.`;
+  if (role === "lektor") return `LÄNGENVERTRAG
+- Bei reiner Sprachkorrektur die Länge praktisch erhalten; grob 95–105 % des Ausgangstextes.
+- Keine zusätzlichen Beispiele, Übergänge oder Schlussgedanken erzeugen.`;
+  if (action === "short") return `LÄNGENVERTRAG
+- Zielgröße: ungefähr 70–80 % der Ausgangslänge.
+- Erst Redundanz und Umwege entfernen; keine eigenständigen Fakten streichen.`;
+  if (role === "stilredaktion") return `LÄNGENVERTRAG
+- Ohne ausdrückliches Ziel die Textlänge im Regelfall nahe am Ausgangstext halten, ungefähr 90–110 %.
+- Kürzer ist erlaubt, wenn nur unbelegte oder redundante Passagen entfernt werden.`;
+  return `LÄNGENVERTRAG
+- Ohne ausdrückliche Zielzahl bestimmt die Dichte des belegten Materials die Länge.
+- Dünnes Material nicht aufblasen; ein kürzerer wahrer Text ist besser als ein längerer erfundener.`;
+}
+
+function editorialBlock(role, action, options) {
   const main = ROLE_CONTRACTS[role] || ROLE_CONTRACTS.ghostwriter;
+  const style = role === "faktenkontrolle" ? "" : `\n\n${STYLE_FINGERPRINT_CONTRACT}`;
   const task = role === "stilredaktion" && STYLE_ACTIONS[action] ? `\n\n${STYLE_ACTIONS[action]}` : "";
-  return `${ROOM_MARKER}\n${main}${task}`;
+  const length = lengthContract(options, role, action);
+  return `${ROOM_MARKER}\n${main}${style}${task}${length ? `\n\n${length}` : ""}`;
 }
 
 export function applyGermanEditorialRole(options, requestedRole = "ghostwriter", action = "") {
@@ -131,7 +177,7 @@ export function applyGermanEditorialRole(options, requestedRole = "ghostwriter",
   if (!machineControl && !GERMAN_CONTEXT.test(existing)) return options;
   const role = machineControl ? "faktenkontrolle" : requestedRole;
   if (!ROLE_CONTRACTS[role]) return options;
-  const block = editorialBlock(role, action);
+  const block = editorialBlock(role, action, options);
   const out = { ...options };
   if (Array.isArray(options.messages)) {
     let injected = false;
