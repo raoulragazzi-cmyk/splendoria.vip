@@ -1,0 +1,34 @@
+name: TEMP DE dictation UX validation 2026-09-21
+
+on:
+  push:
+    branches: ["ux/de-dictation-error-clarity-20260921"]
+    paths:
+      - ".github/workflows/temp-de-dictation-ux-validation-20260921.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Dictation and runtime checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node test/studio-dictation-de-ux.test.mjs
+          node test/de-release-runtime.test.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
+      - name: Security and Wrangler dry run
+        shell: bash
+        run: |
+          npm audit --audit-level=high
+          npx wrangler deploy --dry-run --env=""
