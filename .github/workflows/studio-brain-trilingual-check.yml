@@ -6,6 +6,7 @@ on:
     paths:
       - "src/studio-language-worker.js"
       - "src/studio-deep-i18n-worker.js"
+      - "src/studio-dictation-de-ux.js"
       - "src/german-ghostwriter-worker.js"
       - "src/german-ghostwriter-style-v2-worker.js"
       - "src/german-editorial-room-worker.js"
@@ -13,6 +14,7 @@ on:
       - "test/studio-language-smoke.mjs"
       - "test/studio-deep-i18n-smoke.mjs"
       - "test/studio-dynamic-residuals-smoke.mjs"
+      - "test/studio-dictation-de-ux.test.mjs"
       - "test/studio-button-contract-smoke.mjs"
       - "test/german-ghostwriter-smoke.mjs"
       - "test/german-ghostwriter-style-v2-smoke.mjs"
@@ -25,6 +27,7 @@ on:
     paths:
       - "src/studio-language-worker.js"
       - "src/studio-deep-i18n-worker.js"
+      - "src/studio-dictation-de-ux.js"
       - "src/german-ghostwriter-worker.js"
       - "src/german-ghostwriter-style-v2-worker.js"
       - "src/german-editorial-room-worker.js"
@@ -32,6 +35,7 @@ on:
       - "test/studio-language-smoke.mjs"
       - "test/studio-deep-i18n-smoke.mjs"
       - "test/studio-dynamic-residuals-smoke.mjs"
+      - "test/studio-dictation-de-ux.test.mjs"
       - "test/studio-button-contract-smoke.mjs"
       - "test/german-ghostwriter-smoke.mjs"
       - "test/german-ghostwriter-style-v2-smoke.mjs"
@@ -63,9 +67,11 @@ jobs:
         run: |
           node --check src/studio-language-worker.js
           node --check src/studio-deep-i18n-worker.js
+          node --check src/studio-dictation-de-ux.js
           node --check test/studio-language-smoke.mjs
           node --check test/studio-deep-i18n-smoke.mjs
           node --check test/studio-dynamic-residuals-smoke.mjs
+          node --check test/studio-dictation-de-ux.test.mjs
           if [ -f src/german-ghostwriter-worker.js ]; then node --check src/german-ghostwriter-worker.js; fi
           if [ -f src/german-ghostwriter-style-v2-worker.js ]; then node --check src/german-ghostwriter-style-v2-worker.js; fi
           if [ -f src/german-editorial-room-worker.js ]; then node --check src/german-editorial-room-worker.js; fi
@@ -91,6 +97,9 @@ jobs:
 
       - name: Studio language architecture smoke
         run: node test/studio-language-smoke.mjs
+
+      - name: German dictation UX regression suite
+        run: node test/studio-dictation-de-ux.test.mjs
 
       - name: Deep Studio and Muse safety smoke
         run: |

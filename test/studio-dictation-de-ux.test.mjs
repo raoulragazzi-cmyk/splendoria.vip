@@ -75,6 +75,29 @@ test('permission denial performs no AI correction and retains recognized text', 
   const h = harness(); h.buttons[0].click(); h.result('Mein Text'); h.state.recognition.onerror({ error: 'not-allowed' }); await h.end();
   assert.equal(h.state.requests.length, 0); assert.equal(h.targets.a.value, 'Vorgeschichte A. Mein Text'); assert.match(h.statuses[0].textContent, /Mikrofonzugriff/);
 });
+
+test('service-not-allowed is explained as microphone permission denial', async () => {
+  const h = harness(); h.buttons[0].click(); h.state.recognition.onerror({ error: 'service-not-allowed' }); await h.end();
+  assert.equal(h.state.requests.length, 0); assert.match(h.statuses[0].textContent, /Mikrofonzugriff/);
+});
+test('no-speech reports that nothing was heard and preserves existing text', async () => {
+  const h = harness(); h.buttons[0].click(); h.state.recognition.onerror({ error: 'no-speech' }); await h.end();
+  assert.equal(h.state.requests.length, 0); assert.equal(h.targets.a.value, 'Vorgeschichte A.'); assert.match(h.statuses[0].textContent, /keine Sprache erkannt/);
+});
+test('audio-capture reports missing microphone without changing text', async () => {
+  const h = harness(); h.buttons[0].click(); h.state.recognition.onerror({ error: 'audio-capture' }); await h.end();
+  assert.equal(h.state.requests.length, 0); assert.equal(h.targets.a.value, 'Vorgeschichte A.'); assert.match(h.statuses[0].textContent, /kein verfügbares Mikrofon erkannt/);
+});
+test('network speech-recognition failure keeps text and gives a specific retry message', async () => {
+  const h = harness(); h.buttons[0].click(); h.state.recognition.onerror({ error: 'network' }); await h.end();
+  assert.equal(h.state.requests.length, 0); assert.equal(h.targets.a.value, 'Vorgeschichte A.'); assert.match(h.statuses[0].textContent, /nicht erreichbar/);
+});
+test('intentional stop followed by aborted event is not reported as an error', async () => {
+  const h = harness(candidate.source, { delayedEnd: true }); h.buttons[0].click(); h.buttons[0].click();
+  h.state.recognition.onerror({ error: 'aborted' }); await h.end();
+  assert.equal(h.state.requests.length, 0); assert.doesNotMatch(h.statuses[0].textContent, /unterbrochen/);
+  assert.match(h.statuses[0].textContent, /Diktat beendet/);
+});
 test('missing browser support retains an explicit alternative', () => {
   const h = harness(candidate.source, { supported: false }); assert.equal(h.buttons[0].disabled, true); assert.match(h.statuses[0].textContent, /tippen/); assert.equal(h.state.instances, 0);
 });
