@@ -23,7 +23,7 @@ const html = `
 
 const deHtml = localizeDeepStudioHtml(html, 'de');
 assert.match(deHtml, /<p class="eyebrow">Dein Platz in der Geschichte<\/p>/);
-assert.match(deHtml, /Mach dort weiter, wo du aufgehört hast/);
+assert.match(deHtml, /<p class="muted">Mach dort weiter, wo du aufgehört hast: Deine Geschichte wartet hier auf dich\.<\/p>/);
 assert.match(deHtml, /1193 Wörter · 3,4 geschätzte Seiten/);
 assert.match(deHtml, /Ziel: etwa 6,8 Seiten · 2392 Wörter/);
 assert.match(deHtml, /Deine Geschichte gewinnt an Klarheit/);
