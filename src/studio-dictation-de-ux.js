@@ -37,6 +37,9 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         unavailable: 'Hier ist keine Browser-Diktierfunktion verfügbar. Du kannst tippen oder die Diktierfunktion deines Geräts verwenden.',
         listening: 'Das Mikrofon ist aktiv. Sprich in deinem Tempo.',
         denied: 'Erlaube den Mikrofonzugriff in den Browser-Einstellungen. Dein vorhandener Text bleibt erhalten.',
+        noSpeech: 'Ich habe keine Sprache erkannt. Sprich etwas näher am Mikrofon oder versuche es erneut.',
+        noMicrophone: 'Es wurde kein verfügbares Mikrofon erkannt. Prüfe das Gerät und die Browser-Einstellungen.',
+        networkError: 'Die Spracherkennung ist gerade nicht erreichbar. Dein vorhandener Text bleibt erhalten.',
         interrupted: 'Das Diktat wurde unterbrochen. Prüfe deinen Text und starte bei Bedarf erneut.',
         correcting: 'Grammatik und Zeichensetzung werden geprüft. Dein Text bleibt bearbeitbar.',
         finished: 'Diktat beendet. Prüfe deinen Text vor dem Speichern.',
@@ -110,7 +113,19 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         if (activeTarget.value === nextValue) return;
         voiceLastValue = nextValue;
         activeTarget.value = nextValue;`);
-    once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", "if (activeButton && !voiceManualEdit) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));");
+    once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", "if (event.error === 'aborted' && voiceStopRequested) return;
+        if (activeButton && !voiceManualEdit) {
+          const errorKey = event.error === 'not-allowed' || event.error === 'service-not-allowed'
+            ? 'denied'
+            : event.error === 'no-speech'
+              ? 'noSpeech'
+              : event.error === 'audio-capture'
+                ? 'noMicrophone'
+                : event.error === 'network'
+                  ? 'networkError'
+                  : 'interrupted';
+          setStatus(activeButton, message(errorKey));
+        }");
     once('if (activeButton) { recognition.stop(); return; }', 'if (activeButton) { requestVoiceStop(); return; }');
     const onEndStart = voice.indexOf('recognition.onend = async () => {');
     const onEndFinish = voice.indexOf("document.querySelectorAll('[data-voice-target]').forEach(button => {", onEndStart);
