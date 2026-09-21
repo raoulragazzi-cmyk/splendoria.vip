@@ -113,19 +113,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         if (activeTarget.value === nextValue) return;
         voiceLastValue = nextValue;
         activeTarget.value = nextValue;`);
-    once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", "if (event.error === 'aborted' && voiceStopRequested) return;
-        if (activeButton && !voiceManualEdit) {
-          const errorKey = event.error === 'not-allowed' || event.error === 'service-not-allowed'
-            ? 'denied'
-            : event.error === 'no-speech'
-              ? 'noSpeech'
-              : event.error === 'audio-capture'
-                ? 'noMicrophone'
-                : event.error === 'network'
-                  ? 'networkError'
-                  : 'interrupted';
-          setStatus(activeButton, message(errorKey));
-        }");
+    once("endedWithError = true;\n        if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", "if (event.error === 'aborted' && voiceStopRequested) return;\n        endedWithError = true;\n        if (activeButton && !voiceManualEdit) {\n          const errorKey = event.error === 'not-allowed' || event.error === 'service-not-allowed'\n            ? 'denied'\n            : event.error === 'no-speech'\n              ? 'noSpeech'\n              : event.error === 'audio-capture'\n                ? 'noMicrophone'\n                : event.error === 'network'\n                  ? 'networkError'\n                  : 'interrupted';\n          setStatus(activeButton, message(errorKey));\n        }");
     once('if (activeButton) { recognition.stop(); return; }', 'if (activeButton) { requestVoiceStop(); return; }');
     const onEndStart = voice.indexOf('recognition.onend = async () => {');
     const onEndFinish = voice.indexOf("document.querySelectorAll('[data-voice-target]').forEach(button => {", onEndStart);
