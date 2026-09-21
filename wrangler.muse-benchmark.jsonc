@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "splendoria-muse-benchmark-20260921",
+  "main": "benchmark/muse-model-compare-worker.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "ai": { "binding": "AI" }
+}
