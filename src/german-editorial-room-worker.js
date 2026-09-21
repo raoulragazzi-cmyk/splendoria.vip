@@ -129,7 +129,7 @@ export function editorialDefaultAction(pathname) {
 function explicitTargetWords(options) {
   const text = instructionText(options);
   const patterns = [
-    /(?:circa|etwa|about|approximately)\s+(\d{2,4})\s+(?:parole|wörter|words)\b/i,
+    /(?:circa|etwa|ungefähr|about|approximately)\s+(\d{2,4})\s+(?:parole|wörter|words)\b/i,
     /(?:obiettivo|ziel|target)\D{0,20}(\d{2,4})\s*(?:parole|wörter|words)\b/i
   ];
   for (const pattern of patterns) {
