@@ -10,7 +10,8 @@
     "check:staging": "node test/staging-config-smoke.mjs && wrangler deploy --dry-run --env staging --outdir dist-staging",
     "db:migrate:local": "wrangler d1 migrations apply splendoria-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply splendoria-db --remote",
-    "test": "node test/smoke.mjs"
+    "test": "node test/smoke.mjs",
+    "test:editorial-safety-migration": "node test/editorial-safety-migration.mjs"
   },
   "dependencies": {
     "@fontsource/gentium-book-plus": "5.3.0",
