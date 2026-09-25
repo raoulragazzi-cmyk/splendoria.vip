@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import worker from '../src/worker.js';
+import base from '../src/worker.js';
+import {createMusaWorker} from '../src/musa-live-worker.js';
+const worker=createMusaWorker(base);
 import {validMusaEmbed} from '../src/musa-live.js';
 const origin='https://splendoria-v2-staging.raoulragazzi.workers.dev';
 const embed='https://embed.liveavatar.com/v1/11111111-1111-1111-1111-111111111111?orientation=horizontal';
 function env(role='admin', extra={}) {
-  return {APP_URL:origin,ENVIRONMENT:'staging',MUSA_LIVE_ENABLED:'true',MUSA_LIVE_EMBED_URL:embed,ADMIN_EMAIL:'admin@example.test',DB:{prepare(sql){return {bind(){return this;},async first(){return sql.includes('JOIN "User"') ? {id:'test',email:role==='admin'?'admin@example.test':'client@example.test',emailVerifiedAt:'2026-01-01'}:null;},async all(){return {results:[]};},async run(){return {success:true};}};}},...extra};
+  return {APP_URL:origin,ENVIRONMENT:'staging',MUSA_LIVE_ENABLED:'true',MUSA_LIVE_EMBED_URL:embed,ADMIN_EMAIL:'admin@example.test',DB:{prepare(sql){return {bind(){return this;},async first(){return sql.includes('JOIN "User"') ? {id:'test',email:role==='admin'?'admin@example.test':'client@example.test',emailVerifiedAt:'2026-01-01'}:{};},async all(){return {results:[]};},async run(){return {success:true};}};}},...extra};
 }
 async function get(environment,authenticated=true,path='/admin/musa-live') {
  return worker.fetch(new Request(origin+path,{headers:authenticated?{cookie:'spl_session=test'}:{}}),environment);
