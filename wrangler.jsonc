@@ -74,7 +74,8 @@
         "APP_URL": "https://splendoria-v2-staging.raoulragazzi.workers.dev",
         "ADMIN_EMAIL": "raoulragazzi@gmail.com",
         "EMAIL_FROM": "contatti@splendoria.vip",
-        "ENVIRONMENT": "staging"
+        "ENVIRONMENT": "staging",
+        "MUSA_LIVE_ENABLED": "true"
       }
     }
   }
