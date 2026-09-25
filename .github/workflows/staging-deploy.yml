@@ -1,6 +1,8 @@
 name: Splendoria staging deploy
 
 on:
+  push:
+    branches: ["feat/musa-liveavatar-pilot-20260925"]
   workflow_dispatch:
     inputs:
       candidate_ref:
@@ -29,7 +31,7 @@ jobs:
       - name: Checkout selected candidate
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.candidate_ref }}
+          ref: ${{ inputs.candidate_ref || github.sha }}
           fetch-depth: 0
 
       - name: Refuse production target
@@ -59,6 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           npm run check:staging
+          if [ -f test/musa-live-smoke.mjs ]; then node test/musa-live-smoke.mjs; fi
           for test_file in \
             test/progressive-book-setup-smoke.mjs \
             test/client-first-access-smoke.mjs \
