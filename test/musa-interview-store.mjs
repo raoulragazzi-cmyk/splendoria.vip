@@ -7,7 +7,7 @@ const db = { prepare(sql) {
   return { args: [], bind(...values) { this.args = values; return this; },
     async first() {
       calls.push({ sql, args: this.args });
-      if (sql.includes('FROM "BookProject"')) return projectExists ? { id: "p1" } : null;
+      if (sql.startsWith('SELECT "id" FROM "BookProject"')) return projectExists ? { id: "p1" } : null;
       if (sql.includes('FROM "MuseInterviewSession"')) return sessionExists ? { id: "s1", version: 0 } : null;
       return null;
     },
