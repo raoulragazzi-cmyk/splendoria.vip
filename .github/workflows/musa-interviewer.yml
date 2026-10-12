@@ -26,6 +26,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate AI question generator
+        run: node test/musa-interview-ai.mjs
       - name: Validate interview policy
         run: node test/musa-interview-policy.mjs
       - name: Validate API safety boundary
