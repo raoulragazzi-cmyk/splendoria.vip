@@ -7,6 +7,8 @@ const id = () => crypto.randomUUID();
 export async function createMuseSession(db, input, owner) {
  if (!db?.prepare || !owner?.authorized || !owner.userId || !owner.projectId) throw new Error("access_denied");
  const { locale, track } = validateInterviewInput({...input,turns:[]});
+ const project = await db.prepare('SELECT "id" FROM "BookProject" WHERE "id"=? AND "userId"=?').bind(owner.projectId,owner.userId).first();
+ if (!project) throw new Error("not_found");
  const sid = id();
  await db.prepare('INSERT INTO "MuseInterviewSession" ("id","projectId","userId","locale","track") VALUES (?,?,?,?,?)')
   .bind(sid,owner.projectId,owner.userId,locale,track).run();
@@ -14,8 +16,8 @@ export async function createMuseSession(db, input, owner) {
 }
 export async function listMuseTurns(db, sessionId, owner) {
  if (!db?.prepare || !owner?.authorized || !owner.userId || !owner.projectId || !sessionId) throw new Error("access_denied");
- const row=await db.prepare('SELECT "id","locale","track","status","version" FROM "MuseInterviewSession" WHERE "id"=? AND "projectId"=? AND "userId"=?')
-  .bind(sessionId,owner.projectId,owner.userId).first();
+ const row=await db.prepare('SELECT "id","locale","track","status","version" FROM "MuseInterviewSession" WHERE "id"=? AND "projectId"=? AND "userId"=? AND EXISTS (SELECT 1 FROM "BookProject" p WHERE p."id"="MuseInterviewSession"."projectId" AND p."userId"=?)')
+  .bind(sessionId,owner.projectId,owner.userId,owner.userId).first();
  if (!row) throw new Error("not_found");
  const turns=await db.prepare('SELECT "id","ordinal","role","content","authorApproved" FROM "MuseInterviewTurn" WHERE "sessionId"=? ORDER BY "ordinal" ASC')
   .bind(sessionId).all();
@@ -33,8 +35,8 @@ export async function appendMuseAuthorTurn(db, sessionId, owner, ordinal, conten
  const tid=id();
  const result=await db.prepare(`INSERT INTO "MuseInterviewTurn" ("id","sessionId","ordinal","role","content")
  SELECT ?,s."id",?,'author',? FROM "MuseInterviewSession" s
- WHERE s."id"=? AND s."projectId"=? AND s."userId"=? AND s."status"='active'`)
-  .bind(tid,sessionId,ordinal,content.trim(),sessionId,owner.projectId,owner.userId).run();
+ WHERE s."id"=? AND s."projectId"=? AND s."userId"=? AND s."status"='active' AND EXISTS (SELECT 1 FROM "BookProject" p WHERE p."id"=s."projectId" AND p."userId"=?)`)
+  .bind(tid,sessionId,ordinal,content.trim(),sessionId,owner.projectId,owner.userId,owner.userId).run();
  if (result?.meta?.changes!==1) throw new Error("not_saved");
  return {id:tid,ordinal};
 }
