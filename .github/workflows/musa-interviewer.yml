@@ -4,6 +4,11 @@ on:
     paths:
       - 'src/musa-interview-policy.js'
       - 'src/musa-interview-store.js'
+      - 'src/musa-interview-consent.js'
+      - 'src/musa-interview-next.js'
+      - 'migrations/0007_musa_ai_consent.sql'
+      - 'test/musa-interview-next.mjs'
+      - 'test/musa-interview-consent.mjs'
       - 'src/musa-interview-auth.js'
       - 'src/musa-interview-api.js'
       - 'test/musa-interview-api.mjs'
@@ -26,6 +31,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate server consent and revocation
+        run: node test/musa-interview-consent.mjs
       - name: Validate persisted-context and consent gate
         run: node test/musa-interview-next.mjs
       - name: Validate AI question generator
