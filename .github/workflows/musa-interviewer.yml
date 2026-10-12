@@ -11,6 +11,8 @@ on:
       - 'test/musa-interview-consent.mjs'
       - 'src/musa-interview-auth.js'
       - 'src/musa-interview-api.js'
+      - 'src/musa-interview-atomic.js'
+      - 'test/musa-interview-atomic.mjs'
       - 'src/musa-interview-controls.js'
       - 'test/musa-interview-controls.mjs'
       - 'test/musa-interview-api.mjs'
@@ -43,6 +45,8 @@ jobs:
         run: node test/musa-interview-ai.mjs
       - name: Validate interview policy
         run: node test/musa-interview-policy.mjs
+      - name: Validate atomic turn writes
+        run: node test/musa-interview-atomic.mjs
       - name: Validate session control security
         run: node test/musa-interview-controls.mjs
       - name: Validate API safety boundary
