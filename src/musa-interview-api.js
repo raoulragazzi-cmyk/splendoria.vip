@@ -1,3 +1,4 @@
+import {checkMuseWriteQuota} from "./musa-interview-quota.js";
 import {resolveMuseOwner} from "./musa-interview-auth.js";
 import {createMuseSession,listMuseTurns} from "./musa-interview-store.js";
 import {appendMuseTurnAtomic} from "./musa-interview-atomic.js";
@@ -20,6 +21,7 @@ export async function handleMuseInterviewApi(request,env) {
  if(method==="POST" && (!origin || origin!==url.origin))return fail("origin_required",403);
  const owner=await resolveMuseOwner(request,env.DB,projectId);
  if(!owner)return fail("not_found",404);
+ if(method==="POST") { try { if(!await checkMuseWriteQuota(env.DB,owner.userId))return fail("rate_limited",429); } catch {return fail("quota_unavailable",503);} }
  try{
   if(method==="GET")return respond(await listMuseTurns(env.DB,sessionId,owner));
   if(!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))return fail("json_required",415);
