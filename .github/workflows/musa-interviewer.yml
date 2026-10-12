@@ -11,6 +11,8 @@ on:
       - 'test/musa-interview-consent.mjs'
       - 'src/musa-interview-auth.js'
       - 'src/musa-interview-api.js'
+      - 'src/musa-interview-controls.js'
+      - 'test/musa-interview-controls.mjs'
       - 'test/musa-interview-api.mjs'
       - 'test/musa-interview-auth.mjs'
       - 'migrations/0006_musa_interview.sql'
@@ -41,6 +43,8 @@ jobs:
         run: node test/musa-interview-ai.mjs
       - name: Validate interview policy
         run: node test/musa-interview-policy.mjs
+      - name: Validate session control security
+        run: node test/musa-interview-controls.mjs
       - name: Validate API safety boundary
         run: node test/musa-interview-api.mjs
       - name: Validate authentication boundary
