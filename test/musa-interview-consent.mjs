@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import {getMuseAiConsent,setMuseAiConsent} from "../src/musa-interview-consent.js";
+let record=null,changes=1;
+const db={prepare(sql){return {bind(...args){this.args=args;return this},async first(){return record},async run(){return {meta:{changes}}}}}};
+const owner={authorized:true,userId:"u1",projectId:"p1"};
+assert.equal(await getMuseAiConsent(db,"s1",owner),false);
+record={grantedAt:"2026-10-12",revokedAt:null,consentVersion:"v1"};
+assert.equal(await getMuseAiConsent(db,"s1",owner),true);
+record.revokedAt="2026-10-13";
+assert.equal(await getMuseAiConsent(db,"s1",owner),false);
+assert.equal(await getMuseAiConsent(db,"s1",{...owner,authorized:false}),false);
+await assert.rejects(setMuseAiConsent(db,"s1",{...owner,authorized:false},true),/access_denied/);
+assert.equal((await setMuseAiConsent(db,"s1",owner,false)).consented,false);
+changes=0;
+await assert.rejects(setMuseAiConsent(db,"s1",owner,true),/consent_not_saved/);
+console.log("Musa consent access and revocation checks passed");
