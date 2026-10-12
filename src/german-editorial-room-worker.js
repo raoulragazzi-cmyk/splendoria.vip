@@ -1,6 +1,7 @@
 import studioDeepWorker from "./studio-deep-i18n-worker.js";
 import { renderMusaInterviewPrototype } from "./musa-interview-prototype.js";
 import { handleMuseInterviewApi } from "./musa-interview-api.js";
+import { handleMuseSessionControls } from "./musa-interview-controls.js";
 import { applyGermanGhostwriter } from "./german-ghostwriter-worker.js";
 import { applyGermanStyleV2 } from "./german-ghostwriter-style-v2-worker.js";
 import { projectIdFromPath, readPreference } from "./studio-language-worker.js";
@@ -189,6 +190,8 @@ function envWithEditorialRoom(env, role, action) {
 async function editorialFetch(request, env, ctx) {
   const url = new URL(request.url);
   if (url.pathname.startsWith("/api/musa/")) {
+    const controls = await handleMuseSessionControls(request, env);
+    if (controls) return controls;
     const response = await handleMuseInterviewApi(request, env);
     return response || new Response("Not found", {status:404});
   }
