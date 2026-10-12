@@ -52,7 +52,7 @@ export function nextInterviewStep(input) {
  const count = authorTurns.length;
  // Review before asking a sixth unanswered question; editing and approval
  // occur in the future server workflow, never in this pure selection helper.
- if (count > 0 && count % 6 === 0) return { kind: "review", question: QUESTIONS[locale].review };
+ if (count > 0 && count % 6 === 0 && turns[turns.length - 1]?.role === "author") return { kind: "review", question: QUESTIONS[locale].review };
  if (count === 0) return { kind: "opening", question: QUESTIONS[locale][track] };
  const last = authorTurns[authorTurns.length - 1].content.trim();
  // Deliberately do not infer facts, feelings or dates from free text.
