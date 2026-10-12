@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import {getMuseNextQuestion} from "../src/musa-interview-next.js";
+let calls=0,status="active";
+const db={prepare(sql){return {bind(){return this},async first(){if(sql.includes('FROM "MuseInterviewSession"'))return {id:"s1",locale:"it",track:"life",status};return null},async all(){return {results:[{role:"author",content:"Ricordo la scuola",ordinal:1}]}}}}};
+const owner={authorized:true,userId:"u1",projectId:"p1"};
+const ai={async run(){calls++;return {response:"Chi era vicino a te quel giorno?"}}};
+const noConsent=await getMuseNextQuestion(db,ai,"s1",owner,{aiEnabled:true});
+assert.equal(noConsent.source,"fallback");assert.equal(calls,0);
+const off=await getMuseNextQuestion(db,ai,"s1",owner,{consented:true});
+assert.equal(off.source,"fallback");assert.equal(calls,0);
+const on=await getMuseNextQuestion(db,ai,"s1",owner,{consented:true,aiEnabled:true});
+assert.equal(on.source,"ai");assert.equal(calls,1);
+status="paused";
+await assert.rejects(getMuseNextQuestion(db,ai,"s1",owner,{consented:true,aiEnabled:true}),/session_inactive/);
+assert.equal(calls,1);
+console.log("Musa consent and persisted-context tests passed");
