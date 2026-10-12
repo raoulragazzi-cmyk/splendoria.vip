@@ -4,6 +4,8 @@ on:
     paths:
       - 'src/musa-interview-policy.js'
       - 'src/musa-interview-store.js'
+      - 'src/musa-interview-auth.js'
+      - 'test/musa-interview-auth.mjs'
       - 'migrations/0006_musa_interview.sql'
       - 'test/musa-interview-store.mjs'
       - 'test/musa-interview-prototype.mjs'
@@ -24,6 +26,8 @@ jobs:
           node-version: '22'
       - name: Validate interview policy
         run: node test/musa-interview-policy.mjs
+      - name: Validate authentication boundary
+        run: node test/musa-interview-auth.mjs
       - name: Validate persistence checks
         run: node test/musa-interview-store.mjs
       - name: Validate prototype HTML and escaping
