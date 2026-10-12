@@ -14,6 +14,7 @@ on:
       - 'src/musa-interview-atomic.js'
       - 'migrations/0008_musa_write_claim.sql'
       - 'test/musa-interview-atomic.mjs'
+      - 'test/musa-sqlite-integration.py'
       - 'src/musa-interview-controls.js'
       - 'test/musa-interview-controls.mjs'
       - 'test/musa-interview-api.mjs'
@@ -46,6 +47,8 @@ jobs:
         run: node test/musa-interview-ai.mjs
       - name: Validate interview policy
         run: node test/musa-interview-policy.mjs
+      - name: Execute isolated SQLite transaction regressions
+        run: python3 test/musa-sqlite-integration.py
       - name: Validate atomic turn writes
         run: node test/musa-interview-atomic.mjs
       - name: Validate session control security
