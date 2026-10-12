@@ -31,6 +31,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate session pause/resume transitions
+        run: node test/musa-interview-state.mjs
       - name: Validate server consent and revocation
         run: node test/musa-interview-consent.mjs
       - name: Validate persisted-context and consent gate
