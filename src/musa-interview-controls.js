@@ -1,3 +1,4 @@
+import {checkMuseWriteQuota} from "./musa-interview-quota.js";
 import {resolveMuseOwner} from "./musa-interview-auth.js";
 import {changeMuseSessionStatus} from "./musa-interview-state.js";
 import {getMuseAiConsent,setMuseAiConsent} from "./musa-interview-consent.js";
@@ -17,6 +18,7 @@ export async function handleMuseSessionControls(request,env){
  if(request.method==="POST"&&origin!==url.origin)return json({error:"origin_required"},403);
  const owner=await resolveMuseOwner(request,env.DB,projectId);
  if(!owner)return json({error:"not_found"},404);
+ if(request.method==="POST") { try { if(!await checkMuseWriteQuota(env.DB,owner.userId))return json({error:"rate_limited"},429); } catch {return json({error:"quota_unavailable"},503);} }
  try{
   if(action==="consenso"&&request.method==="GET")return json({consented:await getMuseAiConsent(env.DB,sessionId,owner)});
   if(!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))return json({error:"json_required"},415);
