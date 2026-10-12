@@ -1,0 +1,24 @@
+name: Musa interviewer validation
+on:
+  pull_request:
+    paths:
+      - 'src/musa-interview-policy.js'
+      - 'src/musa-interview-prototype.js'
+      - 'src/german-editorial-room-worker.js'
+      - 'test/musa-interview-policy.mjs'
+      - '.github/workflows/musa-interviewer.yml'
+  workflow_dispatch:
+jobs:
+  musa-policy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate interview policy
+        run: node test/musa-interview-policy.mjs
+      - name: Validate prototype HTML and escaping
+        run: node test/musa-interview-prototype.mjs
