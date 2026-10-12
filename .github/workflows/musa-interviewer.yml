@@ -12,6 +12,7 @@ on:
       - 'src/musa-interview-auth.js'
       - 'src/musa-interview-api.js'
       - 'src/musa-interview-atomic.js'
+      - 'migrations/0008_musa_write_claim.sql'
       - 'test/musa-interview-atomic.mjs'
       - 'src/musa-interview-controls.js'
       - 'test/musa-interview-controls.mjs'
