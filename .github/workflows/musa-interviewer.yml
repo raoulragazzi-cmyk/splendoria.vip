@@ -11,6 +11,9 @@ on:
       - 'test/musa-interview-consent.mjs'
       - 'src/musa-interview-auth.js'
       - 'src/musa-interview-api.js'
+      - 'src/musa-interview-quota.js'
+      - 'test/musa-interview-quota.mjs'
+      - 'migrations/0009_musa_request_quota.sql'
       - 'src/musa-interview-atomic.js'
       - 'migrations/0008_musa_write_claim.sql'
       - 'test/musa-interview-atomic.mjs'
@@ -51,6 +54,8 @@ jobs:
         run: node test/musa-interview-policy.mjs
       - name: Execute isolated SQLite transaction regressions
         run: python3 test/musa-sqlite-integration.py
+      - name: Validate API quota
+        run: node test/musa-interview-quota.mjs
       - name: Validate network-retry recovery
         run: node test/musa-interview-recovery.mjs
       - name: Validate atomic turn writes
