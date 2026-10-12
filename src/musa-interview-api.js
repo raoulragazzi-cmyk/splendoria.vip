@@ -1,5 +1,6 @@
 import {resolveMuseOwner} from "./musa-interview-auth.js";
-import {createMuseSession,listMuseTurns,appendMuseAuthorTurn} from "./musa-interview-store.js";
+import {createMuseSession,listMuseTurns} from "./musa-interview-store.js";
+import {appendMuseTurnAtomic} from "./musa-interview-atomic.js";
 const respond=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 const fail=(code,status)=>respond({error:code},status);
 export async function handleMuseInterviewApi(request,env) {
@@ -27,14 +28,14 @@ export async function handleMuseInterviewApi(request,env) {
   let body;try{body=JSON.parse(raw)}catch{return fail("invalid_json",400)}
   if(!body || typeof body!=="object" || Array.isArray(body))return fail("invalid_body",400);
   if(isTurn){
-   const saved=await appendMuseAuthorTurn(env.DB,sessionId,owner,body.ordinal,body.content);
+   const saved=await appendMuseTurnAtomic(env.DB,sessionId,owner,{expectedVersion:body.expectedVersion,content:body.content});
    return respond(saved,201);
   }
   return respond(await createMuseSession(env.DB,{locale:body.locale,track:body.track},owner),201);
  }catch(e){
   if(["invalid_input","invalid_turn","unsupported_locale","unsupported_track","invalid_turns"].includes(e.message))return fail("invalid_input",400);
   if(e.message==="not_found"||e.message==="access_denied")return fail("not_found",404);
-  if(e.message==="not_saved")return fail("save_conflict",409);
+  if(["not_saved","save_conflict"].includes(e.message))return fail("save_conflict",409);
   return fail("server_error",500);
  }
 }
