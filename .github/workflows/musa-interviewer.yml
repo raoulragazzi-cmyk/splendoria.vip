@@ -20,5 +20,7 @@ jobs:
           node-version: '22'
       - name: Validate interview policy
         run: node test/musa-interview-policy.mjs
+      - name: Validate persistence checks
+        run: node test/musa-interview-store.mjs
       - name: Validate prototype HTML and escaping
         run: node test/musa-interview-prototype.mjs
