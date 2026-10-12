@@ -32,3 +32,8 @@ Status: NOT APPROVED FOR PRODUCTION. The SQLite regressions pass in GitHub CI, b
 - Disable `MUSA_INTERVIEW_API_ENABLED`; preserve production as-is.
 - Keep the classic interview workflow available and independent.
 - Roll back Worker staging deployment separately; database migrations remain additive and should not be destructively reversed without explicit data review.
+
+## Cloudflare authorization gate — 2026-10-12
+Read-only verification: staging D1 `splendoria-v2-test` is bound to Worker `splendoria-v2-staging`; the Musa tables are absent. A write attempt through the connected Cloudflare API returned error 7500 (insufficient permission). **No migration was applied**.
+
+Do not work around this restriction with alternate credentials or production resources. An authorized operator should review the connected Cloudflare token permissions (D1 Edit on the intended account), and perform migrations 0006–0009 on the explicitly selected staging database only. Capture post-migration schema validation and CI evidence. Keep `MUSA_INTERVIEW_API_ENABLED` disabled until the Worker candidate is deployed to staging and owner-isolation, consent, concurrent-write and retry tests pass.
