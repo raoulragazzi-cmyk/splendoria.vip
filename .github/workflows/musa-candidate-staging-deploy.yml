@@ -4,6 +4,8 @@ on:
     branches: [splendoria.vip]
     paths: [.github/workflows/musa-candidate-staging-deploy.yml]
 
+  workflow_dispatch:
+
 permissions:
   contents: read
 
