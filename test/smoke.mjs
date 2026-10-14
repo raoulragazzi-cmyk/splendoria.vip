@@ -441,6 +441,7 @@ const chapterDraftResponse = await worker.fetch(new Request("https://www.splendo
   return { response: longMuseChapterDraft };
 } } });
 const regeneratedChapter = [...museChapterUpdates].reverse().find(values => values[2] === "generato");
+console.log("/qa-capitolo-sintetico", {status:chapterDraftResponse.status,aiCalls:chapterGenerationCalls,generated:!!regeneratedChapter,hasFinal:!!regeneratedChapter?.[1]?.includes("Le estati trascorse"),repeatCount:(regeneratedChapter?.[1]?.match(/custodiva la memoria/g)||[]).length});
 if (chapterDraftResponse.status !== 303 || chapterGenerationCalls !== 2 || !regeneratedChapter?.[1]?.includes("Le estati trascorse") || (regeneratedChapter?.[1]?.match(/custodiva la memoria/g) || []).length) throw new Error("Muse: il capitolo ripetitivo non viene scartato e rigenerato automaticamente");
 const outlineResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/struttura", { method: "POST", headers: { cookie: "spl_session=test" } }), { ...env, DB: museDb });
 if (outlineResponse.status !== 303 || !museBatches.includes(14)) throw new Error("Muse: struttura da 12 capitoli non generata integralmente");
