@@ -189,6 +189,25 @@ function envWithEditorialRoom(env, role, action) {
   return wrapped;
 }
 
+
+async function ensureAccessibleSkipLink(response, pathname) {
+  if (response.status !== 200 || !response.headers.get("Content-Type")?.includes("text/html")) return response;
+  try {
+    const html = await response.clone().text();
+    if (!html.includes('id="main-content"') || html.includes('class="skip-link"')) return response;
+    const bodyTag = html.match(/<body\\b[^>]*>/i)?.[0];
+    if (!bodyTag) return response;
+    const label = pathname.startsWith("/de/") ? "Zum Hauptinhalt springen" :
+      pathname.startsWith("/en/") ? "Skip to main content" : "Vai al contenuto principale";
+    const updated = html.replace(bodyTag, bodyTag + '<a class="skip-link" href="#main-content">' + label + '</a>');
+    const headers = new Headers(response.headers);
+    headers.delete("Content-Length");
+    headers.delete("Content-Encoding");
+    headers.delete("ETag");
+    return new Response(updated, { status: response.status, headers });
+  } catch { return response; }
+}
+
 async function editorialFetch(request, env, ctx) {
   const url = new URL(request.url);
   const musaEnabled = env?.ENVIRONMENT === "staging" && env?.MUSA_INTERVIEW_API_ENABLED === "true";
@@ -236,10 +255,10 @@ async function editorialFetch(request, env, ctx) {
     const upstream = await studioDeepWorker.fetch(request, env, ctx);
     const bookRoute = url.pathname.match(/^\/(?:de\/|en\/)?libro\/([A-Za-z0-9_-]{1,128})$/);
     if (!musaEnabled || request.method !== "GET" || !bookRoute ||
-        upstream.status !== 200 || !upstream.headers.get("Content-Type")?.includes("text/html")) return upstream;
+        upstream.status !== 200 || !upstream.headers.get("Content-Type")?.includes("text/html")) return ensureAccessibleSkipLink(upstream, url.pathname);
     try {
       const owner = await resolveMuseOwner(request, env.DB, bookRoute[1]);
-      if (!owner) return upstream;
+      if (!owner) return ensureAccessibleSkipLink(upstream, url.pathname);
       const original = await upstream.clone().text();
       const locale = url.pathname.startsWith("/de/") ? "de" : url.pathname.startsWith("/en/") ? "en" : "it";
       const words = {it:"La Musa ti intervista",de:"Die Muse interviewt dich",en:"The Muse interviews you"};
@@ -250,8 +269,8 @@ async function editorialFetch(request, env, ctx) {
       headers.delete("Content-Length");
       headers.delete("Content-Encoding");
       headers.set("Cache-Control","private, no-store");
-      return new Response(modified, {status:200,headers});
-    } catch { return upstream; }
+      return ensureAccessibleSkipLink(new Response(modified, {status:200,headers}), url.pathname);
+    } catch { return ensureAccessibleSkipLink(upstream, url.pathname); }
   }
   const initialRole = editorialRequestRole(url.pathname);
   if (!initialRole) return studioDeepWorker.fetch(request, env, ctx);
