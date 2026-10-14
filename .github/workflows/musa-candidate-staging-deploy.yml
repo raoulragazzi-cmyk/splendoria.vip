@@ -1,0 +1,79 @@
+name: Musa candidate staging deploy (safe, feature off)
+on:
+  push:
+    branches: [splendoria.vip]
+    paths: [.github/workflows/musa-candidate-staging-deploy.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: splendoria-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      STAGING_URL: https://splendoria-v2-staging.raoulragazzi.workers.dev
+    steps:
+      - name: Checkout isolated Musa candidate
+        uses: actions/checkout@v4
+        with:
+          ref: feature/musa-intervista-adattiva-20261012
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Refuse any production target and any live Musa API
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
+          const stage=config.env?.staging;
+          const db=stage?.d1_databases?.find(x=>x.binding==='DB');
+          if(stage?.name!=='splendoria-v2-staging'||db?.database_name!=='splendoria-v2-test'||
+             db?.database_id!=='8bf872f6-3f9e-471f-95bc-a99a94f0d97c'||
+             stage?.vars?.MUSA_INTERVIEW_API_ENABLED==='true')throw Error('Unsafe staging candidate');
+          NODE
+          test "$CLOUDFLARE_ACCOUNT_ID" = "9ea664e4c34f649045f64024e0db52e1"
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+      - name: Musa contract and database regressions
+        run: |
+          set -euo pipefail
+          for f in test/musa-interview-*.mjs; do node "$f"; done
+          python3 test/musa-sqlite-integration.py
+          python3 test/musa-quota-sqlite.py
+          python3 test/musa-cascade-sqlite.py
+      - name: Existing product regression and staging dry-run
+        run: |
+          npm test
+          npm run check:staging
+      - name: Runtime dependency security check
+        run: npm audit --omit=dev --audit-level=high
+      - name: Deploy only to isolated staging Worker
+        run: npx wrangler deploy --env staging
+      - name: HTTP smoke and disabled API check
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$STAGING_URL"
+          check() {
+            path="$1"; expect="$2"
+            code="$(curl -sS --max-time 20 -o /tmp/splendoria-body -w '%{http_code}' "$base$path")"
+            test "$code" = "$expect" || { echo "::error::GET $path returned $code (expected $expect)"; exit 1; }
+          }
+          check /healthz 200
+          check / 200
+          check /area-clienti 200
+          check /musa-intervista-prototipo 200
+          check /musa-intervista/app.js 404
+          echo "Staging candidate deployed with persistent interview API DISABLED."
