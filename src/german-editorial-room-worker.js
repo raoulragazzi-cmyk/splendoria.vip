@@ -195,7 +195,7 @@ async function ensureAccessibleSkipLink(response, pathname) {
   try {
     const html = await response.clone().text();
     if (!html.includes('id="main-content"') || html.includes('class="skip-link"')) return response;
-    const bodyTag = html.match(/<body\\b[^>]*>/i)?.[0];
+    const bodyTag = html.match(/<body\b[^>]*>/i)?.[0];
     if (!bodyTag) return response;
     const label = pathname.startsWith("/de/") ? "Zum Hauptinhalt springen" :
       pathname.startsWith("/en/") ? "Skip to main content" : "Vai al contenuto principale";
