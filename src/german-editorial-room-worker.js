@@ -240,7 +240,7 @@ async function editorialFetch(request, env, ctx) {
     try {
       const owner = await resolveMuseOwner(request, env.DB, bookRoute[1]);
       if (!owner) return upstream;
-      const original = await upstream.text();
+      const original = await upstream.clone().text();
       const locale = url.pathname.startsWith("/de/") ? "de" : url.pathname.startsWith("/en/") ? "en" : "it";
       const words = {it:"La Musa ti intervista",de:"Die Muse interviewt dich",en:"The Muse interviews you"};
       const href="/libro/"+encodeURIComponent(bookRoute[1])+"/musa-intervista?lang="+locale;
