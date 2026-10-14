@@ -132,7 +132,8 @@ console.log("/guida: manuale operativo e stampabile disponibile");
 
 const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"') || !wranglerConfig.includes('"directory": "./public"') || !wranglerConfig.includes('"name": "ADMIN_EMAIL_NOTIFICATION"') || !wranglerConfig.includes('"destination_address": "raoulragazzi@gmail.com"') || !wranglerConfig.includes('"crons": ["*/5 * * * *"]') || !wranglerConfig.includes('"migrations_dir": "./migrations"') || !wranglerConfig.includes('"observability"') || !wranglerConfig.includes('"head_sampling_rate": 1')) throw new Error("Cloudflare: configurazione di produzione, migrazioni, osservabilità, email o asset statici non valida");
-if (wranglerConfig.includes('"database_name": "splendoria-v2-test"') || wranglerConfig.includes("splendoria-v2.raoulragazzi.workers.dev")) throw new Error("Cloudflare: riferimenti all’ambiente di test ancora attivi");
+const productionWrangler = JSON.parse(wranglerConfig);
+if ((productionWrangler.d1_databases || []).some(item => item.database_name === "splendoria-v2-test") || String(productionWrangler.vars?.APP_URL || "").includes("splendoria-v2.raoulragazzi.workers.dev")) throw new Error("Cloudflare: riferimenti all’ambiente di test nella configurazione di produzione");
 console.log("/configurazione: database e URL di produzione attivi");
 
 const workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");
