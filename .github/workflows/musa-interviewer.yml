@@ -5,6 +5,7 @@ on:
       - 'src/musa-interview-policy.js'
       - 'src/musa-interview-studio-page.js'
       - 'test/musa-interview-studio-page.mjs'
+      - 'test/musa-interview-entry-a11y.mjs'
       - 'test/musa-cascade-sqlite.py'
       - 'src/musa-interview-store.js'
       - 'src/musa-interview-consent.js'
@@ -55,6 +56,8 @@ jobs:
         run: node test/musa-interview-next.mjs
       - name: Validate AI question generator
         run: node test/musa-interview-ai.mjs
+      - name: Verify keyboard navigation in published Worker entry
+        run: node test/musa-interview-entry-a11y.mjs
       - name: Validate real interview screen
         run: node test/musa-interview-studio-page.mjs
       - name: Verify removal of book and author information
