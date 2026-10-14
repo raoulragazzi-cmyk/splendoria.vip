@@ -154,7 +154,7 @@ const fetchHandlerSource = workerSource.slice(workerSource.indexOf("async fetch(
 if (/ensureSchema|ensureRegistrationNotificationSchema|ensureColumn/.test(fetchHandlerSource) || /async function ensureSchema|async function ensureColumn/.test(workerSource)) throw new Error("Prestazioni: controlli o modifiche dello schema D1 ancora eseguiti dal Worker");
 if (!schemaSource.includes('"statoCommerciale" TEXT NOT NULL DEFAULT \'prova_gratuita\'') || !workerSource.includes('"prova_gratuita"') || !workerSource.includes("IT05Z0538758590000049304579")) throw new Error("Prova gratuita: stato commerciale o coordinate di pagamento mancanti");
 const localStorageKeys = [...workerSource.matchAll(/localStorage\.(?:getItem|setItem)\(['"]([^'"]+)/g)].map(match => match[1]);
-const unexpectedLocalStorage = localStorageKeys.filter(key => !["splendoria-cookie-notice-v1", "splendoria-voice-language"].includes(key));
+const unexpectedLocalStorage = localStorageKeys.filter(key => !["splendoria-cookie-notice-v1", "splendoria-cookie-notice-v2", "splendoria-voice-language"].includes(key));
 if (unexpectedLocalStorage.length || !workerSource.includes("HttpOnly; Secure; SameSite=Lax")) throw new Error("Persistenza: dati utente o libro esposti nel dispositivo locale");
 console.log("/persistenza: utenti, libri, capitoli, interviste e sessioni su Cloudflare D1; in locale solo preferenze tecniche");
 
