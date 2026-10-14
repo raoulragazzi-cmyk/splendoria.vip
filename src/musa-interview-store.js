@@ -40,3 +40,14 @@ export async function appendMuseAuthorTurn(db, sessionId, owner, ordinal, conten
  if (result?.meta?.changes!==1) throw new Error("not_saved");
  return {id:tid,ordinal};
 }
+
+/** List only sessions belonging to the verified author and the actual book owner. */
+export async function listMuseSessions(db,owner){
+ if(!db?.prepare||!owner?.authorized||!owner.userId||!owner.projectId)throw Error("access_denied");
+ const rows=await db.prepare(`SELECT s."id",s."locale",s."track",s."status",s."version",s."updatedAt"
+ FROM "MuseInterviewSession" s
+ JOIN "BookProject" p ON p."id"=s."projectId" AND p."userId"=s."userId"
+ WHERE s."userId"=? AND s."projectId"=?
+ ORDER BY s."updatedAt" DESC LIMIT 20`).bind(owner.userId,owner.projectId).all();
+ return {sessions:rows.results||[]};
+}
