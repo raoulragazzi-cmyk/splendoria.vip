@@ -2,6 +2,8 @@ import studioDeepWorker from "./studio-deep-i18n-worker.js";
 import { renderMusaInterviewPrototype } from "./musa-interview-prototype.js";
 import { handleMuseInterviewApi } from "./musa-interview-api.js";
 import { handleMuseSessionControls } from "./musa-interview-controls.js";
+import { renderMuseInterviewStudioPage, MUSA_STUDIO_CLIENT_JS } from "./musa-interview-studio-page.js";
+import { resolveMuseOwner } from "./musa-interview-auth.js";
 import { applyGermanGhostwriter } from "./german-ghostwriter-worker.js";
 import { applyGermanStyleV2 } from "./german-ghostwriter-style-v2-worker.js";
 import { projectIdFromPath, readPreference } from "./studio-language-worker.js";
@@ -189,6 +191,37 @@ function envWithEditorialRoom(env, role, action) {
 
 async function editorialFetch(request, env, ctx) {
   const url = new URL(request.url);
+  const musaEnabled = env?.ENVIRONMENT === "staging" && env?.MUSA_INTERVIEW_API_ENABLED === "true";
+  if (request.method === "GET" && url.pathname === "/musa-intervista/app.js") {
+    if (!musaEnabled) return new Response("Not found", {status: 404});
+    return new Response(MUSA_STUDIO_CLIENT_JS, {status: 200, headers: {
+      "Content-Type":"text/javascript; charset=utf-8", "Cache-Control":"no-store",
+      "X-Content-Type-Options":"nosniff", "X-Robots-Tag":"noindex, nofollow"
+    }});
+  }
+  const interviewRoute = url.pathname.match(/^\/libro\/([A-Za-z0-9_-]{1,128})\/musa-intervista$/);
+  if (request.method === "GET" && interviewRoute) {
+    if (!musaEnabled) return new Response("Not found", {status: 404});
+    let owner;
+    try { owner = await resolveMuseOwner(request, env.DB, interviewRoute[1]); }
+    catch { return new Response("Service temporarily unavailable", {status:503}); }
+    if (!owner) return Response.redirect(url.origin + "/area-clienti", 303);
+    const languageRequest = url.searchParams.get("lang");
+    let locale = ["it","de","en"].includes(languageRequest) ? languageRequest : null;
+    if (!locale) {
+      const preference = await readPreference(env, interviewRoute[1]);
+      const language = preference.museOutputLanguage || preference.bookLanguage || "it-IT";
+      locale = language.startsWith("de") ? "de" : language.startsWith("en") ? "en" : "it";
+    }
+    return new Response(renderMuseInterviewStudioPage(interviewRoute[1], locale), {
+      status: 200, headers: {
+        "Content-Type":"text/html; charset=utf-8","Cache-Control":"private, no-store",
+        "X-Robots-Tag":"noindex, nofollow","X-Content-Type-Options":"nosniff",
+        "Referrer-Policy":"no-referrer",
+        "Content-Security-Policy":"default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+      }
+    });
+  }
   if (url.pathname.startsWith("/api/musa/")) {
     const controls = await handleMuseSessionControls(request, env);
     if (controls) return controls;
@@ -199,7 +232,27 @@ async function editorialFetch(request, env, ctx) {
     const locale = ["it", "de", "en"].includes(url.searchParams.get("lang")) ? url.searchParams.get("lang") : "it";
     return new Response(renderMusaInterviewPrototype(locale), { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" } });
   }
-  if (request.method !== "POST") return studioDeepWorker.fetch(request, env, ctx);
+  if (request.method !== "POST") {
+    const upstream = await studioDeepWorker.fetch(request, env, ctx);
+    const bookRoute = url.pathname.match(/^\/(?:de\/|en\/)?libro\/([A-Za-z0-9_-]{1,128})$/);
+    if (!musaEnabled || request.method !== "GET" || !bookRoute ||
+        upstream.status !== 200 || !upstream.headers.get("Content-Type")?.includes("text/html")) return upstream;
+    try {
+      const owner = await resolveMuseOwner(request, env.DB, bookRoute[1]);
+      if (!owner) return upstream;
+      const original = await upstream.text();
+      const locale = url.pathname.startsWith("/de/") ? "de" : url.pathname.startsWith("/en/") ? "en" : "it";
+      const words = {it:"La Musa ti intervista",de:"Die Muse interviewt dich",en:"The Muse interviews you"};
+      const href="/libro/"+encodeURIComponent(bookRoute[1])+"/musa-intervista?lang="+locale;
+      const cta='<section class="spl-musa-interview-entry" aria-label="Musa"><p><a class="button" href="'+href+'">'+words[locale]+'</a></p></section>';
+      const modified = original.includes("</main>") ? original.replace("</main>",cta+"</main>") : original.replace("</body>",cta+"</body>");
+      const headers = new Headers(upstream.headers);
+      headers.delete("Content-Length");
+      headers.delete("Content-Encoding");
+      headers.set("Cache-Control","private, no-store");
+      return new Response(modified, {status:200,headers});
+    } catch { return upstream; }
+  }
   const initialRole = editorialRequestRole(url.pathname);
   if (!initialRole) return studioDeepWorker.fetch(request, env, ctx);
   const projectId = projectIdFromPath(url.pathname);
