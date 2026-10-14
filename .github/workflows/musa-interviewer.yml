@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'src/musa-interview-policy.js'
+      - 'src/musa-interview-studio-page.js'
+      - 'test/musa-interview-studio-page.mjs'
+      - 'test/musa-cascade-sqlite.py'
       - 'src/musa-interview-store.js'
       - 'src/musa-interview-consent.js'
       - 'src/musa-interview-next.js'
@@ -52,6 +55,10 @@ jobs:
         run: node test/musa-interview-next.mjs
       - name: Validate AI question generator
         run: node test/musa-interview-ai.mjs
+      - name: Validate real interview screen
+        run: node test/musa-interview-studio-page.mjs
+      - name: Verify removal of book and author information
+        run: python3 test/musa-cascade-sqlite.py
       - name: Validate interview policy
         run: node test/musa-interview-policy.mjs
       - name: Execute isolated SQLite transaction regressions
