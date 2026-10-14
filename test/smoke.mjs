@@ -227,7 +227,12 @@ const livePreviewHelperEnd = studioJsBody.indexOf("document.querySelectorAll('[d
 if (livePreviewHelperStart < 0 || livePreviewHelperEnd < 0) throw new Error("Studio: paginatore dell’anteprima A5 non trovato");
 const paginateLiveChapter = new Function(`${studioJsBody.slice(livePreviewHelperStart, livePreviewHelperEnd)}; return paginateLiveChapter;`)();
 const livePreviewPages = paginateLiveChapter(Array.from({ length: 500 }, (_, index) => `parola${index + 1}`).join(" "));
-if (livePreviewPages.length !== 3 || livePreviewPages.flatMap(page => page.join(" ").split(/\s+/)).length !== 500) throw new Error("Studio: suddivisione in pagine dell’anteprima in tempo reale non valida");
+const liveWordsPerPage = Number(studioJsBody.match(/const livePreviewWordsPerPage\\s*=\\s*(\\d+)/)?.[1]);
+const firstPageWords = Number(studioJsBody.match(/const livePreviewFirstPageWords\\s*=\\s*(\\d+)/)?.[1]);
+const expectedLivePages = firstPageWords >= 500 ? 1 : 1 + Math.ceil((500 - firstPageWords) / liveWordsPerPage);
+if (!Number.isInteger(liveWordsPerPage) || liveWordsPerPage < 1 || !Number.isInteger(firstPageWords) || firstPageWords < 1 ||
+    livePreviewPages.length !== expectedLivePages ||
+    livePreviewPages.flatMap(page => page.join(" ").split(/\s+/)).length !== 500) throw new Error("Studio: suddivisione in pagine dell’anteprima in tempo reale non valida");
 console.log("/assets/studio.js: dettatura, slider, Assessment e animazioni accessibili disponibili");
 
 const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente Muse" };
