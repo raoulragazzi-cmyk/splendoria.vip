@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS "MuseInterviewSession" (
  "status" TEXT NOT NULL DEFAULT 'active' CHECK ("status" IN ('active','paused','completed')),
  "version" INTEGER NOT NULL DEFAULT 0,
  "createdAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
- "updatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+ "updatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY ("projectId") REFERENCES "BookProject"("id") ON DELETE CASCADE,
+ FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "idx_muse_session_owner" ON "MuseInterviewSession"("projectId","userId","updatedAt");
 CREATE TABLE IF NOT EXISTS "MuseInterviewTurn" (
