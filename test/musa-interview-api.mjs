@@ -11,7 +11,8 @@ assert.equal((await handleMuseInterviewApi(req(url,"POST",{"Origin":"https://els
 assert.equal((await handleMuseInterviewApi(req(url,"POST",{"Origin":"https://studio.example","Sec-Fetch-Site":"cross-site"}),on)).status,403);
 assert.equal((await handleMuseInterviewApi(req(url,"POST"),on)).status,403);
 assert.equal((await handleMuseInterviewApi(req(url,"PUT"),on)).status,405);
-assert.equal((await handleMuseInterviewApi(req(url,"GET"),on)).status,405);
+// GET now lists prior sessions; without authentication it must return 404, not 405.
+assert.equal((await handleMuseInterviewApi(req(url,"GET"),on)).status,404);
 assert.equal((await handleMuseInterviewApi(req(url,"POST",{"Origin":"https://studio.example"}),on)).status,404);
 assert.equal(await handleMuseInterviewApi(req("https://studio.example/another","GET"),on),null);
 console.log("Musa API feature flag, origin and unauthenticated guards passed");
