@@ -173,7 +173,7 @@ if (["Tonalità intima", "Tonalità giornalistica", "Tonalità epica", "Per vite
 if (pricingHtml.includes("Hybrid") || pricingHtml.includes("Premium Short Book") || pricingHtml.includes("Personal Branding &amp; Corporate")) throw new Error("Listino: denominazioni precedenti ancora presenti");
 if (pricingHtml.includes("prime 5 copie") || pricingHtml.includes("consegna entro 10 giorni")) throw new Error("Listino: promesse della precedente offerta ancora presenti");
 if (!pricingHtml.includes("Partita IVA 02950290219") || !pricingHtml.includes('href="/privacy-policy"') || !pricingHtml.includes('href="/cookie-policy"')) throw new Error("Informazioni legali: P.IVA o collegamenti del footer mancanti");
-if (pricingHtml.includes("Via Goethe 42, Merano e Via Settala 1, Milano") || pricingHtml.includes("Via J. W. von Goethe")) throw new Error("Informazioni legali: vecchio indirizzo ancora presente");
+if (pricingHtml.includes("Via Settala 22–24, Milano (MI)") || pricingHtml.includes("Via J. W. von Goethe")) throw new Error("Informazioni legali: vecchio indirizzo ancora presente");
 if (!pricingHtml.includes("Via Goethe 42, Merano e Via Settala 1, Milano")) throw new Error("Informazioni legali: indirizzo di Milano mancante");
 if (!pricingHtml.includes('name="privacyRead"') || !pricingHtml.includes("Ho letto la")) throw new Error("Contatti: presa visione della Privacy Policy mancante");
 if (!pricingHtml.includes('data-cookie-banner') || !pricingHtml.includes("Ho capito") || !pricingHtml.includes("Niente pubblicità, niente profilazione")) throw new Error("Privacy: banner informativo cookie mancante");
