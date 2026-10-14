@@ -227,8 +227,8 @@ const livePreviewHelperEnd = studioJsBody.indexOf("document.querySelectorAll('[d
 if (livePreviewHelperStart < 0 || livePreviewHelperEnd < 0) throw new Error("Studio: paginatore dell’anteprima A5 non trovato");
 const paginateLiveChapter = new Function(`${studioJsBody.slice(livePreviewHelperStart, livePreviewHelperEnd)}; return paginateLiveChapter;`)();
 const livePreviewPages = paginateLiveChapter(Array.from({ length: 500 }, (_, index) => `parola${index + 1}`).join(" "));
-const liveWordsPerPage = Number(studioJsBody.match(/const livePreviewWordsPerPage\\s*=\\s*(\\d+)/)?.[1]);
-const firstPageWords = Number(studioJsBody.match(/const livePreviewFirstPageWords\\s*=\\s*(\\d+)/)?.[1]);
+const liveWordsPerPage = Number(studioJsBody.match(/const livePreviewWordsPerPage\s*=\s*(\d+)/)?.[1]);
+const firstPageWords = Number(studioJsBody.match(/const livePreviewFirstPageWords\s*=\s*(\d+)/)?.[1]);
 const expectedLivePages = firstPageWords >= 500 ? 1 : 1 + Math.ceil((500 - firstPageWords) / liveWordsPerPage);
 if (!Number.isInteger(liveWordsPerPage) || liveWordsPerPage < 1 || !Number.isInteger(firstPageWords) || firstPageWords < 1 ||
     livePreviewPages.length !== expectedLivePages ||
