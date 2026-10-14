@@ -43,8 +43,8 @@ export function renderMuseInterviewStudioPage(bookId,language="it"){
  const lang=Object.hasOwn(COPY,language)?language:"it", c=COPY[lang];
  const options=["life","family","enterprise","turning_point"].map(v=>'<option value="'+v+'">'+escape(c[v])+'</option>').join("");
  const back="/libro/"+encodeURIComponent(bookId);
- return \`<!doctype html><html lang="\${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
- <meta name="robots" content="noindex,nofollow"><title>\${escape(c.title)} — Splendoria</title>
+ return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="robots" content="noindex,nofollow"><title>${escape(c.title)} — Splendoria</title>
  <style>
  :root{font:16px/1.5 system-ui,-apple-system,sans-serif;color:#173c35;background:#f6f8f5;--green:#176a59;--gold:#c29a5a}
  *{box-sizing:border-box}body{margin:0}header{padding:16px max(20px,calc((100vw - 1020px)/2));background:#173c35;color:#fff}
@@ -64,29 +64,29 @@ export function renderMuseInterviewStudioPage(bookId,language="it"){
  @media(max-width:730px){.layout{grid-template-columns:1fr}main{margin-top:20px}.panel{padding:17px}}
  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
  </style></head>
- <body data-book="\${escape(bookId)}"><header><a href="\${back}">← Splendoria Studio</a></header>
- <main><h1>\${escape(c.title)}</h1><p class="intro">\${escape(c.intro)}</p>
+ <body data-book="${escape(bookId)}"><header><a href="${back}">← Splendoria Studio</a></header>
+ <main><h1>${escape(c.title)}</h1><p class="intro">${escape(c.intro)}</p>
  <div class="layout"><aside class="panel">
- <label for="track">\${escape(c.labelTrack)}</label><select id="track">\${options}</select>
- <div class="actions"><button type="button" id="start">\${escape(c.start)}</button></div>
- <label for="sessions">\${escape(c.previous)}</label><select id="sessions"><option value="">\${escape(c.choose)}</option></select>
- <div class="actions"><button type="button" id="pause" class="secondary" disabled>\${escape(c.pause)}</button><button type="button" id="resume" class="secondary" disabled>\${escape(c.resume)}</button>
- <button type="button" id="complete" class="secondary" disabled>\${escape(c.complete)}</button></div>
- <div class="consent"><label for="consent"><input type="checkbox" id="consent" disabled><span>\${escape(c.consent)}</span></label>
- <button type="button" id="save-consent" class="secondary" disabled>\${escape(c.saveConsent)}</button>
- <p class="small"><a href="/privacy-policy" target="_blank" rel="noopener noreferrer">\${escape(c.privacy)}</a></p></div>
- </aside><section class="panel"><p id="status" role="status" aria-live="polite">\${escape(c.waiting)}</p>
- <h2>\${escape(c.question)}</h2><div id="question" class="question" aria-live="polite"></div>
- <label for="answer">\${escape(c.answer)}</label><textarea id="answer" maxlength="10000" disabled></textarea>
- <div class="actions"><button type="button" id="send" disabled>\${escape(c.send)}</button></div>
- <h2 style="margin-top:28px">\${escape(c.history)}</h2><div id="transcript" class="transcript" role="log" aria-live="polite"></div>
- </section></div></main><script defer src="/musa-intervista/app.js"></script></body></html>\`;
+ <label for="track">${escape(c.labelTrack)}</label><select id="track">${options}</select>
+ <div class="actions"><button type="button" id="start">${escape(c.start)}</button></div>
+ <label for="sessions">${escape(c.previous)}</label><select id="sessions"><option value="">${escape(c.choose)}</option></select>
+ <div class="actions"><button type="button" id="pause" class="secondary" disabled>${escape(c.pause)}</button><button type="button" id="resume" class="secondary" disabled>${escape(c.resume)}</button>
+ <button type="button" id="complete" class="secondary" disabled>${escape(c.complete)}</button></div>
+ <div class="consent"><label for="consent"><input type="checkbox" id="consent" disabled><span>${escape(c.consent)}</span></label>
+ <button type="button" id="save-consent" class="secondary" disabled>${escape(c.saveConsent)}</button>
+ <p class="small"><a href="/privacy-policy" target="_blank" rel="noopener noreferrer">${escape(c.privacy)}</a></p></div>
+ </aside><section class="panel"><p id="status" role="status" aria-live="polite">${escape(c.waiting)}</p>
+ <h2>${escape(c.question)}</h2><div id="question" class="question" aria-live="polite"></div>
+ <label for="answer">${escape(c.answer)}</label><textarea id="answer" maxlength="10000" disabled></textarea>
+ <div class="actions"><button type="button" id="send" disabled>${escape(c.send)}</button></div>
+ <h2 style="margin-top:28px">${escape(c.history)}</h2><div id="transcript" class="transcript" role="log" aria-live="polite"></div>
+ </section></div></main><script defer src="/musa-intervista/app.js"></script></body></html>`;
 }
-export const MUSA_STUDIO_CLIENT_JS = String.raw\`
+export const MUSA_STUDIO_CLIENT_JS = String.raw`
 (()=>{"use strict";
  const el=id=>document.getElementById(id);
  const lang=document.documentElement.lang||"it";
- const txt=\${JSON.stringify(COPY)};
+ const txt=${JSON.stringify(COPY)};
  const c=txt[lang]||txt.it, book=document.body.dataset.book;
  const base="/api/musa/libro/"+encodeURIComponent(book)+"/sessioni";
  let current=null,version=0,status="",busy=false;
@@ -212,4 +212,4 @@ export const MUSA_STUDIO_CLIENT_JS = String.raw\`
   else{setStatus(c.waiting);lock(false);}
  }).catch(()=>{setStatus(c.error);lock(false);});
 })();
-\`;
+`;
