@@ -47,6 +47,69 @@ jobs:
           NODE
           test -n "${CLOUDFLARE_API_TOKEN:-}"
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          # Never print or copy the secret to logs. Reject common paste errors.
+          if [[ "$CLOUDFLARE_API_TOKEN" == Bearer\ * ]] ||
+             [[ "$CLOUDFLARE_API_TOKEN" == *      - name: Run Musa regression suite
+        run: |
+          set -euo pipefail
+          for f in test/musa-interview-*.mjs; do node "$f"; done
+          python3 test/musa-sqlite-integration.py
+          python3 test/musa-quota-sqlite.py
+          npm run check:staging
+      - name: Check Cloudflare D1 credential scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Validating account token for isolated Splendoria staging database."
+          if ! npx wrangler d1 execute DB --env staging --remote --command "SELECT 1 AS authorized"; then
+            echo "::error::Cloudflare D1 access failed. Check GitHub Environment staging secrets CLOUDFLARE_STAGING_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. The token must have Account D1 Edit for the account containing splendoria-v2-test. No migration was attempted."
+            exit 1
+          fi
+      - name: List pending staging migrations
+        run: npx wrangler d1 migrations list DB --env staging --remote
+      - name: Only when explicitly selected apply staging migrations
+        if: ${{ inputs.apply_migrations }}
+        run: npx wrangler d1 migrations apply DB --env staging --remote
+      - name: Verify post-migration D1 schema
+        if: ${{ inputs.apply_migrations }}
+        run: |
+          npx wrangler d1 execute DB --env staging --remote --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('MuseInterviewSession','MuseInterviewTurn','MuseInterviewConsent','MuseRequestQuota') ORDER BY name"
+      - name: No application deployment
+        run: echo "No Worker or production deployment was requested."
+\\r'* ]] ||
+             [[ "$CLOUDFLARE_API_TOKEN" == *      - name: Run Musa regression suite
+        run: |
+          set -euo pipefail
+          for f in test/musa-interview-*.mjs; do node "$f"; done
+          python3 test/musa-sqlite-integration.py
+          python3 test/musa-quota-sqlite.py
+          npm run check:staging
+      - name: Check Cloudflare D1 credential scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Validating account token for isolated Splendoria staging database."
+          if ! npx wrangler d1 execute DB --env staging --remote --command "SELECT 1 AS authorized"; then
+            echo "::error::Cloudflare D1 access failed. Check GitHub Environment staging secrets CLOUDFLARE_STAGING_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. The token must have Account D1 Edit for the account containing splendoria-v2-test. No migration was attempted."
+            exit 1
+          fi
+      - name: List pending staging migrations
+        run: npx wrangler d1 migrations list DB --env staging --remote
+      - name: Only when explicitly selected apply staging migrations
+        if: ${{ inputs.apply_migrations }}
+        run: npx wrangler d1 migrations apply DB --env staging --remote
+      - name: Verify post-migration D1 schema
+        if: ${{ inputs.apply_migrations }}
+        run: |
+          npx wrangler d1 execute DB --env staging --remote --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('MuseInterviewSession','MuseInterviewTurn','MuseInterviewConsent','MuseRequestQuota') ORDER BY name"
+      - name: No application deployment
+        run: echo "No Worker or production deployment was requested."
+\\n'* ]] ||
+             [[ "$CLOUDFLARE_API_TOKEN" == \\"* ]] ||
+             [[ "$CLOUDFLARE_API_TOKEN" == \\'* ]]; then
+            echo "::error::Malformed staging token: save only the raw Cloudflare API token, without Bearer, quotes or line breaks."
+            exit 1
+          fi
       - name: Run Musa regression suite
         run: |
           set -euo pipefail
