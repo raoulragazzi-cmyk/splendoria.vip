@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import {checkMuseWriteQuota} from "../src/musa-interview-quota.js";
+let changed=1,seen;
+const db={prepare(sql){return {bind(...args){seen={sql,args};return this},async run(){return {meta:{changes:changed}}}}}};
+assert.equal(await checkMuseWriteQuota(db,"u1",{max:3,now:120000}),true);
+assert.deepEqual(seen.args,["u1",2,3]);
+assert.match(seen.sql,/ON CONFLICT/);
+changed=0;
+assert.equal(await checkMuseWriteQuota(db,"u1"),false);
+await assert.rejects(checkMuseWriteQuota(null,"u1"),/quota_unavailable/);
+await assert.rejects(checkMuseWriteQuota(db,""),/quota_unavailable/);
+console.log("Musa write quota checks passed");

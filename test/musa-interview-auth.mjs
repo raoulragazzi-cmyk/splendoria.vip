@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import {resolveMuseOwner} from "../src/musa-interview-auth.js";
+let auth=true, book=true, calls=[];
+const db={prepare(sql){return {bind(...args){this.args=args;return this},async first(){calls.push([sql,this.args]);if(sql.includes('FROM "Session"'))return auth?{id:"u1"}:null;return book?{id:"p1"}:null}}}};
+const request=(cookie)=>new Request("https://example.test/libro/p1",{headers:{cookie}});
+assert.equal(await resolveMuseOwner(request(""),db,"p1"),null);
+assert.equal(await resolveMuseOwner(request("spl_session=token"),db,"../p1"),null);
+assert.equal(await resolveMuseOwner(request("other=token"),db,"p1"),null);
+auth=false;assert.equal(await resolveMuseOwner(request("spl_session=token"),db,"p1"),null);
+auth=true;book=false;assert.equal(await resolveMuseOwner(request("spl_session=token"),db,"p1"),null);
+book=true;const owner=await resolveMuseOwner(request("other=x; spl_session=token"),db,"p1");
+assert.deepEqual({...owner},{authorized:true,userId:"u1",projectId:"p1"});
+const sessionQuery=calls.find(c=>c[0].includes('FROM "Session"'));
+assert.match(sessionQuery[0],/expiresAt/);
+assert.equal(sessionQuery[1][0].length,64);
+assert.equal(sessionQuery[1][0].includes("token"),false);
+console.log("Musa authentication tests passed");

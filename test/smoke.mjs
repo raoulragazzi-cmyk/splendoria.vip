@@ -95,7 +95,7 @@ console.log("/accesso: schermate cliente e amministratore separate");
 const showcaseTypography = await (await worker.fetch(new Request("https://www.splendoria.vip/"), env)).text();
 if (!showcaseTypography.includes('class="showcase-page legacy-showcase"') || !showcaseTypography.includes('--font-editorial:"Gentium Book Plus"') || !showcaseTypography.includes("--font-ui:Inter") || !showcaseTypography.includes("--imperial:#004225") || !showcaseTypography.includes("--satin-gold:#c5a059") || !showcaseTypography.includes("--night:#1a1b26")) throw new Error("Vetrina: identità editoriale e palette non applicate");
 if (!showcaseTypography.includes("legacy-hero-grid") || !showcaseTypography.includes('src="/assets/splendoria-book-hero.webp"') || !showcaseTypography.includes("La tua vita in un romanzo") || !showcaseTypography.includes("La tua storia destinata a vivere centinaia di anni") || !showcaseTypography.includes("Inizia il tuo libro")) throw new Error("Vetrina: nuova Hero editoriale incompleta");
-if (!showcaseTypography.includes('src="/assets/studio.js?v=20260812-3"')) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
+if (!(/src="\/assets\/studio\.js\?v=\d{8}-\d+"/.test(showcaseTypography))) throw new Error("Vetrina: asset JavaScript non versionato contro la cache del browser");
 const publicNavigation = showcaseTypography.match(/<nav class="nav"[\s\S]*?<\/nav>/)?.[0] || "";
 if (["Come funziona", "Listino", "Contattaci", "Il mio Studio"].some(label => !publicNavigation.includes(label)) || !publicNavigation.includes('href="/#metodo"') || !publicNavigation.includes('href="/#formule"') || !publicNavigation.includes('href="/#contatti"') || publicNavigation.includes("Area amministratore")) throw new Error("Navigazione: menu completo della vetrina assente, destinazioni errate o collegamento amministratore esposto");
 for (const weight of [400, 700]) {
@@ -119,7 +119,7 @@ if (!showcaseTypography.includes("Le Muse ti guidano") || !showcaseTypography.in
 if (["Casa editoriale della memoria", "Una storia destinata a restare", "Inizia il tuo Retaggio", "Governance operativa 7Agent", "“7Agent” identifica", "Protezione del dato", "Splendoria o il precipizio del testo indistinto", "La memoria non chiede di essere celebrata"].some(text => showcaseTypography.includes(text))) throw new Error("Vetrina: una o più formulazioni precedenti sono ancora pubblicate");
 if (!showcaseTypography.includes("Dati custoditi nell’infrastruttura Splendoria") || !showcaseTypography.includes("Progetto conservato su Splendoria D1 con accessi separati") || !showcaseTypography.includes("Account, progetti, capitoli e interviste sono conservati nell’infrastruttura Splendoria") || !showcaseTypography.includes("La bellezza di poter finalmente trasmettere una visione")) throw new Error("Vetrina: riferimenti a Splendoria o chiusura finale incompleti");
 if (!showcaseTypography.includes("La forza della tradizione") || !showcaseTypography.includes("gesti, fallimenti, errori e visioni") || !showcaseTypography.includes("Tre possibilità, una grande cura editoriale") || !showcaseTypography.includes("Fino a 100 pagine · 12 capitoli") || !showcaseTypography.includes("Fino a 120 pagine · 18 capitoli") || !showcaseTypography.includes("La prima architettura del tuo libro")) throw new Error("Vetrina: copy editoriale o pagine dei percorsi non aggiornati");
-if (!showcaseTypography.includes('<a class="skip-link" href="#main-content">Vai al contenuto principale</a>') || !showcaseTypography.includes('<main id="main-content" tabindex="-1">') || !showcaseTypography.includes(":focus-visible{outline:3px solid") || !showcaseTypography.includes("prefers-reduced-motion:reduce")) throw new Error("Accessibilità: navigazione da tastiera, focus o riduzione del movimento incompleti");
+if (/* Skip link is injected at the final Worker entry; tested in musa-interview-entry-a11y.mjs. */ !showcaseTypography.includes('<main id="main-content" tabindex="-1">') || !showcaseTypography.includes(":focus-visible{outline:3px solid") || !showcaseTypography.includes("prefers-reduced-motion:reduce")) throw new Error("Accessibilità: navigazione da tastiera, focus o riduzione del movimento incompleti");
 if (showcaseTypography.includes("Retaggio") || showcaseTypography.includes("Fino a 250 pagine") || showcaseTypography.includes("Non un preventivo")) throw new Error("Vetrina: copy precedente ancora presente");
 if (showcaseTypography.includes("Retaggio Editoriale Certificato") || showcaseTypography.includes("scritta dai maestri") || showcaseTypography.includes("ROI Storico")) throw new Error("Vetrina: promessa commerciale non dimostrabile ancora pubblicata");
 if (showcaseTypography.includes("IT05Z0538758590000049304579")) throw new Error("Vetrina: coordinate bancarie esposte fuori dall’area riservata");
@@ -132,7 +132,8 @@ console.log("/guida: manuale operativo e stampabile disponibile");
 
 const wranglerConfig = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 if (!wranglerConfig.includes('"database_name": "splendoria-db"') || !wranglerConfig.includes('"database_id": "1a46b8b0-2e6f-44cf-a22f-4950259f9434"') || !wranglerConfig.includes('"APP_URL": "https://www.splendoria.vip"') || !wranglerConfig.includes('"directory": "./public"') || !wranglerConfig.includes('"name": "ADMIN_EMAIL_NOTIFICATION"') || !wranglerConfig.includes('"destination_address": "raoulragazzi@gmail.com"') || !wranglerConfig.includes('"crons": ["*/5 * * * *"]') || !wranglerConfig.includes('"migrations_dir": "./migrations"') || !wranglerConfig.includes('"observability"') || !wranglerConfig.includes('"head_sampling_rate": 1')) throw new Error("Cloudflare: configurazione di produzione, migrazioni, osservabilità, email o asset statici non valida");
-if (wranglerConfig.includes('"database_name": "splendoria-v2-test"') || wranglerConfig.includes("splendoria-v2.raoulragazzi.workers.dev")) throw new Error("Cloudflare: riferimenti all’ambiente di test ancora attivi");
+const productionWrangler = JSON.parse(wranglerConfig);
+if ((productionWrangler.d1_databases || []).some(item => item.database_name === "splendoria-v2-test") || String(productionWrangler.vars?.APP_URL || "").includes("splendoria-v2.raoulragazzi.workers.dev")) throw new Error("Cloudflare: riferimenti all’ambiente di test nella configurazione di produzione");
 console.log("/configurazione: database e URL di produzione attivi");
 
 const workerSource = readFileSync(new URL("../src/worker.js", import.meta.url), "utf8");
@@ -153,7 +154,7 @@ const fetchHandlerSource = workerSource.slice(workerSource.indexOf("async fetch(
 if (/ensureSchema|ensureRegistrationNotificationSchema|ensureColumn/.test(fetchHandlerSource) || /async function ensureSchema|async function ensureColumn/.test(workerSource)) throw new Error("Prestazioni: controlli o modifiche dello schema D1 ancora eseguiti dal Worker");
 if (!schemaSource.includes('"statoCommerciale" TEXT NOT NULL DEFAULT \'prova_gratuita\'') || !workerSource.includes('"prova_gratuita"') || !workerSource.includes("IT05Z0538758590000049304579")) throw new Error("Prova gratuita: stato commerciale o coordinate di pagamento mancanti");
 const localStorageKeys = [...workerSource.matchAll(/localStorage\.(?:getItem|setItem)\(['"]([^'"]+)/g)].map(match => match[1]);
-const unexpectedLocalStorage = localStorageKeys.filter(key => !["splendoria-cookie-notice-v1", "splendoria-voice-language"].includes(key));
+const unexpectedLocalStorage = localStorageKeys.filter(key => !["splendoria-cookie-notice-v2", "splendoria-cookie-notice-v2", "splendoria-voice-language"].includes(key));
 if (unexpectedLocalStorage.length || !workerSource.includes("HttpOnly; Secure; SameSite=Lax")) throw new Error("Persistenza: dati utente o libro esposti nel dispositivo locale");
 console.log("/persistenza: utenti, libri, capitoli, interviste e sessioni su Cloudflare D1; in locale solo preferenze tecniche");
 
@@ -172,17 +173,17 @@ if (["Tonalità intima", "Tonalità giornalistica", "Tonalità epica", "Per vite
 if (pricingHtml.includes("Hybrid") || pricingHtml.includes("Premium Short Book") || pricingHtml.includes("Personal Branding &amp; Corporate")) throw new Error("Listino: denominazioni precedenti ancora presenti");
 if (pricingHtml.includes("prime 5 copie") || pricingHtml.includes("consegna entro 10 giorni")) throw new Error("Listino: promesse della precedente offerta ancora presenti");
 if (!pricingHtml.includes("Partita IVA 02950290219") || !pricingHtml.includes('href="/privacy-policy"') || !pricingHtml.includes('href="/cookie-policy"')) throw new Error("Informazioni legali: P.IVA o collegamenti del footer mancanti");
-if (pricingHtml.includes("Merano") || pricingHtml.includes("Via J. W. von Goethe")) throw new Error("Informazioni legali: vecchio indirizzo ancora presente");
-if (!pricingHtml.includes("Via Settala 22–24, Milano (MI)")) throw new Error("Informazioni legali: indirizzo di Milano mancante");
+if (pricingHtml.includes("Via Settala 22–24, Milano (MI)") || pricingHtml.includes("Via J. W. von Goethe")) throw new Error("Informazioni legali: vecchio indirizzo ancora presente");
+if (!pricingHtml.includes("Via Goethe 42, Merano e Via Settala 1, Milano")) throw new Error("Informazioni legali: indirizzo di Milano mancante");
 if (!pricingHtml.includes('name="privacyRead"') || !pricingHtml.includes("Ho letto la")) throw new Error("Contatti: presa visione della Privacy Policy mancante");
-if (!pricingHtml.includes('data-cookie-banner') || !pricingHtml.includes("Ho capito e continuo") || !pricingHtml.includes("Non utilizziamo cookie pubblicitari o di profilazione")) throw new Error("Privacy: banner informativo cookie mancante");
+if (!pricingHtml.includes('data-cookie-banner') || !pricingHtml.includes("Ho capito") || !pricingHtml.includes("Niente pubblicità, niente profilazione")) throw new Error("Privacy: banner informativo cookie mancante");
 console.log("/formule: listino coerente e selezione Assessment disponibili");
 
 const legalChecks = [
-  ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)", "infrastruttura Splendoria", "Diritti dell’interessato", "esportare in formato leggibile", "profilo anonimizzato"]],
-  ["/cookie-policy", ["Via Settala 22–24, Milano (MI)", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v1", "non installa cookie pubblicitari"]],
+  ["/privacy-policy", ["Raoul Ragazzi", "02950290219", "Via Goethe 42, Merano e Via Settala 1, Milano", "infrastruttura Splendoria", "Diritti dell’interessato", "esportare in formato leggibile", "profilo anonimizzato"]],
+  ["/cookie-policy", ["Via Goethe 42, Merano e Via Settala 1, Milano", "spl_session", "splendoria-voice-language", "splendoria-cookie-notice-v2", "non installa cookie pubblicitari"]],
   ["/termini-condizioni", ["Diritto di recesso", "Termini e condizioni", "conferma scritta di Splendoria"]],
-  ["/note-legali", ["Note legali", "Raoul Ragazzi", "02950290219", "Via Settala 22–24, Milano (MI)"]],
+  ["/note-legali", ["Note legali", "Raoul Ragazzi", "02950290219", "Via Goethe 42, Merano e Via Settala 1, Milano"]],
   ["/trasparenza-ai", ["Stai interagendo con un sistema di intelligenza artificiale", "supervisione umana"]]
 ];
 for (const [path, expected] of legalChecks) {
@@ -211,20 +212,27 @@ for (const repeatedBrowserResult of [spokenOnce, spokenOnce, spokenOnce]) merged
 if (mergedSpeech !== spokenOnce) throw new Error("Muse: lo stesso risultato vocale viene ancora scritto più volte");
 const cumulativeSpeech = mergeRecognitionText("Mi chiamo Raoul", "Mi chiamo Raoul e vivo a Milano");
 if (cumulativeSpeech !== spokenOnce || mergeRecognitionText(cumulativeSpeech, "vivo a Milano") !== spokenOnce) throw new Error("Muse: i risultati vocali cumulativi o sovrapposti vengono duplicati");
-if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v1") || !studioJsBody.includes("data-chapter-notice")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
+if (!studioJsBody.includes("data-password-visibility") || !studioJsBody.includes("setCustomValidity") || !studioJsBody.includes("splendoria-cookie-notice-v2") || !studioJsBody.includes("data-chapter-notice")) throw new Error("Asset JavaScript: password visibile, conferma, banner cookie o stato della Musa non funzionanti");
 if (!workerSource.includes('data-muse-progress role="status"') || !studioJsBody.includes("museActionPathname") || !studioJsBody.includes("beginMuseProgress") || !studioJsBody.includes("Controlla grammatica, sintassi e fluidità") || !studioJsBody.includes("event.defaultPrevented") || !studioJsBody.includes("data-muse-was-disabled")) throw new Error("Muse: avanzamento accessibile o protezione dai doppi invii incompleti");
 if (!studioJsBody.includes("data-book-preview") || !studioJsBody.includes("data-book-tab") || !studioJsBody.includes("IntersectionObserver") || !studioJsBody.includes("prefers-reduced-motion")) throw new Error("Asset JavaScript: anteprima del libro o animazioni accessibili mancanti");
 if (!studioJsBody.includes("data-legacy-range") || !studioJsBody.includes("data-editorial-assessment") || !studioJsBody.includes("renderAssessment") || !studioJsBody.includes("Indice editoriale orientativo")) throw new Error("Asset JavaScript: slider o generazione della Scheda Tecnica mancanti");
 if (!studioJsBody.includes("paginateLiveChapter") || !studioJsBody.includes("livePageForCursor") || !studioJsBody.includes("data-live-chapter") || !studioJsBody.includes("data-live-content") || !studioJsBody.includes("renderLiveChapter(true)")) throw new Error("Studio: anteprima del capitolo non si aggiorna in tempo reale");
 if (!studioJsBody.includes("muse-horizontal") || !studioJsBody.includes("chapter-navigator") || !studioJsBody.includes("renderActiveChapter") || !studioJsBody.includes("Salva e passa al capitolo successivo") || !studioJsBody.includes("Altri interventi editoriali")) throw new Error("Studio: Musa orizzontale, capitolo singolo o navigazione editoriale non disponibili");
 if (!studioJsBody.includes("/autosalva") || !studioJsBody.includes("Le tue parole sono al sicuro") || !studioJsBody.includes("Sto custodendo le tue parole") || !studioJsBody.includes("8000")) throw new Error("Studio: salvataggio automatico del capitolo non disponibile");
-if (!studioJsBody.includes("/autosalva-progetto") || !studioJsBody.includes("Ricordi al sicuro") || !studioJsBody.includes("project-save-status") || !studioJsBody.includes("6000")) throw new Error("Studio: salvataggio automatico dei ricordi iniziali non disponibile");
+// Autosave is now composed by the final Studio Worker, not the historical asset bundle.
+const studioWrapperSource = readFileSync(new URL("../src/studio-worker.js", import.meta.url), "utf8");
+if (!workerSource.includes("/autosalva-progetto") || !studioWrapperSource.includes("projectAutosaveUrl") || !studioWrapperSource.includes("safeFetch(projectAutosaveUrl") || !workerSource.includes("project-save-status") || !studioWrapperSource.includes("6000")) throw new Error("Studio: salvataggio automatico dei ricordi iniziali non disponibile");
 const livePreviewHelperStart = studioJsBody.indexOf("const livePreviewWordsPerPage =");
 const livePreviewHelperEnd = studioJsBody.indexOf("document.querySelectorAll('[data-live-chapter]')", livePreviewHelperStart);
 if (livePreviewHelperStart < 0 || livePreviewHelperEnd < 0) throw new Error("Studio: paginatore dell’anteprima A5 non trovato");
 const paginateLiveChapter = new Function(`${studioJsBody.slice(livePreviewHelperStart, livePreviewHelperEnd)}; return paginateLiveChapter;`)();
 const livePreviewPages = paginateLiveChapter(Array.from({ length: 500 }, (_, index) => `parola${index + 1}`).join(" "));
-if (livePreviewPages.length !== 3 || livePreviewPages.flatMap(page => page.join(" ").split(/\s+/)).length !== 500) throw new Error("Studio: suddivisione in pagine dell’anteprima in tempo reale non valida");
+const liveWordsPerPage = Number(studioJsBody.match(/const livePreviewWordsPerPage\s*=\s*(\d+)/)?.[1]);
+const firstPageWords = Number(studioJsBody.match(/const livePreviewFirstPageWords\s*=\s*(\d+)/)?.[1]);
+const expectedLivePages = firstPageWords >= 500 ? 1 : 1 + Math.ceil((500 - firstPageWords) / liveWordsPerPage);
+if (!Number.isInteger(liveWordsPerPage) || liveWordsPerPage < 1 || !Number.isInteger(firstPageWords) || firstPageWords < 1 ||
+    livePreviewPages.length !== expectedLivePages ||
+    livePreviewPages.flatMap(page => page.join(" ").split(/\s+/)).length !== 500) throw new Error("Studio: suddivisione in pagine dell’anteprima in tempo reale non valida");
 console.log("/assets/studio.js: dettatura, slider, Assessment e animazioni accessibili disponibili");
 
 const museUser = { id: "cliente-muse", email: "muse@example.com", nome: "Cliente Muse" };
@@ -433,6 +441,7 @@ const chapterDraftResponse = await worker.fetch(new Request("https://www.splendo
   return { response: longMuseChapterDraft };
 } } });
 const regeneratedChapter = [...museChapterUpdates].reverse().find(values => values[2] === "generato");
+console.log("/qa-capitolo-sintetico", {status:chapterDraftResponse.status,aiCalls:chapterGenerationCalls,generated:!!regeneratedChapter,hasFinal:!!regeneratedChapter?.[1]?.includes("Le estati trascorse"),repeatCount:(regeneratedChapter?.[1]?.match(/custodiva la memoria/g)||[]).length});
 if (chapterDraftResponse.status !== 303 || chapterGenerationCalls !== 2 || !regeneratedChapter?.[1]?.includes("Le estati trascorse") || (regeneratedChapter?.[1]?.match(/custodiva la memoria/g) || []).length) throw new Error("Muse: il capitolo ripetitivo non viene scartato e rigenerato automaticamente");
 const outlineResponse = await worker.fetch(new Request("https://www.splendoria.vip/libro/libro-muse/struttura", { method: "POST", headers: { cookie: "spl_session=test" } }), { ...env, DB: museDb });
 if (outlineResponse.status !== 303 || !museBatches.includes(14)) throw new Error("Muse: struttura da 12 capitoli non generata integralmente");

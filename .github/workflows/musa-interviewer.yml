@@ -1,0 +1,86 @@
+name: Musa interviewer validation
+on:
+  pull_request:
+    paths:
+      - 'src/musa-interview-policy.js'
+      - 'src/musa-interview-studio-page.js'
+      - 'test/musa-interview-studio-page.mjs'
+      - 'test/musa-interview-entry-a11y.mjs'
+      - 'test/musa-cascade-sqlite.py'
+      - 'src/musa-interview-store.js'
+      - 'src/musa-interview-consent.js'
+      - 'src/musa-interview-next.js'
+      - 'migrations/0007_musa_ai_consent.sql'
+      - 'test/musa-interview-next.mjs'
+      - 'test/musa-interview-consent.mjs'
+      - 'src/musa-interview-auth.js'
+      - 'src/musa-interview-api.js'
+      - 'src/musa-interview-quota.js'
+      - 'test/musa-interview-quota.mjs'
+      - 'test/musa-quota-sqlite.py'
+      - 'src/musa-quota-maintenance.js'
+      - 'migrations/0009_musa_request_quota.sql'
+      - 'src/musa-interview-atomic.js'
+      - 'migrations/0008_musa_write_claim.sql'
+      - 'test/musa-interview-atomic.mjs'
+      - 'test/musa-sqlite-integration.py'
+      - 'src/musa-interview-recovery.js'
+      - 'test/musa-interview-recovery.mjs'
+      - 'src/musa-interview-controls.js'
+      - 'test/musa-interview-controls.mjs'
+      - 'test/musa-interview-api.mjs'
+      - 'test/musa-interview-auth.mjs'
+      - 'migrations/0006_musa_interview.sql'
+      - 'test/musa-interview-store.mjs'
+      - 'test/musa-interview-prototype.mjs'
+      - 'src/musa-interview-prototype.js'
+      - 'src/german-editorial-room-worker.js'
+      - 'test/musa-interview-policy.mjs'
+      - '.github/workflows/musa-interviewer.yml'
+  workflow_dispatch:
+jobs:
+  musa-policy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate session pause/resume transitions
+        run: node test/musa-interview-state.mjs
+      - name: Validate server consent and revocation
+        run: node test/musa-interview-consent.mjs
+      - name: Validate persisted-context and consent gate
+        run: node test/musa-interview-next.mjs
+      - name: Validate AI question generator
+        run: node test/musa-interview-ai.mjs
+      - name: Verify keyboard navigation in published Worker entry
+        run: node test/musa-interview-entry-a11y.mjs
+      - name: Validate real interview screen
+        run: node test/musa-interview-studio-page.mjs
+      - name: Verify removal of book and author information
+        run: python3 test/musa-cascade-sqlite.py
+      - name: Validate interview policy
+        run: node test/musa-interview-policy.mjs
+      - name: Execute isolated SQLite transaction regressions
+        run: python3 test/musa-sqlite-integration.py
+      - name: Verify quota SQL with SQLite
+        run: python3 test/musa-quota-sqlite.py
+      - name: Validate API quota
+        run: node test/musa-interview-quota.mjs
+      - name: Validate network-retry recovery
+        run: node test/musa-interview-recovery.mjs
+      - name: Validate atomic turn writes
+        run: node test/musa-interview-atomic.mjs
+      - name: Validate session control security
+        run: node test/musa-interview-controls.mjs
+      - name: Validate API safety boundary
+        run: node test/musa-interview-api.mjs
+      - name: Validate authentication boundary
+        run: node test/musa-interview-auth.mjs
+      - name: Validate persistence checks
+        run: node test/musa-interview-store.mjs
+      - name: Validate prototype HTML and escaping
+        run: node test/musa-interview-prototype.mjs

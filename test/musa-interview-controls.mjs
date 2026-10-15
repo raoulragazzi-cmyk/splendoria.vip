@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import {handleMuseSessionControls} from "../src/musa-interview-controls.js";
+const base="https://staging.example/api/musa/libro/p1/sessioni/s1/";
+const request=(suffix,method="GET",headers={},body)=>new Request(base+suffix,{method,headers,body});
+const off={ENVIRONMENT:"production",MUSA_INTERVIEW_API_ENABLED:"true"};
+const staging={ENVIRONMENT:"staging",MUSA_INTERVIEW_API_ENABLED:"true"};
+assert.equal((await handleMuseSessionControls(request("stato","POST",{"Origin":"https://staging.example"}),off)).status,404);
+assert.equal((await handleMuseSessionControls(request("stato","GET"),staging)).status,405);
+assert.equal((await handleMuseSessionControls(request("stato","POST"),staging)).status,403);
+assert.equal((await handleMuseSessionControls(request("consenso","POST",{"Origin":"https://elsewhere.example"}),staging)).status,403);
+assert.equal((await handleMuseSessionControls(request("consenso","GET",{"Sec-Fetch-Site":"cross-site"}),staging)).status,403);
+assert.equal((await handleMuseSessionControls(request("consenso","GET"),staging)).status,404);
+assert.equal(await handleMuseSessionControls(request("unknown"),staging),null);
+console.log("Musa state/consent endpoint default-deny checks passed");

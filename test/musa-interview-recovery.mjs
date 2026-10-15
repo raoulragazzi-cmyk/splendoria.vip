@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import {submitMuseTurnSafely} from "../src/musa-interview-recovery.js";
+const base={baseUrl:"/api/musa/libro/p1/sessioni",sessionId:"s1",expectedVersion:0,content:"A memory"};
+let actions=[];
+const fetcher=async (url,options)=>{actions.push([url,options.method]);if(options.method==="POST")throw Error("network_lost");return {ok:true,async json(){return {session:{version:1},turns:[{content:"A memory"}]}}}};
+const result=await submitMuseTurnSafely({...base,fetcher});
+assert.equal(result.status,"reconcile");
+assert.deepEqual(actions.map(a=>a[1]),["POST","GET"]);
+actions=[];
+const conflict=async(url,options)=>{actions.push(options.method);return options.method==="POST"?{ok:false,status:409}:{ok:true,async json(){return {session:{version:2}}}}};
+assert.equal((await submitMuseTurnSafely({...base,fetcher:conflict})).status,"reconcile");
+assert.deepEqual(actions,["POST","GET"]);
+const rejected=async()=>({ok:false,status:403});
+assert.deepEqual(await submitMuseTurnSafely({...base,fetcher:rejected}),{status:"failed",httpStatus:403});
+await assert.rejects(submitMuseTurnSafely({...base,sessionId:"../s1",fetcher}),/invalid_submission/);
+console.log("Musa unknown-outcome write reconciliation passed");
