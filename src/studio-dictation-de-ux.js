@@ -77,6 +77,13 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
     if (!oldMerge.includes('const mergeRecognitionText = (current, incoming) =>')) throw new Error('segment-contract-mismatch');
     once(oldMerge, `// recognitionSegments deduplicates by result slot, never by vocabulary.
     const mergeRecognitionText = (current, incoming) => joinText(current, incoming);
+    const appendDictationText = (base, spoken) => {
+      const exactBase = String(base || '');
+      const cleanSpoken = String(spoken || '').trim();
+      if (!cleanSpoken) return exactBase;
+      if (!exactBase) return cleanSpoken;
+      return /\\s$/.test(exactBase) ? exactBase + cleanSpoken : exactBase + ' ' + cleanSpoken;
+    };
     `);
     once('if (languageSelect) {', `const requestVoiceStop = () => {
       if (!activeButton || !recognition) return;
@@ -106,12 +113,13 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
     once("if (activeButton) setStatus(activeButton, message('listening'), true);", "if (voiceStopRequested) { requestVoiceStop(); return; }\n        if (activeButton) setStatus(activeButton, message('listening'), true);");
     once('if (!activeTarget) return;', 'if (!activeTarget || preserveVoiceEdit()) return;');
     once('activeTarget.value = joinText(baseText, mergeRecognitionText(finalTranscript, interimTranscript));', `const spokenText = mergeRecognitionText(finalTranscript, interimTranscript);
-        const nextValue = spokenText ? joinText(baseText, spokenText) : voiceInitialValue;
+        const nextValue = spokenText ? appendDictationText(baseText, spokenText) : voiceInitialValue;
         if (activeTarget.value === nextValue) return;
         voiceLastValue = nextValue;
         activeTarget.value = nextValue;`);
     once("if (activeButton) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));", "if (activeButton && !voiceManualEdit) setStatus(activeButton, event.error === 'not-allowed' ? message('denied') : message('interrupted'));");
     once('if (activeButton) { recognition.stop(); return; }', 'if (activeButton) { requestVoiceStop(); return; }');
+    once('baseText = target.value.trim();', 'baseText = target.value;');
     const onEndStart = voice.indexOf('recognition.onend = async () => {');
     const onEndFinish = voice.indexOf("document.querySelectorAll('[data-voice-target]').forEach(button => {", onEndStart);
     if (onEndStart < 0 || onEndFinish < 0) throw new Error('end-contract-mismatch');
@@ -129,7 +137,7 @@ export function buildGermanDictationCandidate(source, locale = 'de') {
         const button = activeButton;`)
       .replace('if (target) {', 'if (target && rawFinal && !completedManualEdit && target.value !== committed) {')
       .replace('if (button && !endedWithError && rawFinal && target)', 'if (button && !endedWithError && !completedManualEdit && rawFinal && target)')
-      .replaceAll('joinText(baseText,', 'joinText(completedBase,')
+      .replaceAll('joinText(baseText,', 'appendDictationText(completedBase,')
       .replaceAll('!endedWithError', '!completedWithError')
       .replace('language: selectedLanguage()', 'language: completedLanguage')
       .replace("setStatus(button, message('correcting'));", `setStatus(button, message('correcting'));

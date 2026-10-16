@@ -214,3 +214,25 @@ for (const invalid of [{ unexpected: 'object' }, '   ', 42]) test('malformed cor
   const h = harness(); h.buttons[0].click(); h.result('Text'); const pending = h.end(); const committed = h.targets.a.value;
   h.resolve(0, invalid); await pending; assert.equal(h.targets.a.value, committed);
 });
+
+test('preserves an existing paragraph boundary when dictation appends new speech', async () => {
+  const h = harness();
+  h.targets.a.value = 'Erster Absatz.\n\n';
+  h.buttons[0].click();
+  h.result('Zweiter Absatz');
+  const pending = h.end();
+  h.resolve(0, 'Zweiter Absatz.');
+  await pending;
+  assert.equal(h.targets.a.value, 'Erster Absatz.\n\nZweiter Absatz.');
+});
+
+test('preserves authored paragraph boundary even when correction fails', async () => {
+  const h = harness();
+  h.targets.a.value = 'Erster Absatz.\n\n';
+  h.buttons[0].click();
+  h.result('Zweiter Absatz');
+  const pending = h.end();
+  h.resolve(0, '', false);
+  await pending;
+  assert.equal(h.targets.a.value, 'Erster Absatz.\n\nZweiter Absatz');
+});
