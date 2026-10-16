@@ -46,6 +46,7 @@
   "env": {
     "staging": {
       "name": "splendoria-v2-staging",
+      "main": "src/musa-live-worker.js",
       "workers_dev": true,
       "ai": {
         "binding": "AI"
@@ -74,7 +75,8 @@
         "APP_URL": "https://splendoria-v2-staging.raoulragazzi.workers.dev",
         "ADMIN_EMAIL": "raoulragazzi@gmail.com",
         "EMAIL_FROM": "contatti@splendoria.vip",
-        "ENVIRONMENT": "staging"
+        "ENVIRONMENT": "staging",
+        "MUSA_LIVE_ENABLED": "true"
       }
     }
   }
