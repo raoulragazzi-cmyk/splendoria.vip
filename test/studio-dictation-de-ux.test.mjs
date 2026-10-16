@@ -7,6 +7,7 @@ import { buildGermanDictationCandidate, GERMAN_DICTATION_CSS } from '../src/stud
 
 // In a checkout this extracts the REAL controller from src/worker.js, not a second implementation.
 const worker = readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
+const studioWorker = readFileSync(new URL('../src/studio-worker.js', import.meta.url), 'utf8');
 const start = worker.indexOf('const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;');
 const end = worker.indexOf("document.querySelectorAll('textarea[data-word-count]')", start);
 assert.ok(start >= 0 && end > start, 'canonical controller is present');
@@ -213,4 +214,14 @@ test('a correction response cannot steal focus from another control', async () =
 for (const invalid of [{ unexpected: 'object' }, '   ', 42]) test('malformed correction text is ignored: ' + JSON.stringify(invalid), async () => {
   const h = harness(); h.buttons[0].click(); h.result('Text'); const pending = h.end(); const committed = h.targets.a.value;
   h.resolve(0, invalid); await pending; assert.equal(h.targets.a.value, committed);
+});
+
+
+test('sectioned editor binds dictation to the first section before focus', () => {
+  const initial = "if (voiceButton && sectionAreas[0]) voiceButton.dataset.voiceTarget = sectionAreas[0].id;";
+  const focused = "sectionAreas.forEach(area => area.addEventListener('focus', () => {";
+  const initialIndex = studioWorker.indexOf(initial);
+  const focusIndex = studioWorker.indexOf(focused);
+  assert.ok(initialIndex >= 0, 'initial dictation target assignment missing');
+  assert.ok(focusIndex > initialIndex, 'focus retargeting must happen after the first target is bound');
 });
