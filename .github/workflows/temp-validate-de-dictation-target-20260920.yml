@@ -1,0 +1,42 @@
+name: TEMP validate DE dictation target 2026-09-20
+
+on:
+  push:
+    branches: ["ux/de-dictation-target-hardening-20260920"]
+    paths:
+      - ".github/workflows/temp-validate-de-dictation-target-20260920.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Dictation regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          node test/studio-dictation-de-ux.test.mjs
+          node test/de-release-runtime.test.mjs
+          node test/studio-button-contract-smoke.mjs
+          node test/studio-language-smoke.mjs
+      - name: German i18n regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node test/studio-deep-i18n-smoke.mjs
+          node test/studio-dynamic-residuals-smoke.mjs
+          node test/i18n-visible-residuals-smoke.mjs
+      - name: Security and build
+        shell: bash
+        run: |
+          npm audit --audit-level=high
+          npx wrangler deploy --dry-run --env=""
