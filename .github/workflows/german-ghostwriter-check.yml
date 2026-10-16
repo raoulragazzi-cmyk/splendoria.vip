@@ -10,6 +10,7 @@ on:
       - "test/german-ghostwriter-smoke.mjs"
       - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "test/german-editorial-room-smoke.mjs"
+      - "test/german-editorial-style-length-v3-smoke.mjs"
       - "test/german-editorial-quality-cases.mjs"
       - "test/studio-button-contract-smoke.mjs"
       - "docs/GERMAN_GHOSTWRITER_BRAIN.md"
@@ -25,6 +26,7 @@ on:
       - "test/german-ghostwriter-smoke.mjs"
       - "test/german-ghostwriter-style-v2-smoke.mjs"
       - "test/german-editorial-room-smoke.mjs"
+      - "test/german-editorial-style-length-v3-smoke.mjs"
       - "test/german-editorial-quality-cases.mjs"
       - "test/studio-button-contract-smoke.mjs"
       - "docs/GERMAN_GHOSTWRITER_BRAIN.md"
@@ -62,6 +64,7 @@ jobs:
           node --check test/german-ghostwriter-smoke.mjs
           node --check test/german-ghostwriter-style-v2-smoke.mjs
           node --check test/german-editorial-room-smoke.mjs
+          node --check test/german-editorial-style-length-v3-smoke.mjs
           node --check test/german-editorial-quality-cases.mjs
           node --check test/studio-button-contract-smoke.mjs
 
@@ -70,6 +73,7 @@ jobs:
           node test/german-ghostwriter-smoke.mjs
           node test/german-ghostwriter-style-v2-smoke.mjs
           node test/german-editorial-room-smoke.mjs
+          node test/german-editorial-style-length-v3-smoke.mjs
           node test/german-editorial-quality-cases.mjs
 
       - name: Studio button and action contract deep-pass
